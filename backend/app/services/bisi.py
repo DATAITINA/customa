@@ -2,7 +2,7 @@
 
 The model comes from MSFLib ai-core (get_llm), configured by the AI_CORE
 settings: LLM_PROVIDER=openai with LLM_BASE_URL pointing at the Vercel AI
-Gateway and LLM_MODEL=anthropic/claude-haiku-4.5. Token use is counted with
+Gateway and LLM_MODEL=openai/gpt-4o-mini. Token use is counted with
 ai-core's TokenUsageCallback.
 
 Everything here has a no-AI fallback, so the stand keeps working when the

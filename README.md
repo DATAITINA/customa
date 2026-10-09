@@ -65,7 +65,7 @@ pnpm dev
 ```
 
 Optional AI: `LLM_PROVIDER=openai`, `LLM_BASE_URL=https://ai-gateway.vercel.sh/v1`,
-`LLM_MODEL=anthropic/claude-haiku-4.5`, `LLM_API_KEY=...`. Without a key every AI feature
+`LLM_MODEL=openai/gpt-4o-mini`, `LLM_API_KEY=...`. Without a key every AI feature
 falls back to answers from the stand's menu.
 
 ## Deploy

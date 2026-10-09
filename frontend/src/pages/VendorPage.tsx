@@ -3,6 +3,7 @@ import { useAuth } from '@msflib/react-auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type ApiError, type Character as CharacterT, type StandSummary } from '../api';
 import { Character, PRESETS } from '../components/Character';
+import { FoodStamp } from '../components/FoodStamp';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -23,6 +24,7 @@ function VendorTop() {
   return (
     <header className="vendor-top">
       <Link to="/" className="wordmark">CUSTOMA</Link>
+      {status !== 'authenticated' && <FoodStamp />}
       {status === 'authenticated' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontWeight: 700, fontSize: 14 }}>{me?.email}</span>
@@ -183,6 +185,18 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
         <label className="field">Describe your stand and food in your own words
           <textarea className="input" maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Spicy afang soup and fufu, near the market gate. Customers call me Mama." />
         </label>
+        <div className="soon" aria-disabled="true">
+          <button type="button" className="soon-mic" disabled aria-label="Voice note, coming soon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="9" y="2" width="6" height="12" rx="3" /><path d="M19 10v1a7 7 0 0 1-14 0v-1" /><path d="M12 18v4" />
+            </svg>
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1 }}>
+            <span style={{ fontWeight: 800, fontSize: 15 }}>Rather talk? Describe it in a voice note</span>
+            <span className="note">English or Nigerian Pidgin. We turn it into your stand's words.</span>
+          </div>
+          <span className="soon-badge">COMING SOON</span>
+        </div>
         <label className="field">
           <span>Photo of your stand <span style={{ fontWeight: 500, color: 'var(--muted)' }}>(optional)</span></span>
           <input type="file" accept="image/*" capture="environment" onChange={(e) => {

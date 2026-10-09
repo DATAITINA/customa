@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Logo } from '../components/Logo';
 import {
   api,
   clearCustomerKey,
@@ -182,7 +183,7 @@ function Shell({ stand, children }: { stand: StandPublic | null; children: React
           <span className="stand-name">{stand?.stand.name.replace(' (Demo)', '') ?? ''}</span>
           {isDemo && <span className="badge">DEMO</span>}
         </div>
-        <span className="wordmark">CUSTOMA</span>
+        <Logo size={22} />
       </header>
       {children}
     </main>
@@ -373,7 +374,7 @@ function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: Cou
       ))}
       <header className="topbar" style={{ position: 'relative' }}>
         <span className="stand-name">{stand.stand.name.replace(' (Demo)', '')}</span>
-        <span className="wordmark">CUSTOMA</span>
+        <Logo size={22} />
       </header>
       <div style={{ position: 'relative', paddingTop: 6 }}>
         <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em' }}>{result.plates_for_jara} OF {result.plates_for_jara} PLATES</span>

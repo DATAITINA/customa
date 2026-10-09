@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Logo } from '../components/Logo';
 import { api, type StandPublic } from '../api';
 import { Character } from '../components/Character';
 import { Link } from '../App';
@@ -56,7 +57,7 @@ export function ChatPage({ slug }: { slug: string }) {
       <header className="topbar">
         <Link to={`/s/${slug}`} className="link-btn">Back</Link>
         <span style={{ fontWeight: 800 }}>Talk to {first}</span>
-        <span className="wordmark">CUSTOMA</span>
+        <Logo size={22} />
       </header>
       <div style={{ display: 'flex', justifyContent: 'center', background: 'var(--blush)', margin: '0 12px', borderRadius: 28 }}>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression={thinking ? 'proud' : 'happy'} pose={thinking ? 'idle' : 'wave'} size={110} />

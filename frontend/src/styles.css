@@ -207,3 +207,4 @@ tr.fresh td { background: var(--blush); }
 .photo-btn-ghost { background: rgba(255, 255, 255, 0.85); }
 .grid-2 > * { min-width: 0; }
 .seg { min-width: 0; }
+.logo-link { text-decoration: none; }

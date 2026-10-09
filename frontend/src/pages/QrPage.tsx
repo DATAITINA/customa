@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Logo } from '../components/Logo';
 import { QRCodeSVG } from 'qrcode.react';
 import { api, type StandPublic } from '../api';
 import { Character } from '../components/Character';
@@ -12,7 +13,7 @@ export function QrPage({ slug }: { slug: string }) {
   const ch = stand?.character;
   return (
     <main className="qr-sign">
-      <span className="wordmark" style={{ fontSize: 22 }}>CUSTOMA</span>
+      <Logo size={36} />
       <h1 className="display" style={{ fontSize: 46 }}>{stand?.stand.name.replace(' (Demo)', '') ?? ' '}</h1>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="excited" pose="wave" size={180} />

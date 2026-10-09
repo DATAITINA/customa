@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Logo } from '../components/Logo';
 import { useAuth } from '@msflib/react-auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type ApiError, type Character as CharacterT, type StandSummary } from '../api';
@@ -24,7 +25,7 @@ function VendorTop() {
   const qc = useQueryClient();
   return (
     <header className="vendor-top">
-      <Link to="/" className="wordmark">CUSTOMA</Link>
+      <Link to="/" className="logo-link"><Logo size={26} /></Link>
       {status !== 'authenticated' && <FoodStamp />}
       {status === 'authenticated' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

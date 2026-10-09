@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Logo } from './components/Logo';
 import { CustomerPage } from './pages/CustomerPage';
 import { ChatPage } from './pages/ChatPage';
 import { VendorPage } from './pages/VendorPage';
@@ -49,7 +50,7 @@ export function App() {
 
   return (
     <main className="qr-sign">
-      <span className="wordmark" style={{ fontSize: 28 }}>CUSTOMA</span>
+      <Logo size={42} />
       <Character body="pepper" color="pepper" accessory="headwrap" expression="excited" pose="wave" size={200} />
       <h1 className="display" style={{ fontSize: 44 }}>A FRIENDLY FACE FOR EVERY FOOD STAND</h1>
       <p className="note" style={{ maxWidth: 360, fontSize: 16 }}>

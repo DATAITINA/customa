@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Customa mark: a C that is a speech bubble (the character talking) and a plate seen from above, with the jara in the middle -->
+  <path d="M47.3 17.1 A20 20 0 1 0 47.3 42.9" fill="none" stroke="#141414" stroke-width="9" stroke-linecap="round"/>
+  <path d="M19.5 41.5 L10.5 55.5 L27 48.5 Z" fill="#141414" stroke="#141414" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="32" cy="30" r="7" fill="#F04E30"/>
+</svg>

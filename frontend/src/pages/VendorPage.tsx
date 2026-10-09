@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type ApiError, type Character as CharacterT, type StandSummary } from '../api';
 import { Character, PRESETS } from '../components/Character';
 import { FoodStamp } from '../components/FoodStamp';
+import { StandPhoto } from '../components/StandPhoto';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -134,7 +135,6 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
-  const [photo, setPhoto] = useState<string | null>(null);
 
   const suggest = async () => {
     if (!description.trim()) return;
@@ -191,20 +191,13 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
               <rect x="9" y="2" width="6" height="12" rx="3" /><path d="M19 10v1a7 7 0 0 1-14 0v-1" /><path d="M12 18v4" />
             </svg>
           </button>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1 }}>
-            <span style={{ fontWeight: 800, fontSize: 15 }}>Rather talk? Describe it in a voice note</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexGrow: 1, minWidth: 0 }}>
+            <span className="soon-badge" style={{ alignSelf: 'flex-start' }}>COMING SOON</span>
+            <span style={{ fontWeight: 800, fontSize: 15 }}>Rather talk? Send a voice note</span>
             <span className="note">English or Nigerian Pidgin. We turn it into your stand's words.</span>
           </div>
-          <span className="soon-badge">COMING SOON</span>
         </div>
-        <label className="field">
-          <span>Photo of your stand <span style={{ fontWeight: 500, color: 'var(--muted)' }}>(optional)</span></span>
-          <input type="file" accept="image/*" capture="environment" onChange={(e) => {
-            const f = e.target.files?.[0];
-            setPhoto(f ? URL.createObjectURL(f) : null);
-          }} />
-        </label>
-        {photo && <img src={photo} alt="Your stand" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 16 }} />}
+        <StandPhoto />
         <button type="button" className="btn btn-outline" onClick={suggest} disabled={suggesting || !description.trim()}>
           {suggesting ? 'Thinking…' : 'Suggest a character from my words'}
         </button>

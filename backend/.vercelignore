@@ -1,0 +1,13 @@
+# Vercel installs from requirements.txt; the Poetry files are for local development.
+pyproject.toml
+poetry.lock
+.venv
+.env
+*.db
+uploads
+app/tests
+.github
+Dockerfile
+*.sh
+.env.local
+.vercel

@@ -18,3 +18,7 @@ uploads
 .vscode/
 tmp/
 *.db
+
+.vercel
+.env*
+vendor-wheels/

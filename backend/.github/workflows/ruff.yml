@@ -1,0 +1,12 @@
+name: Ruff
+
+on: [ pull_request ]
+
+jobs:
+  ruff:
+    runs-on: ${{ vars.TASK_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: chartboost/ruff-action@v1
+        with:
+          version: 0.16.10

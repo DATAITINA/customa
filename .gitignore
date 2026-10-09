@@ -1,0 +1,9 @@
+# Secrets and local files
+.env
+*.env.local
+*.db
+node_modules/
+.venv/
+__pycache__/
+uploads/
+dist/

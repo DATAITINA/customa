@@ -1,0 +1,20 @@
+.venv/
+.venv*/
+venv/
+venv*/
+.mypy_cache
+.coverage
+.env
+.DS_Store
+.vscode/
+htmlcov
+# poetry.lock is committed so deploys install the same versions
+test.db
+__pycache__/
+uploads/
+uploads
+*.pyc
+.DS_Store
+.vscode/
+tmp/
+*.db

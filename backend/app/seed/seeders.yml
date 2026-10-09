@@ -1,0 +1,68 @@
+# This YAML file defines seeders for various database tables.
+# Each seeder entry specifies how data should be inserted, its dependencies, and any overrides.
+# Parent tables should be created first before child tables.
+#
+# Field explanations:
+# - name: The name of the table/entity being seeded.
+# - action:
+#     - name: The action class responsible for inserting data. The name should be the same
+#             as the name of the model_action. It should also be imported in the __init__ file
+#             of `app/actions` folder.
+#     - initialize_model: The model associated with the action (if applicable). This is needed
+#                         for category model_action, which requires it when creating an instance.
+#                         The model used for initialization should be imported into the `__init__.py`
+#                         of `app/models` folder.
+# - records: The CSV file containing seed data or list of records (or null if generated dynamically).
+#             Should be saved in the `app/seeders/data folder``
+# - dependents: Defines relationships with other seeders/parent tables.
+#     - name: The dependent table whose data is required.
+#     - foreign_key_field: The field in the dependent table to reference.
+#     - foreign_key: The corresponding foreign_key in the current table.
+#     - filter_by: A DictType used to select specific dependent table.
+# - seeder_class: A custom seeder class used for complex seeding logic.
+
+seeders:
+  # Base account records. Child seeders can depend on this by name.
+  accounts:
+    name: accounts
+    action:
+      # Canonical dotted path to the action factory function.
+      # The factory can accept kwargs injected by SeedRunner.
+      class_factory: app.seed.factories.account_action_factory
+    # Can be CSV/JSON/YAML file name under app/seed/data/.
+    records: accounts.csv
+
+  # Profile records linked to seeded accounts.
+  profiles:
+    name: profiles
+    action:
+      class_factory: app.seed.factories.profile_action_factory
+    # Inline records are supported when data volume is small.
+    records:
+      - first_name: Seed
+        last_name: User
+        date_of_birth: 1995-01-01
+        gender: male
+        marital_status: single
+    dependents:
+      # Pull foreign key value from the `accounts` seeder outputs.
+      - name: accounts
+        foreign_key_field: id
+        foreign_key: id
+
+  workspaces:
+    name: workspaces
+    seeder_class: app.seed.seeders.WorkspaceSeeder
+    records:
+      - name: "default_workspace_1"
+        label: "Default workspace 1"
+        description: "This is default workspace 1"
+        workspace_status: open
+      - name: "default_workspace_2"
+        label: "Default workspace 2"
+        description: "This is default workspace 2"
+        workspace_status: locked
+
+  users:
+    name: users
+    seeder_class: app.seed.seeders.UserSeeder

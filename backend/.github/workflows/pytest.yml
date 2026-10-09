@@ -1,0 +1,29 @@
+name: Pytest
+
+on:
+  pull_request:
+    types: [opened, synchronize, labeled]
+    branches: [dev, main]
+
+jobs:
+  build:
+    if: contains(github.event.pull_request.labels.*.name, 'ready-for-analysis')
+    runs-on: ${{ vars.TASK_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install poetry
+          git config --global credential.helper '!echo "username=${{ github.actor }}"; echo "password=${{ secrets.PACKAGES_PAT }}";'
+          poetry install --no-root
+
+      - name: Run tests
+        run: |
+          source venv/bin/activate
+          mkdir -p ./tmp
+          bash ./tests-start.sh

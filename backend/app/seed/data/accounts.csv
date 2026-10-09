@@ -1,0 +1,2 @@
+email,username,phone,password,role,status
+seed-admin@example.com,seed-admin,+10000000001,seedpass123,admin,active

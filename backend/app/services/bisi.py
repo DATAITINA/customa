@@ -83,10 +83,15 @@ Rules:
 def quick_answer(message: str, character: Character, total: int) -> str:
     """Answers that need no AI, from the stand's own menu."""
     text = message.lower()
+    # Pick the menu item sharing the most words with the question.
+    best, best_hits = None, 0
     for m in character.menu:
-        words = [w for w in re.findall(r"[a-z]+", m["item"].lower()) if len(w) > 2]
-        if any(w in text for w in words):
-            return f"{m['item']} na ₦{m['price']:,}. E sweet well well!"
+        words = {w for w in re.findall(r"[a-z]+", m["item"].lower()) if len(w) > 2 and w != "and"}
+        hits = sum(1 for w in words if w in text)
+        if hits > best_hits:
+            best, best_hits = m, hits
+    if best is not None:
+        return f"{best['item']} na ₦{best['price']:,}. E sweet well well!"
     if any(w in text for w in ("price", "cost", "how much", "menu")):
         cheapest = sorted(character.menu, key=lambda m: m["price"])[:3]
         items = ", ".join(f"{m['item']} ₦{m['price']:,}" for m in cheapest)

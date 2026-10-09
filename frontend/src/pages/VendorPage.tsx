@@ -303,7 +303,40 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           </tbody>
         </table>
       </div>
+      <div className="grid-2">
+        <OpenJara slug={slug} items={d.open_jara} onChange={() => q.refetch()} />
+        <div className="card-outline">
+          <span className="eyebrow">WHAT CUSTOMERS ASKED {ch?.name.split(' ')[0].toUpperCase() ?? ''}</span>
+          {d.recent_questions.length === 0 && <span className="note">No questions yet.</span>}
+          {d.recent_questions.map((m) => (
+            <div key={m.id} className="row" style={{ fontSize: 15 }}>
+              <span style={{ fontWeight: 600 }}>"{m.question}"</span>
+              <span className="note" style={{ whiteSpace: 'nowrap' }}>{m.who}</span>
+            </div>
+          ))}
+        </div>
+      </div>
       <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={onNewStand}>Add another stand</button>
+    </div>
+  );
+}
+
+// Jara codes waiting to be given out. Redeeming marks the code used (works once).
+function OpenJara({ slug, items, onChange }: { slug: string; items: { code: string; name: string }[]; onChange: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <div className="card-outline">
+      <span className="eyebrow">JARA TO GIVE OUT</span>
+      {items.length === 0 && <span className="note">No jara waiting.</span>}
+      {items.map((j) => (
+        <div key={j.code} className="row" style={{ alignItems: 'center' }}>
+          <span><strong style={{ fontFamily: 'var(--display)', fontSize: 20, letterSpacing: '0.04em' }}>{j.code}</strong> <span className="note">{j.name}</span></span>
+          <button className="btn" style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: 14 }} disabled={busy === j.code}
+            onClick={async () => { setBusy(j.code); try { await api.redeemJara(slug, j.code); onChange(); } finally { setBusy(null); } }}>
+            Mark as given
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

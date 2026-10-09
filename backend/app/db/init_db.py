@@ -17,6 +17,9 @@ def init_db(engine: Engine, create_tables: bool = False) -> None:
     if create_tables:
         SQLModel.metadata.drop_all(engine)
         SQLModel.metadata.create_all(engine)
+    else:
+        # Adds tables for newly added modules; existing tables and data are untouched.
+        SQLModel.metadata.create_all(engine)
 
     with Session(engine) as session:
         tenant = tenant_action.ensure_default_tenant(session, settings=settings.scope("TENANCY"))

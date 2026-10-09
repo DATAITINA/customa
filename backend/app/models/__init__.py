@@ -29,6 +29,9 @@ from msflib.workspaces.models.workspace import Workspace
 # Registers the scopedconfigentry table that stores per-stand setting overrides.
 from msflib.workspace_config.models import ConfigScopeType, ScopedConfigEntry
 
+# Registers msflib-conversation's tables (saved chats with the stand character).
+import msflib.conversation.models  # noqa: E402,F401
+
 from .customa import (
     Character,
     CharacterBody,

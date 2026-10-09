@@ -42,6 +42,8 @@ export type Dashboard = {
     average_rating: number | null;
   };
   recent_visits: { id: number; name: string; plate_number: number; stars: number | null; at: string }[];
+  open_jara: { code: string; name: string; at: string }[];
+  recent_questions: { id: number; who: string; question: string; at: string }[];
 };
 
 export type StandSummary = { name: string; slug: string; description: string; character: Character | null };
@@ -83,6 +85,8 @@ export const api = {
   createStand: (body: { name: string; description: string; character: Partial<Character> & { name: string } }) =>
     apiClient<StandSummary>('POST', '/stands', body),
   dashboard: (slug: string) => apiClient<Dashboard>('GET', `/stands/${slug}/dashboard`),
+  redeemJara: (slug: string, code: string) =>
+    apiClient<{ code: string; redeemed: boolean }>('POST', `/stands/${slug}/jara/${encodeURIComponent(code)}/redeem`),
   updateCharacter: (slug: string, body: Partial<Character>) =>
     apiClient<StandSummary>('PUT', `/stands/${slug}/character`, body),
   suggestCharacter: (description: string) =>

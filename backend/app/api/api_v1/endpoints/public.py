@@ -22,6 +22,7 @@ from app.actions import (
 from app.api import deps
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
 from app.services.bisi import chat_reply
+from app.services.chat_log import forget_customer, record_turn
 from app.services.stands import resolve_stand_settings
 
 router = APIRouter(prefix="/public/{workspace_slug}", tags=["customer"])
@@ -158,10 +159,12 @@ def rate_plate(
 
 @router.delete("/me")
 def delete_my_data(
+    workspace: Workspace = Depends(deps.get_stand_public),
     customer: Customer = Depends(require_customer),
     session: Session = Depends(deps.get_session),
 ) -> dict[str, Any]:
-    """Forget this customer at this stand: ratings, jara, plates, then the customer."""
+    """Forget this customer at this stand: chats, ratings, jara, plates, then the customer."""
+    forget_customer(session, workspace=workspace, customer=customer)
     for model, action in ((Rating, rating_action), (JaraReward, jara_action), (Visit, visit_action)):
         action.delete_multi_by_expressions(session, model.customer_id == customer.id)
     customer_action.delete(session, customer.id)
@@ -190,4 +193,6 @@ def chat(
         history=body.history,
         workspace_id=workspace.id,
     )
+    if customer is not None:
+        record_turn(session, workspace=workspace, customer=customer, question=body.message, answer=reply)
     return {"reply": reply, "source": source}

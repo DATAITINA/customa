@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import Session, func, select
 
-from app.actions import character_action, workspace_action
+from app.actions import character_action, jara_action, workspace_action
 from app.api import deps
 from app.models import (
     Account,
@@ -24,6 +24,7 @@ from app.models import (
     Workspace,
 )
 from app.services.bisi import suggest_character
+from app.services.chat_log import recent_questions
 from app.services.stands import create_stand, resolve_stand_settings
 
 router = APIRouter(prefix="/stands", tags=["stands"])
@@ -121,8 +122,18 @@ def dashboard(
         .limit(20)
     ).all()
 
+    open_jara = session.exec(
+        select(JaraReward, Customer)
+        .join(Customer, Customer.id == JaraReward.customer_id)
+        .where(JaraReward.workspace_id == ws, JaraReward.redeemed == False)  # noqa: E712
+        .order_by(JaraReward.id.desc())
+        .limit(10)
+    ).all()
+
     return {
         "stand": stand_view(session, workspace),
+        "open_jara": [{"code": j.code, "name": c.first_name or "Guest", "at": j.created_at} for j, c in open_jara],
+        "recent_questions": recent_questions(session, workspace=workspace),
         "plates_for_jara": resolve_stand_settings(session, workspace).PLATES_FOR_JARA,
         "stats": {
             "plates_today": plates_today,
@@ -156,3 +167,20 @@ def update_character(
         raise HTTPException(status_code=404, detail="This stand has no character yet")
     character_action.update(session, model=character, data=body)
     return stand_view(session, workspace)
+
+
+@router.post("/{workspace_slug}/jara/{code}/redeem")
+def redeem_jara(
+    code: str,
+    workspace: Workspace = Depends(deps.get_current_workspace),
+    _member=Depends(deps.get_current_active_member),
+    session: Session = Depends(deps.get_session),
+) -> dict[str, Any]:
+    """The vendor gives the free portion and marks the code used, so it works only once."""
+    jara = jara_action.get_by_all(session, workspace_id=workspace.id, code=code.strip().upper())
+    if jara is None:
+        raise HTTPException(status_code=404, detail="No jara with that code at this stand")
+    if jara.redeemed:
+        raise HTTPException(status_code=409, detail="This jara was already used")
+    jara_action.update(session, model=jara, update={"redeemed": True})
+    return {"code": jara.code, "redeemed": True}

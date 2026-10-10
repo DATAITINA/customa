@@ -23,7 +23,7 @@ from app.api import deps
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
 from app.services.bisi import chat_reply
 from app.services.chat_log import forget_customer, record_turn
-from app.services.stands import resolve_stand_settings
+from app.services.stands import last_plates, resolve_stand_settings
 
 router = APIRouter(prefix="/public/{workspace_slug}", tags=["customer"])
 
@@ -81,6 +81,7 @@ def read_stand(
         "character": character.model_dump(exclude={"workspace_id"}) if character else None,
         "plates_for_jara": stand_settings.PLATES_FOR_JARA,
         "window_seconds": stand_settings.PLATE_WINDOW_SECONDS,
+        "last_plates": last_plates(stand_settings),
         "customer": customer_view(customer, last) if customer else None,
     }
 

@@ -208,3 +208,12 @@ tr.fresh td { background: var(--blush); }
 .grid-2 > * { min-width: 0; }
 .seg { min-width: 0; }
 .logo-link { text-decoration: none; }
+
+/* "Last plates tonight" banner */
+.last-plates {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px;
+  background: var(--ink); color: var(--paper); font-size: 14px; line-height: 1.35;
+}
+.last-plates-big { font-size: 20px; padding: 14px 20px; border-radius: 999px; }
+.lp-dot { width: 10px; height: 10px; border-radius: 999px; background: var(--pepper); flex-shrink: 0; animation: lp-pulse 1.2s ease-in-out infinite; }
+@keyframes lp-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(240, 78, 48, 0.7); } 50% { box-shadow: 0 0 0 6px rgba(240, 78, 48, 0); } }

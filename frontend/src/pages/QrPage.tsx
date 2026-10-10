@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { api, type StandPublic } from '../api';
 import { Character } from '../components/Character';
 import { Link } from '../App';
+import { LastPlatesBanner } from '../components/LastPlates';
 
 // The sign a vendor puts up (or shows on a screen): scan to be welcomed.
 export function QrPage({ slug }: { slug: string }) {
@@ -21,6 +22,7 @@ export function QrPage({ slug }: { slug: string }) {
           <QRCodeSVG value={url} size={260} level="M" marginSize={1} />
         </div>
       </div>
+      <LastPlatesBanner lp={stand?.last_plates ?? null} big />
       <p style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Scan to say hi to {ch?.name ?? 'us'}</p>
       <p className="note" style={{ fontSize: 15 }}>Every visit counts a plate. Plate {stand?.plates_for_jara ?? 6} earns a jara.</p>
       <p style={{ fontWeight: 700, margin: 0, wordBreak: 'break-all' }}>{url.replace(/^https?:\/\//, '')}</p>

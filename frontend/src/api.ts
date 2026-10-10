@@ -12,6 +12,8 @@ export type Character = {
   menu: { item: string; price: number }[];
 };
 
+export type LastPlates = { left: number; until: string } | null;
+
 export type CustomerState = { key: string; first_name: string | null; plate_number: number };
 
 export type StandPublic = {
@@ -19,6 +21,7 @@ export type StandPublic = {
   character: Character | null;
   plates_for_jara: number;
   window_seconds: number;
+  last_plates: LastPlates;
   customer: CustomerState | null;
 };
 
@@ -34,6 +37,7 @@ export type CountResult = {
 export type Dashboard = {
   stand: { name: string; slug: string; description: string; character: Character | null };
   plates_for_jara: number;
+  last_plates: LastPlates;
   stats: {
     plates_today: number;
     customers: number;
@@ -87,6 +91,8 @@ export const api = {
   dashboard: (slug: string) => apiClient<Dashboard>('GET', `/stands/${slug}/dashboard`),
   redeemJara: (slug: string, code: string) =>
     apiClient<{ code: string; redeemed: boolean }>('POST', `/stands/${slug}/jara/${encodeURIComponent(code)}/redeem`),
+  announceLastPlates: (slug: string, plates_left: number, minutes = 90) =>
+    apiClient<{ last_plates: LastPlates }>('POST', `/stands/${slug}/last-plates`, { plates_left, minutes }),
   updateCharacter: (slug: string, body: Partial<Character>) =>
     apiClient<StandSummary>('PUT', `/stands/${slug}/character`, body),
   suggestCharacter: (description: string) =>

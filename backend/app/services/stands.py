@@ -1,5 +1,7 @@
 """Stand helpers: tiered settings and creating a vendor's stand."""
 
+from datetime import datetime
+
 from msflib.utils.utils import slugify
 from msflib.workspace_config.models import ConfigScopeType
 from msflib.workspace_config.service import ScopedConfigService
@@ -62,3 +64,13 @@ def create_stand(
     )
     char = character_action.create(session, data=character, update={"workspace_id": workspace.id})
     return workspace, char
+
+
+def last_plates(stand_settings: CustomaSettings) -> dict | None:
+    """The stand's live "last plates" announcement, or None if there is none."""
+    until = stand_settings.LAST_PLATES_UNTIL
+    if not until or stand_settings.LAST_PLATES_LEFT <= 0:
+        return None
+    if datetime.fromisoformat(until) <= datetime.utcnow():
+        return None
+    return {"left": stand_settings.LAST_PLATES_LEFT, "until": until}

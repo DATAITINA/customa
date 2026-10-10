@@ -4,7 +4,7 @@ Sign-in comes from MSFLib auth (bearer token). Dashboard routes carry the
 stand's slug, and MSFLib's workspace dependencies check the vendor is a member.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -25,7 +25,7 @@ from app.models import (
 )
 from app.services.bisi import suggest_character
 from app.services.chat_log import recent_questions
-from app.services.stands import create_stand, resolve_stand_settings
+from app.services.stands import create_stand, last_plates, resolve_stand_settings, set_stand_setting
 
 router = APIRouter(prefix="/stands", tags=["stands"])
 
@@ -134,6 +134,7 @@ def dashboard(
         "stand": stand_view(session, workspace),
         "open_jara": [{"code": j.code, "name": c.first_name or "Guest", "at": j.created_at} for j, c in open_jara],
         "recent_questions": recent_questions(session, workspace=workspace),
+        "last_plates": last_plates(resolve_stand_settings(session, workspace)),
         "plates_for_jara": resolve_stand_settings(session, workspace).PLATES_FOR_JARA,
         "stats": {
             "plates_today": plates_today,
@@ -184,3 +185,24 @@ def redeem_jara(
         raise HTTPException(status_code=409, detail="This jara was already used")
     jara_action.update(session, model=jara, update={"redeemed": True})
     return {"code": jara.code, "redeemed": True}
+
+
+class LastPlatesRequest(BaseModel):
+    plates_left: int = Field(ge=0, le=500)
+    minutes: int = Field(default=90, ge=5, le=360)
+
+
+@router.post("/{workspace_slug}/last-plates")
+def announce_last_plates(
+    body: LastPlatesRequest,
+    workspace: Workspace = Depends(deps.get_current_workspace),
+    _member=Depends(deps.get_current_active_member),
+    session: Session = Depends(deps.get_session),
+) -> dict[str, Any]:
+    """Tell customers how many plates are left tonight, stored as a per-stand tiered setting.
+    plates_left=0 ends the announcement."""
+    until = (datetime.utcnow() + timedelta(minutes=body.minutes)).isoformat(timespec="seconds")
+    set_stand_setting(session, workspace, "LAST_PLATES_LEFT", body.plates_left)
+    set_stand_setting(session, workspace, "LAST_PLATES_UNTIL", until if body.plates_left else None)
+    session.commit()
+    return {"last_plates": last_plates(resolve_stand_settings(session, workspace))}

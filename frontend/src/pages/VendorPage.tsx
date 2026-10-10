@@ -6,6 +6,7 @@ import { api, type ApiError, type Character as CharacterT, type StandSummary } f
 import { Character, PRESETS } from '../components/Character';
 import { FoodStamp } from '../components/FoodStamp';
 import { StandPhoto } from '../components/StandPhoto';
+import { LastPlatesBanner } from '../components/LastPlates';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -282,6 +283,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           <Link to={`/s/${slug}`} className="btn btn-outline">Customer page</Link>
         </div>
       </div>
+      <LastPlatesControl slug={slug} current={d.last_plates} onChange={() => q.refetch()} />
       <div className="stats">
         {stats.map((s) => (
           <div key={s.label} className="stat">
@@ -345,6 +347,37 @@ function OpenJara({ slug, items, onChange }: { slug: string; items: { code: stri
           </button>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Food left over near closing time? One tap tells every customer who opens the stand page.
+function LastPlatesControl({ slug, current, onChange }: { slug: string; current: import('../api').LastPlates; onChange: () => void }) {
+  const [n, setN] = useState(10);
+  const [busy, setBusy] = useState(false);
+  const send = async (plates: number) => {
+    setBusy(true);
+    try { await api.announceLastPlates(slug, plates); onChange(); } finally { setBusy(false); }
+  };
+  return (
+    <div className="hero" style={{ margin: 0, padding: 16, gap: 10 }}>
+      <span className="eyebrow">FOOD LEFT OVER? SELL IT BEFORE CLOSING</span>
+      {current ? (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <LastPlatesBanner lp={current} />
+          <button className="btn btn-outline" style={{ width: 'auto', height: 44, padding: '0 18px' }} disabled={busy} onClick={() => send(0)}>Sold out, end it</button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            Plates left
+            <input className="input" type="number" min={1} max={500} value={n} onChange={(e) => setN(Number(e.target.value))} style={{ width: 90, height: 44 }} />
+          </label>
+          <button className="btn" style={{ width: 'auto', height: 44, padding: '0 18px' }} disabled={busy || n < 1} onClick={() => send(n)}>
+            Tell my customers
+          </button>
+        </div>
+      )}
     </div>
   );
 }

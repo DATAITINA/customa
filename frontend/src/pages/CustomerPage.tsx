@@ -11,6 +11,7 @@ import {
 } from '../api';
 import { Character, PRESETS } from '../components/Character';
 import { Link } from '../App';
+import { LastPlatesBanner } from '../components/LastPlates';
 
 type View =
   | { kind: 'loading' }
@@ -185,6 +186,7 @@ function Shell({ stand, children }: { stand: StandPublic | null; children: React
         </div>
         <Logo size={22} />
       </header>
+      {stand?.last_plates && <div style={{ padding: '0 12px 10px' }}><LastPlatesBanner lp={stand.last_plates} /></div>}
       {children}
     </main>
   );

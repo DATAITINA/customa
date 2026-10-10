@@ -23,6 +23,9 @@ class CustomaSettings(ModuleSettingsBase):
     PLATE_WINDOW_SECONDS: int = 6 * 60 * 60
     # The plate that earns a jara (a free extra portion).
     PLATES_FOR_JARA: int = 6
+    # "Last plates tonight": set by the vendor to sell leftover food before closing.
+    LAST_PLATES_LEFT: int = 0
+    LAST_PLATES_UNTIL: str | None = None  # ISO time (UTC) when the announcement ends
 
 
 class AppSettings(

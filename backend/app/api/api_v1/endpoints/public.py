@@ -20,6 +20,7 @@ from app.actions import (
     visit_action,
 )
 from app.api import deps
+from app.core.config import CustomaSettings
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
 from app.services.bisi import chat_reply
 from app.services.chat_log import forget_customer, record_turn
@@ -31,6 +32,9 @@ router = APIRouter(prefix="/public/{workspace_slug}", tags=["customer"])
 class CountPlateRequest(BaseModel):
     first_name: str | None = Field(default=None, max_length=40)
     consent: bool = False
+    # "qr" when the page was opened from the stand's QR code. Only read when the
+    # customer is first created; the wait itself is always decided here.
+    source: str | None = Field(default=None, max_length=20)
 
 
 class ChatRequest(BaseModel):
@@ -59,11 +63,21 @@ def require_customer(customer: Customer | None = Depends(get_customer_or_none)) 
     return customer
 
 
-def customer_view(customer: Customer, last: Visit | None) -> dict[str, Any]:
+def window_seconds_for(customer: Customer, stand_settings: CustomaSettings) -> int:
+    """The wait between plates for this customer, decided from what is saved on the server."""
+    if customer.source == "qr":
+        return stand_settings.QR_PLATE_WINDOW_SECONDS
+    return stand_settings.PLATE_WINDOW_SECONDS
+
+
+def customer_view(
+    customer: Customer, last: Visit | None, stand_settings: CustomaSettings
+) -> dict[str, Any]:
     return {
         "key": customer.key,
         "first_name": customer.first_name,
         "plate_number": last.plate_number if last else 0,
+        "window_seconds": window_seconds_for(customer, stand_settings),
     }
 
 
@@ -82,7 +96,7 @@ def read_stand(
         "plates_for_jara": stand_settings.PLATES_FOR_JARA,
         "window_seconds": stand_settings.PLATE_WINDOW_SECONDS,
         "last_plates": last_plates(stand_settings),
-        "customer": customer_view(customer, last) if customer else None,
+        "customer": customer_view(customer, last, stand_settings) if customer else None,
     }
 
 
@@ -100,7 +114,11 @@ def count_plate(
         customer = customer_action.create_for_stand(
             session,
             workspace_id=workspace.id,
-            data=CustomerCreate(first_name=first_name, consent=body.consent),
+            data=CustomerCreate(
+                first_name=first_name,
+                consent=body.consent,
+                source="qr" if body.source == "qr" else None,
+            ),
         )
 
     stand_settings = resolve_stand_settings(session, workspace)
@@ -109,7 +127,7 @@ def count_plate(
             session,
             workspace_id=workspace.id,
             customer_id=customer.id,
-            window_seconds=stand_settings.PLATE_WINDOW_SECONDS,
+            window_seconds=window_seconds_for(customer, stand_settings),
             plates_for_jara=stand_settings.PLATES_FOR_JARA,
         )
     except PlateTooSoon as exc:
@@ -119,13 +137,13 @@ def count_plate(
             detail={
                 "message": "This plate is already counted",
                 "seconds_left": exc.seconds_left,
-                "customer": customer_view(customer, last),
+                "customer": customer_view(customer, last, stand_settings),
             },
         )
 
     jara = jara_action.get_by_all(session, visit_id=visit.id)
     return {
-        "customer": customer_view(customer, visit),
+        "customer": customer_view(customer, visit, stand_settings),
         "returning": returning,
         "visit_id": visit.id,
         "plate_number": visit.plate_number,

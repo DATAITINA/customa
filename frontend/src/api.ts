@@ -14,7 +14,8 @@ export type Character = {
 
 export type LastPlates = { left: number; until: string } | null;
 
-export type CustomerState = { key: string; first_name: string | null; plate_number: number };
+// window_seconds is this customer's wait between plates, decided by the server.
+export type CustomerState = { key: string; first_name: string | null; plate_number: number; window_seconds: number };
 
 export type StandPublic = {
   stand: { name: string; slug: string; description: string };
@@ -72,7 +73,7 @@ export type ApiError = { status?: number; message: string; raw?: { detail?: unkn
 
 export const api = {
   stand: (slug: string) => apiClient<StandPublic>('GET', `/public/${slug}`, null, customerHeaders(slug)),
-  countPlate: (slug: string, body: { first_name?: string; consent: boolean }) =>
+  countPlate: (slug: string, body: { first_name?: string; consent: boolean; source?: 'qr' }) =>
     apiClient<CountResult>('POST', `/public/${slug}/visits`, body, customerHeaders(slug)),
   rate: (slug: string, visitId: number, stars: number) =>
     apiClient('POST', `/public/${slug}/ratings`, { visit_id: visitId, stars }, customerHeaders(slug)),

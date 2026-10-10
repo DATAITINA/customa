@@ -65,11 +65,14 @@ class Customer(ModelBase, table=True):
     key: str = Field(index=True)
     first_name: str | None = None
     consent: bool = False
+    # How the customer first arrived ("qr" for a QR scan). Set once at sign-up, never updated.
+    source: str | None = None
 
 
 class CustomerCreate(SchemaBase):
     first_name: str | None = None
     consent: bool = False
+    source: str | None = None
 
 
 class CustomerUpdate(SchemaBase):

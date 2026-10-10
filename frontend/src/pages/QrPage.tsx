@@ -11,6 +11,8 @@ export function QrPage({ slug }: { slug: string }) {
   const [stand, setStand] = useState<StandPublic | null>(null);
   useEffect(() => { api.stand(slug).then(setStand).catch(() => setStand(null)); }, [slug]);
   const url = `${window.location.origin}/s/${slug}`;
+  // The code itself carries ?src=qr so the server can save that this customer scanned it.
+  const qrUrl = `${url}?src=qr`;
   const ch = stand?.character;
   return (
     <main className="qr-sign">
@@ -19,7 +21,7 @@ export function QrPage({ slug }: { slug: string }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="excited" pose="wave" size={180} />
         <div className="qr-box">
-          <QRCodeSVG value={url} size={260} level="M" marginSize={1} />
+          <QRCodeSVG value={qrUrl} size={260} level="M" marginSize={1} />
         </div>
       </div>
       <LastPlatesBanner lp={stand?.last_plates ?? null} big />

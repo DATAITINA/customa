@@ -18,7 +18,7 @@ type View =
   | { kind: 'error'; message: string }
   | { kind: 'welcome' }
   | { kind: 'counted'; result: CountResult }
-  | { kind: 'tooSoon'; secondsLeft: number; plate: number; name: string | null }
+  | { kind: 'tooSoon'; secondsLeft: number; windowSeconds: number; plate: number; name: string | null }
   | { kind: 'jara'; result: CountResult }
   | { kind: 'deleted' };
 
@@ -52,18 +52,21 @@ export function CustomerPage({ slug }: { slug: string }) {
   const [view, setView] = useState<View>({ kind: 'loading' });
   const started = useRef(false);
 
+  // Opened from the stand's QR code. The server saves this only when it first creates the customer.
+  const fromQr = new URLSearchParams(window.location.search).get('src') === 'qr';
+
   const handleCount = async (body: { first_name?: string; consent: boolean }) => {
     try {
-      const result = await api.countPlate(slug, body);
+      const result = await api.countPlate(slug, fromQr ? { ...body, source: 'qr' } : body);
       setCustomerKey(slug, result.customer.key);
       setView(result.jara ? { kind: 'jara', result } : { kind: 'counted', result });
     } catch (err) {
       const e = err as ApiError;
       const detail = e.raw?.detail as
-        | { seconds_left: number; customer: { first_name: string | null; plate_number: number } }
+        | { seconds_left: number; customer: { first_name: string | null; plate_number: number; window_seconds: number } }
         | undefined;
       if (e.status === 409 && detail) {
-        setView({ kind: 'tooSoon', secondsLeft: detail.seconds_left, plate: detail.customer.plate_number, name: detail.customer.first_name });
+        setView({ kind: 'tooSoon', secondsLeft: detail.seconds_left, windowSeconds: detail.customer.window_seconds ?? stand?.window_seconds ?? 0, plate: detail.customer.plate_number, name: detail.customer.first_name });
       } else if (e.status === 404) {
         // We had a key but the stand forgot us (data deleted): start fresh.
         clearCustomerKey(slug);
@@ -141,6 +144,7 @@ export function CustomerPage({ slug }: { slug: string }) {
         <TooSoon
           stand={stand}
           initialSeconds={view.secondsLeft}
+          windowSeconds={view.windowSeconds}
           plate={view.plate}
           name={view.name}
           onReady={() => handleCount({ consent: true })}
@@ -163,7 +167,7 @@ export function CustomerPage({ slug }: { slug: string }) {
         <Character {...charProps} expression="excited" pose={r.returning ? 'wave' : 'hop'} size={180} />
       </Hero>
       <div className="stack">
-        <PlateCard plate={r.plate_number} total={total} windowSeconds={stand.window_seconds} />
+        <PlateCard plate={r.plate_number} total={total} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} isDemo={stand.window_seconds < 120} />
         <Link to={`/s/${slug}/chat`} className="btn">
           <ChatIcon /> Talk to {charName.split(' ')[0]}
         </Link>
@@ -206,8 +210,8 @@ function Hero({ bubble, counted, children }: { bubble: string; counted?: boolean
   );
 }
 
-function PlateCard({ plate, total, windowSeconds }: { plate: number; total: number; windowSeconds: number }) {
-  const windowText = windowSeconds < 120 ? `${windowSeconds} seconds (demo stand)` : `${Math.round(windowSeconds / 3600)} hours`;
+function PlateCard({ plate, total, windowSeconds, isDemo }: { plate: number; total: number; windowSeconds: number; isDemo: boolean }) {
+  const windowText = windowSeconds < 120 ? `${windowSeconds} seconds${isDemo ? ' (demo stand)' : ''}` : `${Math.round(windowSeconds / 3600)} hours`;
   return (
     <div className="card">
       <div className="row">
@@ -253,8 +257,8 @@ function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consen
 }
 
 function TooSoon({
-  stand, initialSeconds, plate, name, onReady,
-}: { stand: StandPublic; initialSeconds: number; plate: number; name: string | null; onReady: () => void }) {
+  stand, initialSeconds, windowSeconds, plate, name, onReady,
+}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; name: string | null; onReady: () => void }) {
   const [seconds, setSeconds] = useState(initialSeconds);
   useEffect(() => {
     const t = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
@@ -266,7 +270,7 @@ function TooSoon({
   const ss = String(seconds % 60).padStart(2, '0');
   const hh = Math.floor(seconds / 3600);
   const label = seconds >= 3600 ? `${hh}h ${Math.floor((seconds % 3600) / 60)}m` : `${mm}:${ss}`;
-  const pct = Math.min(100, Math.round((1 - seconds / Math.max(1, stand.window_seconds)) * 100));
+  const pct = Math.min(100, Math.round((1 - seconds / Math.max(1, windowSeconds)) * 100));
   return (
     <>
       <Hero bubble={`You don collect this plate already${name ? ', ' + name : ''}! I dey count the next one.`}>
@@ -279,7 +283,7 @@ function TooSoon({
         </div>
       </Hero>
       <div className="stack">
-        <PlateCard plate={plate} total={total} windowSeconds={stand.window_seconds} />
+        <PlateCard plate={plate} total={total} windowSeconds={windowSeconds} isDemo={stand.window_seconds < 120} />
         <div className="card-outline">
           <span className="eyebrow">WHY THE WAIT?</span>
           <span style={{ fontSize: 15, lineHeight: 1.45, fontWeight: 600 }}>

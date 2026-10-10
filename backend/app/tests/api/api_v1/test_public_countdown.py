@@ -1,4 +1,4 @@
-"""The wait between plates: 30 seconds for QR-scan customers, the stand's window for everyone else.
+"""The wait between plates: the stand's window (6 hours) for every customer, however they arrived.
 
 Uses a normal stand with the default 6-hour window (not the 30-second demo stand).
 """
@@ -60,17 +60,6 @@ def move_last_visit_back(session: Session, key: str, seconds: int) -> None:
     session.commit()
 
 
-def test_qr_customer_gets_30_seconds(client: TestClient, session: Session, stand) -> None:
-    data = sign_up(client, source="qr")
-    assert data["customer"]["window_seconds"] == 30
-    assert customer_action.get_by_all(session, key=data["customer"]["key"]).source == "qr"
-
-    r = scan_again(client, data["customer"]["key"])
-    assert r.status_code == 409
-    assert 0 < r.json()["detail"]["seconds_left"] <= 31
-    assert r.json()["detail"]["customer"]["window_seconds"] == 30
-
-
 def test_normal_customer_gets_6_hours(client: TestClient, session: Session, stand) -> None:
     data = sign_up(client)
     assert data["customer"]["window_seconds"] == SIX_HOURS
@@ -81,43 +70,64 @@ def test_normal_customer_gets_6_hours(client: TestClient, session: Session, stan
     assert SIX_HOURS - 5 <= r.json()["detail"]["seconds_left"] <= SIX_HOURS + 1
 
 
-def test_refresh_keeps_remaining_time_qr(client: TestClient, session: Session, stand) -> None:
-    key = sign_up(client, source="qr")["customer"]["key"]
-    move_last_visit_back(session, key, 10)
+def test_qr_customer_also_gets_6_hours(client: TestClient, session: Session, stand) -> None:
+    # The QR scan is still saved (for vendor stats) but no longer shortens the wait.
+    data = sign_up(client, source="qr")
+    assert data["customer"]["window_seconds"] == SIX_HOURS
+    assert customer_action.get_by_all(session, key=data["customer"]["key"]).source == "qr"
 
-    # A refresh re-reads the stand and re-scans: the timer continues, it does not restart.
-    page = client.get(BASE, headers={"X-Customer-Key": key}).json()
-    assert page["customer"]["window_seconds"] == 30
-    r = scan_again(client, key, source="qr")
+    r = scan_again(client, data["customer"]["key"], source="qr")
     assert r.status_code == 409
-    assert 18 <= r.json()["detail"]["seconds_left"] <= 21
-
-    move_last_visit_back(session, key, 31)
-    r = scan_again(client, key, source="qr")
-    assert r.status_code == 200
-    assert r.json()["plate_number"] == 2
+    assert SIX_HOURS - 5 <= r.json()["detail"]["seconds_left"] <= SIX_HOURS + 1
+    assert r.json()["detail"]["customer"]["window_seconds"] == SIX_HOURS
 
 
-def test_refresh_keeps_remaining_time_normal(client: TestClient, session: Session, stand) -> None:
+def test_plates_2_3_4_each_need_6_hours(client: TestClient, session: Session, stand) -> None:
+    key = sign_up(client, source="qr")["customer"]["key"]
+    for plate in (2, 3, 4):
+        # One minute short of six hours: still blocked, about a minute left.
+        move_last_visit_back(session, key, SIX_HOURS - 60)
+        r = scan_again(client, key)
+        assert r.status_code == 409, f"plate {plate} counted too early"
+        assert 55 <= r.json()["detail"]["seconds_left"] <= 62
+        assert r.json()["detail"]["customer"]["plate_number"] == plate - 1
+
+        # Six hours have passed: the next plate counts and the timer starts again.
+        move_last_visit_back(session, key, SIX_HOURS)
+        r = scan_again(client, key)
+        assert r.status_code == 200, r.text
+        assert r.json()["plate_number"] == plate
+
+        r = scan_again(client, key)
+        assert r.status_code == 409
+        assert r.json()["detail"]["seconds_left"] > SIX_HOURS - 10
+
+
+def test_jara_on_plate_6_then_back_to_1(client: TestClient, session: Session, stand) -> None:
+    key = sign_up(client)["customer"]["key"]
+    for plate in range(2, 7):
+        move_last_visit_back(session, key, SIX_HOURS)
+        r = scan_again(client, key)
+        assert r.json()["plate_number"] == plate
+    assert r.json()["jara"] is not None
+
+    move_last_visit_back(session, key, SIX_HOURS)
+    r = scan_again(client, key)
+    assert r.json()["plate_number"] == 1
+    assert r.json()["jara"] is None
+
+
+def test_refresh_keeps_remaining_time(client: TestClient, session: Session, stand) -> None:
     key = sign_up(client)["customer"]["key"]
     move_last_visit_back(session, key, 2 * 60 * 60)
 
+    # A refresh re-reads the stand and re-scans: the timer continues, it does not restart.
     page = client.get(BASE, headers={"X-Customer-Key": key}).json()
     assert page["customer"]["window_seconds"] == SIX_HOURS
     r = scan_again(client, key)
     assert r.status_code == 409
     four_hours = 4 * 60 * 60
     assert four_hours - 5 <= r.json()["detail"]["seconds_left"] <= four_hours + 1
-
-
-def test_customer_cannot_switch_to_30_seconds(client: TestClient, session: Session, stand) -> None:
-    # Signed up normally, then comes back with ?src=qr: still 6 hours, source unchanged.
-    key = sign_up(client)["customer"]["key"]
-    r = scan_again(client, key, source="qr")
-    assert r.status_code == 409
-    assert r.json()["detail"]["seconds_left"] > 30
-    assert r.json()["detail"]["customer"]["window_seconds"] == SIX_HOURS
-    assert customer_action.get_by_all(session, key=key).source is None
 
 
 def test_unknown_source_is_ignored(client: TestClient, session: Session, stand) -> None:
@@ -134,7 +144,7 @@ def test_window_cannot_be_sent_by_client(client: TestClient, session: Session, s
 
 
 def test_existing_customer_keeps_6_hours(client: TestClient, session: Session, stand) -> None:
-    # A customer created before this change has no saved source (NULL after the migration).
+    # A customer created before the source column existed has no saved source.
     customer = customer_action.create_for_stand(
         session, workspace_id=stand.id, data=CustomerCreate(first_name="Ada", consent=True)
     )
@@ -157,7 +167,7 @@ def test_existing_customer_keeps_6_hours(client: TestClient, session: Session, s
 
 
 def test_demo_stand_unchanged(client: TestClient) -> None:
-    # The demo stand still counts every 30 seconds for everyone.
+    # The demo stand keeps its own 30-second window so it can be shown to vendors.
     r = client.post(f"{settings.API_V1_STR}/public/iya-bisi-demo/visits", json={"consent": True})
     assert r.status_code == 200
     assert r.json()["customer"]["window_seconds"] == 30

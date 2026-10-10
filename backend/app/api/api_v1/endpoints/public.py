@@ -32,8 +32,8 @@ router = APIRouter(prefix="/public/{workspace_slug}", tags=["customer"])
 class CountPlateRequest(BaseModel):
     first_name: str | None = Field(default=None, max_length=40)
     consent: bool = False
-    # "qr" when the page was opened from the stand's QR code. Only read when the
-    # customer is first created; the wait itself is always decided here.
+    # "qr" when the page was opened from the stand's QR code. Saved once, when the
+    # customer is first created, so the vendor can see how customers arrive.
     source: str | None = Field(default=None, max_length=20)
 
 
@@ -64,9 +64,7 @@ def require_customer(customer: Customer | None = Depends(get_customer_or_none)) 
 
 
 def window_seconds_for(customer: Customer, stand_settings: CustomaSettings) -> int:
-    """The wait between plates for this customer, decided from what is saved on the server."""
-    if customer.source == "qr":
-        return stand_settings.QR_PLATE_WINDOW_SECONDS
+    """The wait between plates, decided on the server: the stand's window for every customer."""
     return stand_settings.PLATE_WINDOW_SECONDS
 
 

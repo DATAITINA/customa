@@ -8,7 +8,7 @@ import secrets
 from datetime import datetime, timedelta
 
 from msflib.actions import ModelAction
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from ..models import (
     Character,
@@ -81,6 +81,10 @@ class VisitAction(ModelAction[Visit, VisitCreate, VisitUpdate]):
         This is the anti-cheat rule: one plate per window (6 hours, or 30
         seconds on the demo stand). Plates go 1..plates_for_jara, then restart.
         """
+        # Lock this customer's row until the visit is saved, so two scans arriving at
+        # the same moment (double tap, network retry, two tabs) cannot both pass the
+        # check below and count two plates. Postgres honours this; SQLite ignores it.
+        session.exec(select(Customer).where(Customer.id == customer_id).with_for_update()).one()
         last = self.last_for_customer(session, customer_id=customer_id)
         if last is not None:
             next_allowed = last.created_at + timedelta(seconds=window_seconds)

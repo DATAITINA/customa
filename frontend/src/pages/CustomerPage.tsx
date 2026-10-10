@@ -259,11 +259,22 @@ function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consen
 function TooSoon({
   stand, initialSeconds, windowSeconds, plate, name, onReady,
 }: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; name: string | null; onReady: () => void }) {
-  const [seconds, setSeconds] = useState(initialSeconds);
+  // Count down to a fixed end time, not by ticking: phones pause timers while the
+  // screen is off or the tab is in the background, which would leave a 6-hour
+  // countdown far behind. Re-read the clock on every tick and when the page is shown again.
+  const [endsAt] = useState(() => Date.now() + initialSeconds * 1000);
+  const secondsLeft = () => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+  const [seconds, setSeconds] = useState(secondsLeft);
   useEffect(() => {
-    const t = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, []);
+    const sync = () => setSeconds(secondsLeft());
+    const t = setInterval(sync, 1000);
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', sync);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endsAt]);
   const ch = stand.character;
   const total = stand.plates_for_jara;
   const mm = Math.floor(seconds / 60);

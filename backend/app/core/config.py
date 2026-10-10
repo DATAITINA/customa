@@ -21,8 +21,6 @@ class CustomaSettings(ModuleSettingsBase):
 
     # A customer earns one plate per window: 6 hours in real life.
     PLATE_WINDOW_SECONDS: int = 6 * 60 * 60
-    # Customers who signed up by scanning the stand's QR code wait this long instead.
-    QR_PLATE_WINDOW_SECONDS: int = 30
     # The plate that earns a jara (a free extra portion).
     PLATES_FOR_JARA: int = 6
     # "Last plates tonight": set by the vendor to sell leftover food before closing.

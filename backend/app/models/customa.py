@@ -66,6 +66,7 @@ class Customer(ModelBase, table=True):
     first_name: str | None = None
     consent: bool = False
     # How the customer first arrived ("qr" for a QR scan). Set once at sign-up, never updated.
+    # Kept for vendor stats; it does not change the wait between plates.
     source: str | None = None
 
 

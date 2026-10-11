@@ -1,5 +1,5 @@
 /* Plate Ajo. Builds on .card, .card-outline, .seg, .btn, .field and .input from styles.css. */
-.ajo-big { font-family: var(--display); font-size: 40px; line-height: 0.95; }
+.ajo-big { font-family: var(--display); font-size: 34px; line-height: 0.95; }
 .ajo-total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-weight: 800; }
 .ajo-total strong { font-family: var(--display); font-weight: 400; font-size: 28px; }
 .ajo-seg button { min-height: 40px; height: auto; padding: 6px 14px; text-align: left; }
@@ -25,15 +25,17 @@
   width: 84px; height: 84px; border-radius: 999px; background: #1E7B34; color: var(--paper);
   display: flex; align-items: center; justify-content: center;
 }
-.ajo-overlay-title { font-family: var(--display); font-size: clamp(56px, 19vw, 96px); line-height: 0.9; margin: 0; color: #145A25; }
+.ajo-overlay-title { font-family: var(--display); font-size: clamp(44px, 15vw, 88px); line-height: 0.9; margin: 0; color: #145A25; }
 .ajo-overlay-card {
   width: 100%; max-width: 380px; background: var(--paper); border: 3px solid var(--ink); border-radius: var(--radius-hero);
   padding: 18px; display: flex; flex-direction: column; gap: 8px; align-items: center;
 }
 .ajo-overlay-item { font-size: 26px; font-weight: 800; line-height: 1.15; word-break: break-word; }
-.ajo-overlay-plate { font-family: var(--display); font-size: 44px; line-height: 1; }
+.ajo-overlay-plate { font-family: var(--display); font-size: 38px; line-height: 1; }
 .ajo-overlay-time { font-size: 18px; font-weight: 800; }
 .ajo-overlay-stamp { font-size: 15px; font-weight: 700; color: var(--muted); }
+.ajo-overlay-jara { font-size: 18px; font-weight: 800; background: var(--blush); border-radius: 999px; padding: 8px 16px; }
+.ajo-overlay-jara strong { font-family: var(--display); font-weight: 400; font-size: 24px; letter-spacing: 0.06em; }
 .ajo-overlay .btn { max-width: 380px; }
 
 /* Vendor panel */

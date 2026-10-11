@@ -6,6 +6,9 @@ import { api, type ApiError, type Character as CharacterT, type StandSummary } f
 import { Character, PRESETS } from '../components/Character';
 import { FoodStamp } from '../components/FoodStamp';
 import { StandPhoto } from '../components/StandPhoto';
+import { VendorAjoPanel } from '../features/plateAjo/VendorAjo';
+import { VendorPotPanel } from '../features/potAlert/VendorPot';
+import { VendorCrewPanel } from '../features/lunchCrew/VendorCrew';
 import { LastPlatesBanner } from '../components/LastPlates';
 import { Link } from '../App';
 
@@ -284,6 +287,9 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         </div>
       </div>
       <LastPlatesControl slug={slug} current={d.last_plates} onChange={() => q.refetch()} />
+      <VendorPotPanel slug={slug} />
+      <VendorAjoPanel slug={slug} />
+      <VendorCrewPanel slug={slug} />
       <div className="stats">
         {stats.map((s) => (
           <div key={s.label} className="stat">

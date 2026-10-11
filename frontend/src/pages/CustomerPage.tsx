@@ -12,6 +12,9 @@ import {
 import { Character, PRESETS } from '../components/Character';
 import { Link } from '../App';
 import { LastPlatesBanner } from '../components/LastPlates';
+import { AjoCard } from '../features/plateAjo/CustomerAjo';
+import { PotReadyBanner, PotWatchCard } from '../features/potAlert/CustomerPot';
+import { CrewCard } from '../features/lunchCrew/CustomerCrew';
 
 type View =
   | { kind: 'loading' }
@@ -77,6 +80,20 @@ export function CustomerPage({ slug }: { slug: string }) {
     }
   };
 
+  // After a plate is counted somewhere else (a prepaid Plate Ajo plate), re-read the stand
+  // and show the card with the real time left. Read only: it never counts a plate itself.
+  const refreshPlates = async () => {
+    try {
+      const s = await api.stand(slug);
+      setStand(s);
+      if (s.customer && (s.customer.seconds_left ?? 0) > 0) {
+        setView({ kind: 'tooSoon', secondsLeft: s.customer.seconds_left ?? 0, windowSeconds: s.customer.window_seconds, plate: s.customer.plate_number, name: s.customer.first_name });
+      }
+    } catch {
+      // Keep the current screen; the next scan shows the right state.
+    }
+  };
+
   useEffect(() => {
     if (started.current) return;
     started.current = true;
@@ -108,6 +125,14 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   const ch = stand.character;
   const total = stand.plates_for_jara;
+  // The three return-visit features. Each card hides itself when the vendor has not turned it on.
+  const featureCards = (
+    <>
+      <CrewCard slug={slug} stand={stand} />
+      <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
+      <PotWatchCard slug={slug} stand={stand} />
+    </>
+  );
   const charProps = { body: ch?.body, color: ch?.color, accessory: ch?.accessory };
   const charName = ch?.name ?? 'your host';
 
@@ -148,6 +173,7 @@ export function CustomerPage({ slug }: { slug: string }) {
           plate={view.plate}
           name={view.name}
           onReady={() => handleCount({ consent: true })}
+          extras={featureCards}
         />
       </Shell>
     );
@@ -168,6 +194,7 @@ export function CustomerPage({ slug }: { slug: string }) {
       </Hero>
       <div className="stack">
         <PlateCard plate={r.plate_number} total={total} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} isDemo={stand.window_seconds < 120} />
+        {featureCards}
         <Link to={`/s/${slug}/chat`} className="btn">
           <ChatIcon /> Talk to {charName.split(' ')[0]}
         </Link>
@@ -191,6 +218,7 @@ function Shell({ stand, children }: { stand: StandPublic | null; children: React
         <Logo size={22} />
       </header>
       {stand?.last_plates && <div style={{ padding: '0 12px 10px' }}><LastPlatesBanner lp={stand.last_plates} /></div>}
+      {stand && <PotReadyBanner slug={stand.stand.slug} />}
       {children}
     </main>
   );
@@ -257,8 +285,8 @@ function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consen
 }
 
 function TooSoon({
-  stand, initialSeconds, windowSeconds, plate, name, onReady,
-}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; name: string | null; onReady: () => void }) {
+  stand, initialSeconds, windowSeconds, plate, name, onReady, extras,
+}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; name: string | null; onReady: () => void; extras?: React.ReactNode }) {
   // Count down to a fixed end time, not by ticking: phones pause timers while the
   // screen is off or the tab is in the background, which would leave a 6-hour
   // countdown far behind. Re-read the clock on every tick and when the page is shown again.
@@ -295,6 +323,7 @@ function TooSoon({
       </Hero>
       <div className="stack">
         <PlateCard plate={plate} total={total} windowSeconds={windowSeconds} isDemo={stand.window_seconds < 120} />
+        {extras}
         <div className="card-outline">
           <span className="eyebrow">WHY THE WAIT?</span>
           <span style={{ fontSize: 15, lineHeight: 1.45, fontWeight: 600 }}>

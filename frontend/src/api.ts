@@ -15,7 +15,7 @@ export type Character = {
 export type LastPlates = { left: number; until: string } | null;
 
 // window_seconds is this customer's wait between plates, decided by the server.
-export type CustomerState = { key: string; first_name: string | null; plate_number: number; window_seconds: number };
+export type CustomerState = { key: string; first_name: string | null; plate_number: number; window_seconds: number; seconds_left?: number };
 
 export type StandPublic = {
   stand: { name: string; slug: string; description: string };
@@ -55,7 +55,7 @@ export type StandSummary = { name: string; slug: string; description: string; ch
 
 // Customer and stand routes are not workspace-scoped on the client: the stand
 // slug is already in the path.
-const { apiClient } = configuredApiClient({ isWorkspaceScoped: false });
+export const { apiClient } = configuredApiClient({ isWorkspaceScoped: false });
 
 // The customer's key for a stand lives on their phone only.
 const keyName = (slug: string) => `customa:customer:${slug}`;
@@ -63,7 +63,7 @@ export const getCustomerKey = (slug: string) => storage.getItem(keyName(slug));
 export const setCustomerKey = (slug: string, key: string) => storage.setItem(keyName(slug), key);
 export const clearCustomerKey = (slug: string) => storage.removeItem(keyName(slug));
 
-function customerHeaders(slug: string): RequestInit {
+export function customerHeaders(slug: string): RequestInit {
   const key = getCustomerKey(slug);
   return key ? { headers: { 'X-Customer-Key': key } } : {};
 }

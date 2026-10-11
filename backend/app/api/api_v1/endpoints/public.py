@@ -5,6 +5,7 @@ lookup), and the customer is recognised by a random key their phone keeps and
 sends back in the X-Customer-Key header.
 """
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -22,8 +23,10 @@ from app.actions import (
 from app.api import deps
 from app.core.config import CustomaSettings
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
+from app.services import lunch_crew, plate_ajo, pot_alert
 from app.services.bisi import chat_reply
 from app.services.chat_log import forget_customer, record_turn
+from app.services.plates import count_visit
 from app.services.stands import last_plates, resolve_stand_settings
 
 router = APIRouter(prefix="/public/{workspace_slug}", tags=["customer"])
@@ -76,7 +79,16 @@ def customer_view(
         "first_name": customer.first_name,
         "plate_number": last.plate_number if last else 0,
         "window_seconds": window_seconds_for(customer, stand_settings),
+        "seconds_left": seconds_left(last, stand_settings),
     }
+
+
+def seconds_left(last: Visit | None, stand_settings: CustomaSettings) -> int:
+    """Seconds until this customer's next plate can count (0 = it can count now). Read only."""
+    if last is None:
+        return 0
+    next_allowed = last.created_at + timedelta(seconds=stand_settings.PLATE_WINDOW_SECONDS)
+    return max(0, int((next_allowed - datetime.now(UTC).replace(tzinfo=None)).total_seconds()))
 
 
 @router.get("")
@@ -121,12 +133,8 @@ def count_plate(
 
     stand_settings = resolve_stand_settings(session, workspace)
     try:
-        visit = visit_action.count_plate(
-            session,
-            workspace_id=workspace.id,
-            customer_id=customer.id,
-            window_seconds=window_seconds_for(customer, stand_settings),
-            plates_for_jara=stand_settings.PLATES_FOR_JARA,
+        visit = count_visit(
+            session, workspace=workspace, customer=customer, stand_settings=stand_settings
         )
     except PlateTooSoon as exc:
         last = visit_action.last_for_customer(session, customer_id=customer.id)
@@ -181,6 +189,9 @@ def delete_my_data(
     session: Session = Depends(deps.get_session),
 ) -> dict[str, Any]:
     """Forget this customer at this stand: chats, ratings, jara, plates, then the customer."""
+    # Plate Ajo refuses (409) while prepaid plates remain, before anything is deleted.
+    for feature in (plate_ajo, pot_alert, lunch_crew):
+        feature.forget_customer(session, workspace=workspace, customer=customer)
     forget_customer(session, workspace=workspace, customer=customer)
     for model, action in ((Rating, rating_action), (JaraReward, jara_action), (Visit, visit_action)):
         action.delete_multi_by_expressions(session, model.customer_id == customer.id)

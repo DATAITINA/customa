@@ -27,6 +27,17 @@ class CustomaSettings(ModuleSettingsBase):
     LAST_PLATES_LEFT: int = 0
     LAST_PLATES_UNTIL: str | None = None  # ISO time (UTC) when the announcement ends
 
+    # Plate Ajo: customers prepay plates at today's price by transfer to the vendor's own account.
+    PLATE_AJO_ENABLED: bool = False
+    AJO_BANK_NAME: str | None = None
+    AJO_ACCOUNT_NUMBER: str | None = None
+    AJO_ACCOUNT_NAME: str | None = None
+    # Pot Alert: customers ask to be told on WhatsApp when a dish is ready.
+    POT_ALERT_ENABLED: bool = False
+    # Lunch Crew: friends share one card; each crew jara goes to the next member in turn.
+    LUNCH_CREW_ENABLED: bool = False
+    LUNCH_CREW_MAX_MEMBERS: int = 6
+
 
 class AppSettings(
     CustomaSettings,

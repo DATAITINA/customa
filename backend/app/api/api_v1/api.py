@@ -4,7 +4,15 @@ from msflib.auth.router import router as auth_router
 
 from app import models
 from app.api import deps
-from app.api.api_v1.endpoints import admin, public, session, stands
+from app.api.api_v1.endpoints import (
+    admin,
+    lunch_crew,
+    plate_ajo,
+    pot_alert,
+    public,
+    session,
+    stands,
+)
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -56,3 +64,7 @@ api_router.include_router(admin.router, prefix="/admin")
 api_router.include_router(session.router)
 api_router.include_router(stands.router)
 api_router.include_router(public.router)
+# The three return-visit features: each has a customer router and a vendor router.
+for feature in (plate_ajo, pot_alert, lunch_crew):
+    api_router.include_router(feature.public_router)
+    api_router.include_router(feature.vendor_router)

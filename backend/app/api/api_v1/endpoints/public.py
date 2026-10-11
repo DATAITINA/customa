@@ -10,6 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import object_session
 from sqlmodel import Session
 
 from app.actions import (
@@ -72,14 +73,48 @@ def window_seconds_for(customer: Customer, stand_settings: CustomaSettings) -> i
 
 
 def customer_view(
-    customer: Customer, last: Visit | None, stand_settings: CustomaSettings
+    customer: Customer,
+    last: Visit | None,
+    stand_settings: CustomaSettings,
+    session: Session | None = None,
 ) -> dict[str, Any]:
+    """What the phone shows about this customer.
+
+    plate_number is the last plate on the card their plates go to now: the crew card when
+    Lunch Crew is on and they are in a crew (crew_name is then set), else their own card (crew
+    plates never count there). `last` is their last plate of any kind (for seconds_left).
+    open_jara lists their unredeemed jara codes at this stand, so a code is never lost.
+    """
+    session = session or object_session(customer)
+    plate_number = last.plate_number if last else 0
+    crew_name = None
+    open_jara: list[dict[str, str]] = []
+    if session is not None:
+        card = lunch_crew.card_for_customer(
+            session,
+            workspace_id=customer.workspace_id,
+            customer_id=customer.id,
+            stand_settings=stand_settings,
+        )
+        if card is not None:
+            crew_name, plate_number = card
+        else:
+            own = visit_action.last_own_card_visit(session, customer_id=customer.id)
+            plate_number = own.plate_number if own else 0
+        open_jara = [
+            {"code": j.code}
+            for j in jara_action.open_for_customer(
+                session, workspace_id=customer.workspace_id, customer_id=customer.id
+            )
+        ]
     return {
         "key": customer.key,
         "first_name": customer.first_name,
-        "plate_number": last.plate_number if last else 0,
+        "plate_number": plate_number,
         "window_seconds": window_seconds_for(customer, stand_settings),
         "seconds_left": seconds_left(last, stand_settings),
+        "crew_name": crew_name,
+        "open_jara": open_jara,
     }
 
 
@@ -106,7 +141,7 @@ def read_stand(
         "plates_for_jara": stand_settings.PLATES_FOR_JARA,
         "window_seconds": stand_settings.PLATE_WINDOW_SECONDS,
         "last_plates": last_plates(stand_settings),
-        "customer": customer_view(customer, last, stand_settings) if customer else None,
+        "customer": customer_view(customer, last, stand_settings, session) if customer else None,
     }
 
 
@@ -143,18 +178,24 @@ def count_plate(
             detail={
                 "message": "This plate is already counted",
                 "seconds_left": exc.seconds_left,
-                "customer": customer_view(customer, last, stand_settings),
+                "customer": customer_view(customer, last, stand_settings, session),
             },
         )
 
     jara = jara_action.get_by_all(session, visit_id=visit.id)
+    # A crew jara can go to another member: then `jara` is None here and crew.jara_to names
+    # the winner, who sees the code on their own page (customer.open_jara).
+    mine = jara is not None and jara.customer_id == customer.id
     return {
-        "customer": customer_view(customer, visit, stand_settings),
+        "customer": customer_view(customer, visit, stand_settings, session),
         "returning": returning,
         "visit_id": visit.id,
         "plate_number": visit.plate_number,
         "plates_for_jara": stand_settings.PLATES_FOR_JARA,
-        "jara": {"code": jara.code} if jara else None,
+        "jara": {"code": jara.code} if mine else None,
+        "crew": lunch_crew.count_result(
+            session, visit=visit, customer_id=customer.id, stand_settings=stand_settings
+        ),
     }
 
 

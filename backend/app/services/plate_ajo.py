@@ -140,6 +140,7 @@ def bundle_view(bundle: PlateBundle) -> dict[str, Any]:
         "plates_used": bundle.plates_used,
         "plates_left": max(0, bundle.plates_total - bundle.plates_used),
         "status": bundle.status,
+        "payer_name": bundle.payer_name,
         "created_at": bundle.created_at,
     }
 

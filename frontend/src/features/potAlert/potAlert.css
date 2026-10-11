@@ -1,0 +1,22 @@
+/* Pot Alert. Builds on .last-plates, .card, .seg and .btn from styles.css. */
+.pot-banner-wrap { padding: 0 12px 10px; }
+.pot-banner { align-items: flex-start; }
+.pot-banner .lp-dot { margin-top: 5px; }
+.pot-banner-lines { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.pot-dishes button { min-height: 40px; height: auto; padding: 6px 14px; text-align: left; }
+
+.pot-panel { margin: 0; padding: 16px; gap: 10px; }
+.pot-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); }
+.pot-line:first-of-type { border-top: none; }
+.pot-line-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-weight: 800; }
+.pot-line-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pot-small-btn { width: auto; height: 44px; padding: 0 18px; font-size: 15px; }
+.pot-plates { width: 92px; height: 44px; padding: 0 10px; font-size: 15px; }
+.pot-waiting { font-size: 13px; font-weight: 700; color: var(--muted); }
+.pot-waiting-some { color: var(--pepper); }
+.pot-notify { background: var(--paper); border: 2px solid var(--ink); border-radius: var(--radius-card); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.pot-sent { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 800; color: #1E7B34; }
+.pot-wa { background: #1E7B34; }
+.pot-wa:hover { color: var(--paper); }
+.pot-status-text { min-height: 84px; font-size: 14px; }

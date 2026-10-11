@@ -176,6 +176,8 @@ tr.fresh td { background: var(--blush); }
 }
 
 /* Decorative stamp in the vendor header */
+.food-stamp { transform: rotate(-8deg); transition: transform 0.25s ease; overflow: visible; }
+.food-stamp:hover { transform: rotate(4deg) scale(1.06); }
 .food-stamp-ring { transform-origin: 50px 50px; animation: stamp-spin 18s linear infinite; }
 .food-stamp-steam { animation: steam 2.4s ease-in-out infinite; }
 @keyframes stamp-spin { to { transform: rotate(360deg); } }

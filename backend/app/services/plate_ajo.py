@@ -19,7 +19,7 @@ from sqlmodel import Session, select
 from ..actions import PlateTooSoon
 from ..core.config import CustomaSettings
 from ..models import Customer, JaraReward, PlateBundle, PlateUse, Workspace
-from . import plates
+from . import lunch_crew, plates
 
 logger = logging.getLogger("customa.plate_ajo")
 
@@ -28,13 +28,14 @@ USE_GUARD_SECONDS = 60  # double tap protection between two prepaid plates
 NIGERIA_UTC_OFFSET = timedelta(hours=1)  # West Africa Time, no daylight saving
 NAME_MAX = 60
 
-PENDING, ACTIVE, REJECTED, FINISHED = "pending", "active", "rejected", "finished"
+# closed: the vendor ended an active bundle early (refunded or settled outside Customa).
+PENDING, ACTIVE, REJECTED, FINISHED, CLOSED = "pending", "active", "rejected", "finished", "closed"
 
 NOT_KNOWN = "We don't know you at this stand yet"
 NOT_AVAILABLE = "Plate Ajo is not open at this stand right now"
 STILL_HAS_PLATES = (
-    "You still have prepaid plates at this stand. Use them or ask the vendor before deleting "
-    "your data."
+    "You still have prepaid plates at this stand. Use them, or ask the vendor to close them, "
+    "before deleting your data."
 )
 
 
@@ -196,8 +197,14 @@ def create_bundle(
     item: str,
     plates: int,
     payer_name: str,
+    unit_price: int | None = None,
 ) -> PlateBundle:
-    """The customer says they sent the transfer: a pending bundle at today's menu price."""
+    """The customer says they sent the transfer: a pending bundle at today's menu price.
+
+    unit_price is the price the customer's screen showed. The server's menu price is always the
+    one stored; a different shown price means the menu changed meanwhile, so we refuse (409)
+    rather than record a bundle the customer did not pay for.
+    """
     if not is_available(stand_settings):
         raise HTTPException(403, detail=NOT_AVAILABLE)
     if plates not in BUNDLE_SIZES:
@@ -206,6 +213,12 @@ def create_bundle(
     on_menu = next((m for m in menu_items(menu) if m["item"].casefold() == wanted), None)
     if on_menu is None:
         raise HTTPException(400, detail="That item is not on this stand's menu.")
+    if unit_price is not None and unit_price != on_menu["price"]:
+        raise HTTPException(
+            409,
+            detail=f"The price changed to ₦{on_menu['price']:,}. Please check the new total "
+            "before sending money.",
+        )
     payer = " ".join((payer_name or "").split())
     if not 2 <= len(payer) <= NAME_MAX:
         raise HTTPException(
@@ -313,7 +326,7 @@ def use_plate(
             "plates_total": bundle.plates_total,
             "at": use.created_at,
         },
-        "stamp": {"counted": False, "plate_number": None, "jara": None},
+        "stamp": {"counted": False, "plate_number": None, "jara": None, "crew": None},
     }
 
     # The prepaid plate is saved. Counting a stamp follows the normal 6-hour rule and must
@@ -333,10 +346,19 @@ def use_plate(
     jara = session.exec(select(JaraReward).where(JaraReward.visit_id == visit.id)).first()
     # A Lunch Crew jara can go to another member; only show this customer's own code.
     own_jara = jara is not None and jara.customer_id == customer.id
+    try:
+        # Set when the plate went on a Lunch Crew card: crew name, card number, whose jara.
+        crew = lunch_crew.count_result(
+            session, visit=visit, customer_id=customer.id, stand_settings=stand_settings
+        )
+    except Exception:
+        logger.exception("could not read the crew part of a prepaid plate")
+        crew = None
     result["stamp"] = {
         "counted": True,
         "plate_number": visit.plate_number,
         "jara": {"code": jara.code} if own_jara else None,
+        "crew": crew,
     }
     return result
 
@@ -423,6 +445,18 @@ def decide_bundle(
     session: Session, *, workspace: Workspace, bundle_id: int, confirm: bool
 ) -> PlateBundle:
     """The vendor confirms (pending -> active) or rejects (pending -> rejected) a transfer."""
+    return _move(session, workspace, bundle_id, PENDING, ACTIVE if confirm else REJECTED)
+
+
+def close_bundle(session: Session, *, workspace: Workspace, bundle_id: int) -> PlateBundle:
+    """The vendor ends an active bundle early (refunded or settled outside Customa).
+    The plates left can no longer be used, and the customer may then delete their data."""
+    return _move(session, workspace, bundle_id, ACTIVE, CLOSED)
+
+
+def _move(
+    session: Session, workspace: Workspace, bundle_id: int, from_status: str, to_status: str
+) -> PlateBundle:
     bundle = session.exec(
         select(PlateBundle)
         .where(PlateBundle.id == bundle_id, PlateBundle.workspace_id == workspace.id)
@@ -432,12 +466,12 @@ def decide_bundle(
     if bundle is None:
         session.rollback()
         raise HTTPException(404, detail="No such prepaid bundle at this stand")
-    if bundle.status != PENDING:
+    if bundle.status != from_status:
         session.rollback()
         raise HTTPException(409, detail=f"This bundle is already {bundle.status}")
     now = utcnow()
-    bundle.status = ACTIVE if confirm else REJECTED
-    if confirm:
+    bundle.status = to_status
+    if to_status == ACTIVE:
         bundle.confirmed_at = now
     bundle.updated_at = now
     session.add(bundle)

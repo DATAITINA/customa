@@ -287,9 +287,6 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         </div>
       </div>
       <LastPlatesControl slug={slug} current={d.last_plates} onChange={() => q.refetch()} />
-      <VendorPotPanel slug={slug} />
-      <VendorAjoPanel slug={slug} />
-      <VendorCrewPanel slug={slug} />
       <div className="stats">
         {stats.map((s) => (
           <div key={s.label} className="stat">
@@ -332,6 +329,10 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           ))}
         </div>
       </div>
+      {/* Return-visit features sit below the daily essentials (plates, jara to give out). */}
+      <VendorAjoPanel slug={slug} />
+      <VendorPotPanel slug={slug} />
+      <VendorCrewPanel slug={slug} />
       <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={onNewStand}>Add another stand</button>
     </div>
   );

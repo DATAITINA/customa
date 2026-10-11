@@ -14,7 +14,6 @@ import { Character, PRESETS } from '../components/Character';
 import { Link } from '../App';
 import { LastPlatesBanner } from '../components/LastPlates';
 import { AjoCard } from '../features/plateAjo/CustomerAjo';
-import { PotReadyBanner, PotWatchCard } from '../features/potAlert/CustomerPot';
 import { CrewCard } from '../features/lunchCrew/CustomerCrew';
 
 type View =
@@ -149,13 +148,12 @@ export function CustomerPage({ slug }: { slug: string }) {
       // The next scan shows the right card.
     }
   };
-  // The three return-visit features. Each card hides itself when the vendor has not turned it on.
+  // The return-visit features. Each card hides itself when the vendor has not turned it on.
   const featureCards = (
     <>
       <OpenJara codes={me?.open_jara ?? []} />
       <CrewCard slug={slug} stand={stand} onChange={refreshMe} refreshKey={meVersion} ownPlate={me?.own_plate_number ?? null} />
       <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
-      <PotWatchCard slug={slug} stand={stand} />
     </>
   );
   const charProps = { body: ch?.body, color: ch?.color, accessory: ch?.accessory };
@@ -266,7 +264,6 @@ function Shell({ stand, children }: { stand: StandPublic | null; children: React
         <Logo size={22} />
       </header>
       {stand?.last_plates && <div style={{ padding: '0 12px 10px' }}><LastPlatesBanner lp={stand.last_plates} /></div>}
-      {stand && <PotReadyBanner slug={stand.stand.slug} />}
       {children}
     </main>
   );

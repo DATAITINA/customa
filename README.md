@@ -14,13 +14,11 @@ Built in 5 hours at the KodeHauz Decennium Sprint, on **MSFLib**.
 
 ## Return-visit features (Oct 2026)
 
-Three features a vendor can turn on from the dashboard; each is off by default. Details and
-acceptance criteria: [docs/three-features.md](docs/three-features.md).
+Two features a vendor can turn on from the dashboard; each is off by default. Details and
+acceptance criteria: [docs/return-visit-features.md](docs/return-visit-features.md).
 
 - **Plate Ajo**: customers prepay 5 or 10 plates at today's price by transfer to the vendor's
   own account; Customa only keeps the count.
-- **Pot Alert**: customers ask to hear when a dish is ready; the vendor taps "Ready now" and sends
-  each waiting customer a prefilled WhatsApp message with one tap.
 - **Lunch Crew**: friends share one card; every 6th crew plate earns a jara for the next member in
   turn, like an ajo payout.
 

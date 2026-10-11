@@ -8,7 +8,6 @@ from app.api.api_v1.endpoints import (
     admin,
     lunch_crew,
     plate_ajo,
-    pot_alert,
     public,
     session,
     stands,
@@ -64,7 +63,7 @@ api_router.include_router(admin.router, prefix="/admin")
 api_router.include_router(session.router)
 api_router.include_router(stands.router)
 api_router.include_router(public.router)
-# The three return-visit features: each has a customer router and a vendor router.
-for feature in (plate_ajo, pot_alert, lunch_crew):
+# The return-visit features: each has a customer router and a vendor router.
+for feature in (plate_ajo, lunch_crew):
     api_router.include_router(feature.public_router)
     api_router.include_router(feature.vendor_router)

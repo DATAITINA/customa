@@ -53,4 +53,3 @@ from .customa import (
 )
 from .lunch_crew import Crew, CrewMember, CrewPlate  # noqa: E402
 from .plate_ajo import PlateBundle, PlateUse  # noqa: E402
-from .pot_alert import PotReady, PotWatch  # noqa: E402

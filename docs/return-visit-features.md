@@ -1,8 +1,8 @@
-# Plate Ajo, Pot Alert, Lunch Crew
+# Plate Ajo and Lunch Crew
 
-Three features that give customers a real reason to come back to a stand. They come from the
+Two features that give customers a real reason to come back to a stand. They come from the
 product validation (Oct 2026) and are built on the existing stamp card (plates, 6-hour rule, jara).
-Each one is off until the vendor turns it on from the dashboard, so a stand that ignores them
+Each is off until the vendor turns it on from the dashboard, so a stand that ignores them
 works exactly as before.
 
 ## 1. Plate Ajo: lock today's price
@@ -38,35 +38,7 @@ fixes "a plate is a scan, not a purchase".
 - "Delete my data" is refused while the customer still has prepaid plates, with a clear message.
 - Everything survives a refresh (stored in the database).
 
-## 2. Pot Alert: "your afang don ready"
-
-**Idea.** A customer taps "Tell me when ___ is ready" for dishes on the menu and leaves a WhatsApp
-number. When a pot is ready, the vendor taps the dish on the dashboard; the stand page shows
-"Afang is ready now" and the vendor gets a one-tap WhatsApp button for each waiting customer plus
-a ready-made message for WhatsApp Status.
-
-**Problem it solves.** Customers walk over and find their soup finished, or never hear that it is
-ready. Vendors cook without knowing demand. The old "last plates" banner reached only people
-already on the page.
-
-**Behaviour it encourages.** Coming when the food the customer wants is hot.
-
-**Honest limit.** Customa does not send WhatsApp messages by itself (that needs a paid WhatsApp
-Business API account). The vendor sends them from their own WhatsApp with one tap per customer.
-
-### Acceptance criteria
-- The vendor turns Pot Alert on. When it is off, customers do not see it.
-- A customer picks one or more menu dishes and enters a Nigerian phone number (0803..., +234...),
-  agreeing that the vendor may message them on WhatsApp. They can change or remove their dishes.
-- The vendor dashboard shows how many customers are waiting for each dish.
-- The vendor taps "Ready now" on a dish (optionally with plates left). The stand page shows a
-  "ready now" banner to everyone for 3 hours or until the vendor ends it.
-- After tapping ready, the vendor sees each waiting customer's first name with a WhatsApp button
-  that opens a chat with a prefilled message and the stand link, and a "copy for Status" message.
-- Phone numbers are visible only to the stand's vendor, never to other customers.
-- "Delete my data" removes the customer's dishes and number.
-
-## 3. Lunch Crew: ajo rotation for jara
+## 2. Lunch Crew: ajo rotation for jara
 
 **Idea.** 3 to 6 people (colleagues, classmates) share one card at a stand. Every member's plate
 counts toward the crew card, and each crew jara goes to the next member in line, like an ajo

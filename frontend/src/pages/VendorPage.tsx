@@ -7,7 +7,6 @@ import { Character, PRESETS } from '../components/Character';
 import { FoodStamp } from '../components/FoodStamp';
 import { StandPhoto } from '../components/StandPhoto';
 import { VendorAjoPanel } from '../features/plateAjo/VendorAjo';
-import { VendorPotPanel } from '../features/potAlert/VendorPot';
 import { VendorCrewPanel } from '../features/lunchCrew/VendorCrew';
 import { LastPlatesBanner } from '../components/LastPlates';
 import { Link } from '../App';
@@ -349,7 +348,6 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
       </div>
       {/* Return-visit features sit below the daily essentials (plates, jara to give out). */}
       <VendorAjoPanel slug={slug} />
-      <VendorPotPanel slug={slug} />
       <VendorCrewPanel slug={slug} />
       <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={onNewStand}>Add another stand</button>
     </div>

@@ -73,14 +73,13 @@ def seed_demo_stand(session: Session) -> None:
 
     # The stage demo counts a new plate every 30 seconds instead of 6 hours.
     set_stand_setting(session, workspace, "PLATE_WINDOW_SECONDS", 30)
-    # The three return-visit features are on so they can be shown. The bank details are
+    # The return-visit features are on so they can be shown. The bank details are
     # deliberately not a real account, so nobody watching a demo can send money to it.
     for key, value in (
         ("PLATE_AJO_ENABLED", True),
         ("AJO_BANK_NAME", "Demo Bank"),
         ("AJO_ACCOUNT_NUMBER", "0000000000"),
         ("AJO_ACCOUNT_NAME", "DEMO STAND - DO NOT PAY"),
-        ("POT_ALERT_ENABLED", True),
         ("LUNCH_CREW_ENABLED", True),
     ):
         set_stand_setting(session, workspace, key, value)

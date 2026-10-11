@@ -24,7 +24,7 @@ from app.actions import (
 from app.api import deps
 from app.core.config import CustomaSettings
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
-from app.services import lunch_crew, plate_ajo, pot_alert
+from app.services import lunch_crew, plate_ajo
 from app.services.bisi import chat_reply
 from app.services.chat_log import forget_customer, record_turn
 from app.services.plates import count_visit
@@ -235,7 +235,7 @@ def delete_my_data(
 ) -> dict[str, Any]:
     """Forget this customer at this stand: chats, ratings, jara, plates, then the customer."""
     # Plate Ajo refuses (409) while prepaid plates remain, before anything is deleted.
-    for feature in (plate_ajo, pot_alert, lunch_crew):
+    for feature in (plate_ajo, lunch_crew):
         feature.forget_customer(session, workspace=workspace, customer=customer)
     forget_customer(session, workspace=workspace, customer=customer)
     for model, action in ((Rating, rating_action), (JaraReward, jara_action), (Visit, visit_action)):

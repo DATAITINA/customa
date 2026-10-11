@@ -99,12 +99,13 @@ textarea.input { height: auto; min-height: 96px; padding: 12px 16px; resize: ver
 .thumb[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
 
 .timer {
-  width: 116px; height: 116px; margin-bottom: 44px; border-radius: 999px;
+  width: 116px; height: 116px; margin-bottom: 44px; border-radius: 999px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
 }
 .timer-inner {
   width: 92px; height: 92px; border-radius: 999px; background: var(--blush);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; text-align: center;
 }
 
 /* Jara celebration */

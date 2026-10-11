@@ -366,8 +366,9 @@ function TooSoon({
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={170} />
         <div className="timer" style={{ background: `conic-gradient(#141414 0 ${pct}%, #FFFFFF ${pct}% 100%)` }} aria-label={`Next plate in ${label}`}>
           <div className="timer-inner">
-            <span style={{ fontFamily: 'var(--display)', fontSize: 30, lineHeight: 1 }}>{label}</span>
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em' }}>NEXT PLATE</span>
+            {/* One line always: hours ("5h 59m") get a smaller size so they fit the ring. */}
+            <span style={{ fontFamily: 'var(--display)', fontSize: label.length > 5 ? 21 : 28, lineHeight: 1, whiteSpace: 'nowrap' }}>{label}</span>
+            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>NEXT PLATE</span>
           </div>
         </div>
       </Hero>

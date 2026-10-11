@@ -384,22 +384,29 @@ function LastPlatesControl({ slug, current, onChange }: { slug: string; current:
     setBusy(true);
     try { await api.announceLastPlates(slug, plates); onChange(); } finally { setBusy(false); }
   };
+  const step = (by: number) => setN((v) => Math.min(500, Math.max(1, (Number.isFinite(v) ? v : 1) + by)));
+  // Layout lives in styles.css (.lp-*): desktop keeps one compact line; phones get a
+  // thumb-friendly stepper row and a full-width button (the -/+ buttons show on phones only).
   return (
-    <div className="hero" style={{ margin: 0, padding: 16, gap: 10 }}>
-      <span className="eyebrow">FOOD LEFT OVER? SELL IT BEFORE CLOSING</span>
+    <div className="hero lp-control">
+      <span className="eyebrow">FOOD LEFT OVER?<span className="lp-sub"> SELL IT BEFORE CLOSING</span></span>
       {current ? (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        <div className="lp-row lp-live">
           <LastPlatesBanner lp={current} />
-          <button className="btn btn-outline" style={{ width: 'auto', height: 44, padding: '0 18px' }} disabled={busy} onClick={() => send(0)}>Sold out, end it</button>
+          <button className="btn btn-outline lp-btn" disabled={busy} onClick={() => send(0)}>Sold out, end it</button>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            Plates left
-            <input className="input" type="number" min={1} max={500} value={n} onChange={(e) => setN(Number(e.target.value))} style={{ width: 90, height: 44 }} />
-          </label>
-          <button className="btn" style={{ width: 'auto', height: 44, padding: '0 18px' }} disabled={busy || n < 1} onClick={() => send(n)}>
-            Tell my customers
+        <div className="lp-row">
+          <div className="lp-count">
+            <label className="lp-label" htmlFor={`lp-n-${slug}`}>Plates left</label>
+            <div className="lp-stepper">
+              <button type="button" className="lp-step" aria-label="One plate less" disabled={n <= 1} onClick={() => step(-1)}>−</button>
+              <input id={`lp-n-${slug}`} className="input lp-input" type="number" inputMode="numeric" min={1} max={500} value={n} onChange={(e) => setN(Number(e.target.value))} />
+              <button type="button" className="lp-step" aria-label="One plate more" disabled={n >= 500} onClick={() => step(1)}>+</button>
+            </div>
+          </div>
+          <button className="btn lp-btn" disabled={busy || n < 1} onClick={() => send(n)}>
+            {busy ? 'Telling…' : 'Tell my customers'}
           </button>
         </div>
       )}

@@ -238,3 +238,41 @@ tr.fresh td { background: var(--blush); }
 .last-plates-big { font-size: 20px; padding: 14px 20px; border-radius: 999px; }
 .lp-dot { width: 10px; height: 10px; border-radius: 999px; background: var(--pepper); flex-shrink: 0; animation: lp-pulse 1.2s ease-in-out infinite; }
 @keyframes lp-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(240, 78, 48, 0.7); } 50% { box-shadow: 0 0 0 6px rgba(240, 78, 48, 0); } }
+
+/* "Food left over?" control on the vendor dashboard. Desktop: one compact line. */
+.hero.lp-control { margin: 0; padding: 16px; gap: 10px; }
+.lp-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.lp-live { justify-content: space-between; }
+.lp-count { display: flex; align-items: center; gap: 8px; }
+.lp-label { font-size: 14px; font-weight: 700; }
+.lp-stepper { display: flex; align-items: center; gap: 6px; }
+.lp-step { display: none; }
+.input.lp-input { width: 90px; height: 44px; }
+.btn.lp-btn { width: auto; height: 44px; padding: 0 18px; }
+/* Phones: a white stepper row (Plates left  - 10 +) and a full-width button below. */
+@media (max-width: 759px) {
+  .hero.lp-control { padding: 18px; gap: 14px; }
+  .lp-sub { display: block; }
+  .lp-row { flex-direction: column; align-items: stretch; gap: 12px; }
+  .lp-count {
+    justify-content: space-between; background: var(--paper);
+    border-radius: 999px; padding: 6px 6px 6px 20px;
+  }
+  .lp-label { font-size: 16px; font-weight: 800; }
+  .lp-stepper { gap: 4px; }
+  .lp-step {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; padding: 0; border-radius: 999px;
+    border: 2px solid var(--ink); background: var(--paper); color: var(--ink);
+    font-size: 24px; font-weight: 800; line-height: 1;
+  }
+  .lp-step:active { background: var(--ink); color: var(--paper); }
+  .input.lp-input {
+    width: 60px; height: 44px; padding: 0; border: none; background: transparent;
+    text-align: center; font-family: var(--display); font-size: 26px; font-weight: 400;
+    -moz-appearance: textfield; appearance: textfield;
+  }
+  .input.lp-input::-webkit-outer-spin-button,
+  .input.lp-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .btn.lp-btn { width: 100%; height: 52px; padding: 0 18px; }
+}

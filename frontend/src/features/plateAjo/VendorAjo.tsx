@@ -117,6 +117,7 @@ type Run = (key: string, fn: () => Promise<unknown>, fallback: string) => Promis
 function Lists({
   slug, d, busy, rejecting, setRejecting, run,
 }: { slug: string; d: AjoVendor; busy: string | null; rejecting: number | null; setRejecting: (id: number | null) => void; run: Run }) {
+  const [closing, setClosing] = useState<number | null>(null);
   return (
     <div className="grid-2">
       <div className="card-outline ajo-section" style={{ background: 'var(--paper)' }}>
@@ -185,6 +186,28 @@ function Lists({
             <strong>
               {a.plates_left} of {a.plates_total} left
             </strong>
+            {closing === a.id ? (
+              <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  className="btn ajo-small-btn"
+                  disabled={busy !== null}
+                  onClick={async () => {
+                    await run(`close-${a.id}`, () => ajoApi.close(slug, a.id), 'Could not close. Try again.');
+                    setClosing(null);
+                  }}
+                >
+                  {busy === `close-${a.id}` ? 'Closing…' : 'Yes, refunded'}
+                </button>
+                <button className="btn btn-outline ajo-small-btn" disabled={busy !== null} onClick={() => setClosing(null)}>
+                  Keep
+                </button>
+              </span>
+            ) : (
+              // For when the vendor refunds the customer outside Customa (or settles it in food).
+              <button className="btn btn-outline ajo-small-btn" disabled={busy !== null} onClick={() => setClosing(a.id)}>
+                Close (refunded)
+              </button>
+            )}
           </div>
         ))}
       </div>

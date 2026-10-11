@@ -55,17 +55,19 @@ export function AjoCard({ slug, stand, onPlateCounted }: { slug: string; stand: 
 
   const vendor = stand.stand.name.replace(' (Demo)', '');
   const latest = data.bundles[0];
-  const rejected = latest?.status === 'rejected' ? latest : null;
+  const ended = latest && (latest.status === 'rejected' || latest.status === 'closed') ? latest : null;
 
   return (
     <div className="card">
       <span className="eyebrow">PLATE AJO · LOCK TODAY'S PRICE</span>
       {active.length > 0 && <ActivePlates slug={slug} active={active} onUsed={(r) => { setOverlay({ result: r, shownAt: Date.now() }); load(); }} onError={load} />}
       {pending && <Pending bundle={pending} vendor={vendor} bank={data.bank} />}
-      {!pending && rejected && active.length === 0 && (
+      {!pending && ended && active.length === 0 && (
         <p className="note" style={{ margin: 0 }}>
-          {vendor} could not confirm your transfer for {rejected.plates_total} plates of {rejected.item}. If you sent
-          money, talk to the vendor. You can start again below.
+          {ended.status === 'closed'
+            ? `Closed by the vendor: your ${ended.item} plates (${ended.plates_used} of ${ended.plates_total} used) were refunded or settled with ${vendor}.`
+            : `${vendor} could not confirm your transfer for ${ended.plates_total} plates of ${ended.item}. If you sent money, talk to the vendor.`}
+          {data.available ? ' You can start again below.' : ''}
         </p>
       )}
       {!pending && data.available && data.bank && (
@@ -156,6 +158,7 @@ function BuyFlow({ slug, data, compact, onStarted }: { slug: string; data: AjoPu
   const [plates, setPlates] = useState(data.bundle_sizes[0] ?? 5);
   const [payer, setPayer] = useState('');
   const [copied, setCopied] = useState(false);
+  const [manualCopy, setManualCopy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -172,13 +175,18 @@ function BuyFlow({ slug, data, compact, onStarted }: { slug: string; data: AjoPu
     );
   }
 
+  // Copy the number. Without a clipboard (old phone, in-app browser, http), or if copying fails,
+  // show the number selected in a box so the customer can copy it by hand.
   const copy = async () => {
     try {
+      if (!navigator.clipboard?.writeText) throw new Error('no clipboard');
       await navigator.clipboard.writeText(bank.account_number);
+      setManualCopy(false);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+      setManualCopy(true);
     }
   };
 
@@ -187,11 +195,11 @@ function BuyFlow({ slug, data, compact, onStarted }: { slug: string; data: AjoPu
     setBusy(true);
     setError(null);
     try {
-      await ajoApi.start(slug, { item: chosen.item, plates, payer_name: payer.trim() });
+      await ajoApi.start(slug, { item: chosen.item, plates, payer_name: payer.trim(), unit_price: chosen.price });
       onStarted();
     } catch (err) {
       setError(errorText(err, 'Could not save. Check your connection and try again.'));
-      // The price or menu may have changed: show the latest.
+      // The price or menu may have changed (409): reload so the total on screen is the new one.
       onStarted();
     } finally {
       setBusy(false);
@@ -255,6 +263,20 @@ function BuyFlow({ slug, data, compact, onStarted }: { slug: string; data: AjoPu
             {copied ? 'Copied' : 'Copy number'}
           </button>
         </div>
+        {manualCopy && (
+          <>
+            <input
+              className="input"
+              readOnly
+              autoFocus
+              value={bank.account_number}
+              aria-label="Account number"
+              onFocus={(e) => e.currentTarget.select()}
+              onClick={(e) => e.currentTarget.select()}
+            />
+            <span className="note">Press and hold the number to copy it.</span>
+          </>
+        )}
         <span style={{ fontWeight: 800 }}>{bank.account_name}</span>
       </div>
       <label className="field">
@@ -308,11 +330,10 @@ function PaidPlate({ result, shownAt, onDone }: { result: UseResult; shownAt: nu
         <span className="ajo-overlay-time">
           {timeOf(result.use.at)} · {at.toLocaleDateString([], { day: 'numeric', month: 'short' })} · {agoText}
         </span>
-        <span className="ajo-overlay-stamp">
-          {stamp.counted
-            ? `Stamp counted: plate ${stamp.plate_number} on your jara card`
-            : 'Stamp already counted for this visit'}
-        </span>
+        <span className="ajo-overlay-stamp">{stampText(result.stamp)}</span>
+        {stamp.crew?.jara_to && !stamp.crew.jara_to_me && (
+          <span className="ajo-overlay-jara">This jara goes to {stamp.crew.jara_to}</span>
+        )}
         {stamp.jara && (
           <span className="ajo-overlay-jara">
             JARA! Free extra: <strong>{stamp.jara.code}</strong>
@@ -325,4 +346,13 @@ function PaidPlate({ result, shownAt, onDone }: { result: UseResult; shownAt: nu
       <button className="btn" onClick={onDone}>Done</button>
     </div>
   );
+}
+
+function stampText(stamp: UseResult['stamp']): string {
+  if (!stamp.counted) return 'Stamp already counted for this visit';
+  if (stamp.crew) {
+    const crew = stamp.crew.name || 'your crew';
+    return `Stamp counted: plate ${stamp.crew.plate_number} of ${stamp.crew.plates_for_jara} on ${crew}'s card`;
+  }
+  return `Stamp counted: plate ${stamp.plate_number} on your jara card`;
 }

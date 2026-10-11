@@ -55,7 +55,14 @@ export function CustomerPage({ slug }: { slug: string }) {
   const [stand, setStand] = useState<StandPublic | null>(null);
   const [view, setView] = useState<View>({ kind: 'loading' });
   // The latest we know about this customer (card, crew, unredeemed jara codes), from any response.
-  const [me, setMe] = useState<CustomerState | null>(null);
+  const [me, setMeState] = useState<CustomerState | null>(null);
+  // Bumped on every update of `me` (a plate counted here, a prepaid plate, a crew change), so
+  // feature cards that show plate-related state (the crew card) re-read it.
+  const [meVersion, setMeVersion] = useState(0);
+  const setMe = (c: CustomerState | null) => {
+    setMeState(c);
+    setMeVersion((v) => v + 1);
+  };
   const started = useRef(false);
 
   // Opened from the stand's QR code. The server saves this only when it first creates the customer.
@@ -146,7 +153,7 @@ export function CustomerPage({ slug }: { slug: string }) {
   const featureCards = (
     <>
       <OpenJara codes={me?.open_jara ?? []} />
-      <CrewCard slug={slug} stand={stand} onChange={refreshMe} />
+      <CrewCard slug={slug} stand={stand} onChange={refreshMe} refreshKey={meVersion} ownPlate={me?.own_plate_number ?? null} />
       <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
       <PotWatchCard slug={slug} stand={stand} />
     </>
@@ -194,6 +201,9 @@ export function CustomerPage({ slug }: { slug: string }) {
           onReady={() => handleCount({ consent: true })}
           extras={featureCards}
         />
+        <div className="stack">
+          <DeleteMine slug={slug} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+        </div>
       </Shell>
     );
   }
@@ -203,13 +213,24 @@ export function CustomerPage({ slug }: { slug: string }) {
   const name = r.customer.first_name;
   const left = total - r.plate_number;
   const crew = r.crew;
-  const bubble = crew
-    ? crew.jara_to && !crew.jara_to_me
-      ? `Plate ${crew.plate_number} for ${crew.name}! This jara goes to ${crew.jara_to}. Your turn is coming.`
-      : `${name ? name + '! ' : ''}Plate ${crew.plate_number} of ${crew.plates_for_jara} for ${crew.name}.`
-    : r.returning
-      ? `${name ? name + '! ' : ''}Back again! Plate ${r.plate_number} of ${total}.`
-      : `${name ? name + '! ' : ''}Plate ${r.plate_number} don land. ${left} more and jara na yours.`;
+  // The crew this customer is in now: it can change on this screen (create, join, leave).
+  const nowCrew = me ? me.crew_name ?? null : crew?.name ?? null;
+  const ownPlate = me?.own_plate_number ?? r.plate_number % total;
+  const hi = name ? name + '! ' : '';
+  let bubble: string;
+  if (crew && !nowCrew) {
+    bubble = `You left ${crew.name}. Your own card continues from plate ${ownPlate} of ${total}.`;
+  } else if (!crew && nowCrew) {
+    bubble = `${hi}Plate ${r.plate_number} is saved on your own card, paused while you're in ${nowCrew}. Your next plates go on the crew card.`;
+  } else if (crew && crew.jara_to && !crew.jara_to_me) {
+    bubble = `Plate ${crew.plate_number} for ${crew.name}! This jara goes to ${crew.jara_to}. Your turn is coming.`;
+  } else if (crew) {
+    bubble = `${hi}Plate ${crew.plate_number} of ${crew.plates_for_jara} for ${crew.name}.`;
+  } else if (r.returning) {
+    bubble = `${hi}Back again! Plate ${r.plate_number} of ${total}.`;
+  } else {
+    bubble = `${hi}Plate ${r.plate_number} don land. ${left} more and jara na yours.`;
+  }
   // The card shown: the latest we know (it follows a crew joined or left on this screen).
   const cardPlate = me ? me.plate_number : r.plate_number;
   const cardCrew = me ? me.crew_name ?? null : crew?.name ?? null;

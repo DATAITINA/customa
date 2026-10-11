@@ -110,6 +110,7 @@ def test_disabled_means_no_crew(client: TestClient, session: Session, stand) -> 
     assert data["jara"] is not None
     assert data["customer"]["open_jara"] == [data["jara"]]
     assert data["customer"]["crew_name"] is None
+    assert data["customer"]["plate_number"] == 6 and data["customer"]["own_plate_number"] == 0
 
 
 def test_crew_off_after_creating_counts_on_own_card(
@@ -232,7 +233,13 @@ def test_individual_card_resumes_after_leaving(
     code = create(client, ada)["code"]
     for key in (bayo, chidi):
         join(client, key, code)
-    assert scan(client, session, ada)["plate_number"] == 1  # crew card
+    # Her own card is paused at plate 2 while she is in the crew.
+    me = client.get(BASE, headers=h(ada)).json()["customer"]
+    assert me["crew_name"] == "Office Crew"
+    assert me["plate_number"] == 0 and me["own_plate_number"] == 2
+    data = scan(client, session, ada)
+    assert data["plate_number"] == 1  # crew card
+    assert data["customer"]["own_plate_number"] == 2
     assert scan(client, session, bayo)["plate_number"] == 2
     assert client.post(f"{BASE}/crew/leave", headers=h(ada)).status_code == 200
 
@@ -241,6 +248,7 @@ def test_individual_card_resumes_after_leaving(
     assert data["customer"]["crew_name"] is None
     page = client.get(BASE, headers=h(ada)).json()
     assert page["customer"]["plate_number"] == 3
+    assert page["customer"]["own_plate_number"] == 3
     assert scan(client, session, chidi)["plate_number"] == 3  # crew card goes on
 
 

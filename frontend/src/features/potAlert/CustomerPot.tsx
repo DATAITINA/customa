@@ -83,6 +83,8 @@ function WatchForm({
 }: { slug: string; menu: string[]; my: MyWatch; onSaved: (my: MyWatch) => void; onCancel?: () => void }) {
   const [picked, setPicked] = useState<string[]>(() => (my ? my.items.filter((i) => menu.includes(i)) : []));
   const [phone, setPhone] = useState('');
+  // Asked on every save: nothing is pre-ticked, even when changing an existing list.
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const keepPhone = !!my;
@@ -98,6 +100,10 @@ function WatchForm({
           setError('Pick at least one dish');
           return;
         }
+        if (!consent) {
+          setError('Please agree to WhatsApp messages from the vendor');
+          return;
+        }
         if (!phone.trim() && !keepPhone) {
           setError('Enter your WhatsApp number');
           return;
@@ -105,7 +111,7 @@ function WatchForm({
         setBusy(true);
         setError(null);
         try {
-          const r = await potApi.saveWatches(slug, picked, phone.trim());
+          const r = await potApi.saveWatches(slug, picked, phone.trim(), consent);
           onSaved(r.my);
         } catch (err) {
           setError(errorText(err, 'Could not save. Try again.'));
@@ -137,9 +143,12 @@ function WatchForm({
           onChange={(e) => setPhone(e.target.value)}
         />
       </label>
-      <span className="note">The vendor can message you on WhatsApp when these dishes are ready. Remove anytime.</span>
+      <label className="check">
+        <input type="checkbox" required checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+        <span>The vendor can message me on WhatsApp when these dishes are ready. I can remove this anytime.</span>
+      </label>
       {error && <p className="error" role="alert">{error}</p>}
-      <button className="btn" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Tell me when it\'s ready'}</button>
+      <button className="btn" type="submit" disabled={busy || !consent}>{busy ? 'Saving…' : 'Tell me when it\'s ready'}</button>
       {onCancel && (
         <button type="button" className="link-btn" style={{ alignSelf: 'center' }} onClick={onCancel} disabled={busy}>
           Cancel

@@ -19,8 +19,8 @@ const ven = (slug: string) => `/stands/${encodeURIComponent(slug)}/pot`;
 
 export const potApi = {
   read: (slug: string) => apiClient<PotPublic>('GET', pub(slug), null, customerHeaders(slug)),
-  saveWatches: (slug: string, items: string[], phone: string) =>
-    apiClient<{ my: MyWatch }>('PUT', `${pub(slug)}/watches`, { items, phone }, customerHeaders(slug)),
+  saveWatches: (slug: string, items: string[], phone: string, consent: boolean) =>
+    apiClient<{ my: MyWatch }>('PUT', `${pub(slug)}/watches`, { items, phone, consent }, customerHeaders(slug)),
   stopWatches: (slug: string) => apiClient<{ my: null }>('DELETE', `${pub(slug)}/watches`, null, customerHeaders(slug)),
 
   vendor: (slug: string) => apiClient<PotVendor>('GET', ven(slug)),
@@ -40,7 +40,7 @@ export function errorText(err: unknown, fallback: string): string {
   return e?.message || fallback;
 }
 
-export const standLink = (slug: string) => `${window.location.origin}/s/${slug}`;
+export const standLink = (slug: string) => `${window.location.origin}/s/${encodeURIComponent(slug)}`;
 
 const platesText = (n: number | null) => (n ? ` Only ${n} plate${n === 1 ? '' : 's'} left.` : '');
 

@@ -153,7 +153,13 @@ def test_price_comes_from_the_menu_and_one_pending_at_a_time(
     assert buy(client, ada, plates=7).status_code == 400
     assert buy(client, ada, payer="A").status_code == 400
 
-    r = buy(client, ada, item="afang and garri", unit_price=1, price=1)
+    # The screen showed an old price: refused, so nobody pays a total they did not see.
+    r = buy(client, ada, item="afang and garri", unit_price=1500)
+    assert r.status_code == 409
+    assert "price changed to ₦2,000" in r.json()["detail"]
+
+    # A made-up "price" field is ignored; the menu price is stored.
+    r = buy(client, ada, item="afang and garri", unit_price=2000, price=1)
     assert r.status_code == 200, r.text
     bundle = r.json()["bundle"]
     assert bundle["item"] == "Afang and garri"
@@ -206,7 +212,7 @@ def test_confirm_use_and_stamp(
     assert data["use"]["plate_number"] == 1
     assert data["use"]["plates_total"] == 5
     assert data["use"]["item"] == "Afang and garri"
-    assert data["stamp"] == {"counted": False, "plate_number": None, "jara": None}
+    assert data["stamp"] == {"counted": False, "plate_number": None, "jara": None, "crew": None}
 
     # Double tap protection: a second use within 60 seconds is refused and nothing changes.
     r = use(client, ada)
@@ -277,16 +283,22 @@ def test_delete_my_data_refused_while_plates_remain(
 
     r = client.delete(f"{PUBLIC}/me", headers=ada)
     assert r.status_code == 409
-    assert "prepaid plates" in r.json()["detail"]
+    assert "ask the vendor to close them" in r.json()["detail"]
 
     client.post(f"{VENDOR}/ajo/bundles/{bundle_id}/confirm", headers=vendor)
     assert client.delete(f"{PUBLIC}/me", headers=ada).status_code == 409
     assert customer_action.get_by_all(session, key=ada["X-Customer-Key"]) is not None
 
-    # Plates used up: the data can go, Ajo rows included.
-    for _ in range(5):
-        assert use(client, ada).status_code == 200
-        last_use_back(session, 61)
+    # One plate used, then the vendor refunds the rest and closes the bundle.
+    assert use(client, ada).status_code == 200
+    r = client.post(f"{VENDOR}/ajo/bundles/{bundle_id}/close", headers=vendor)
+    assert r.status_code == 200, r.text
+    assert r.json()["bundle"]["status"] == "closed"
+    assert client.post(f"{VENDOR}/ajo/bundles/{bundle_id}/close", headers=vendor).status_code == 409
+    last_use_back(session, 61)
+    assert use(client, ada).status_code == 409  # closed plates cannot be used
+
+    # Nothing pending or active any more: the data can go, Ajo rows included.
     r = client.delete(f"{PUBLIC}/me", headers=ada)
     assert r.status_code == 200, r.text
     assert session.exec(select(PlateBundle).where(PlateBundle.id == bundle_id)).first() is None

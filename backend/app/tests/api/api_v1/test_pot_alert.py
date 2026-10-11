@@ -47,12 +47,13 @@ def new_customer(client: TestClient, name: str = "Ada") -> str:
     return r.json()["customer"]["key"]
 
 
-def watch(client: TestClient, key: str, items: list[str], phone: str = "0803 123 4567"):
-    return client.put(
-        f"{PUBLIC}/pot/watches",
-        json={"items": items, "phone": phone},
-        headers={"X-Customer-Key": key},
-    )
+def watch(
+    client: TestClient, key: str, items: list[str], phone: str = "0803 123 4567", consent=True
+):
+    body = {"items": items, "phone": phone}
+    if consent is not None:
+        body["consent"] = consent
+    return client.put(f"{PUBLIC}/pot/watches", json=body, headers={"X-Customer-Key": key})
 
 
 def test_off_hides_everything(client: TestClient, session: Session, stand) -> None:
@@ -100,6 +101,20 @@ def test_customer_bad_input(client: TestClient, stand) -> None:
     assert watch(client, key, []).status_code == 400
     # Unknown customer.
     assert watch(client, "not-a-key", ["Afang soup"]).status_code == 404
+
+
+def test_whatsapp_agreement_required(client: TestClient, session: Session, stand) -> None:
+    key = new_customer(client)
+    for consent in (None, False):
+        r = watch(client, key, ["Afang soup"], consent=consent)
+        assert r.status_code == 400, r.text
+        assert r.json()["detail"] == "Please agree to WhatsApp messages from the vendor"
+    assert session.exec(select(PotWatch).where(PotWatch.workspace_id == stand.id)).all() == []
+    assert watch(client, key, ["Afang soup"], consent=True).status_code == 200
+    # Changing the list asks again; a refused change keeps the saved list.
+    assert watch(client, key, ["Pepper soup"], phone="", consent=False).status_code == 400
+    my = client.get(f"{PUBLIC}/pot", headers={"X-Customer-Key": key}).json()["my"]
+    assert my["items"] == ["Afang soup"]
 
 
 def test_vendor_ready_flow(

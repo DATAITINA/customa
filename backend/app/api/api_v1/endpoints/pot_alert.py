@@ -42,6 +42,8 @@ class WatchRequest(BaseModel):
     items: list[str] = Field(default_factory=list, max_length=50)
     # Empty keeps the number already saved (the customer only ever sees it masked).
     phone: str = Field(default="", max_length=40)
+    # The customer agrees the vendor may message them on WhatsApp. Required on every save.
+    consent: bool = False
 
 
 @public_router.get("")
@@ -65,7 +67,12 @@ def save_watches(
     require_enabled(session, workspace)
     try:
         pot_alert.set_watches(
-            session, workspace=workspace, customer=customer, items=body.items, phone=body.phone
+            session,
+            workspace=workspace,
+            customer=customer,
+            items=body.items,
+            phone=body.phone,
+            consent=body.consent,
         )
     except PotAlertError as exc:
         raise bad_request(exc)

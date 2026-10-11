@@ -4,7 +4,12 @@ import { crewApi, dropInviteFromUrl, inviteCodeFromUrl, type CrewPublic, type Cr
 
 // Lunch Crew, customer side: create or join a crew, see the shared card and whose turn is next.
 // Hidden when the vendor has not turned it on, before the customer's first plate, or on error.
-export function CrewCard({ slug, stand, onChange }: { slug: string; stand: StandPublic; onChange?: () => void }) {
+// The crew card's plate count is shown by the page's plate card, not repeated here.
+// refreshKey: bump it whenever the page learns of a new plate, so whose turn is next stays current.
+// ownPlate: plates on the customer's own card (it pauses while they are in a crew).
+export function CrewCard({
+  slug, stand, onChange, refreshKey, ownPlate,
+}: { slug: string; stand: StandPublic; onChange?: () => void; refreshKey?: number; ownPlate?: number | null }) {
   const [data, setData] = useState<CrewPublic | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -23,7 +28,7 @@ export function CrewCard({ slug, stand, onChange }: { slug: string; stand: Stand
     return () => {
       live = false;
     };
-  }, [slug, code, hasKey]);
+  }, [slug, code, hasKey, refreshKey]);
 
   if (!hasKey || failed || !data || !data.enabled) return null;
 
@@ -44,12 +49,17 @@ export function CrewCard({ slug, stand, onChange }: { slug: string; stand: Stand
   };
 
   const total = data.plates_for_jara || stand.plates_for_jara;
+  const pauseNote =
+    ownPlate == null
+      ? null
+      : `Your own card (plate ${ownPlate} of ${total}) pauses while you're in a crew. It continues if you leave.`;
 
   if (data.crew) {
     return (
       <CrewInfo
         slug={slug}
         crew={data.crew}
+        ownPlate={ownPlate}
         busy={busy}
         error={error}
         onLeave={() => run(() => crewApi.leave(slug))}
@@ -66,6 +76,7 @@ export function CrewCard({ slug, stand, onChange }: { slug: string; stand: Stand
         <span className="note">
           {inv.members_count} of {inv.max_members} members. You share one card: every {total}th plate, the jara goes to the next person in line.
         </span>
+        {pauseNote && <span className="note">{pauseNote}</span>}
         {error && <span className="error">{error}</span>}
         {inv.full ? (
           <span style={{ fontWeight: 700 }}>This crew is full.</span>
@@ -120,6 +131,7 @@ export function CrewCard({ slug, stand, onChange }: { slug: string; stand: Stand
           maxLength={30}
         />
       </label>
+      {pauseNote && <span className="note">{pauseNote}</span>}
       {error && <span className="error">{error}</span>}
       <button className="btn btn-outline" type="submit" disabled={busy || trimmed.length < 2}>
         {busy ? 'Creating…' : 'Create a crew'}
@@ -129,8 +141,8 @@ export function CrewCard({ slug, stand, onChange }: { slug: string; stand: Stand
 }
 
 function CrewInfo({
-  slug, crew, busy, error, onLeave,
-}: { slug: string; crew: CrewView; busy: boolean; error: string | null; onLeave: () => Promise<boolean> }) {
+  slug, crew, ownPlate, busy, error, onLeave,
+}: { slug: string; crew: CrewView; ownPlate?: number | null; busy: boolean; error: string | null; onLeave: () => Promise<boolean> }) {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [copied, setCopied] = useState(false);
   const link = `${window.location.origin}/s/${slug}?crew=${crew.code}`;
@@ -162,12 +174,6 @@ function CrewInfo({
         </span>
       </div>
       <span style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>{crew.name}</span>
-      <span style={{ fontSize: 14, fontWeight: 700 }}>
-        {crew.plate_number === 0 ? `New crew card: plate 0/${total}` : `Crew card: plate ${crew.plate_number}/${total}`}
-      </span>
-      <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={crew.plate_number}>
-        <div style={{ width: `${(crew.plate_number / total) * 100}%` }} />
-      </div>
       {crew.next_jara_to && (
         <span style={{ fontSize: 15, fontWeight: 800 }}>Next jara: {crew.next_jara_to}</span>
       )}
@@ -183,6 +189,7 @@ function CrewInfo({
         ))}
       </ol>
       {turnText && <span className="note">{turnText} Turns go in join order, one jara every {total} crew plates.</span>}
+      {ownPlate != null && <span className="note">Your own card is paused at plate {ownPlate} of {total}.</span>}
       {error && <span className="error">{error}</span>}
       <a
         className="btn"
@@ -197,7 +204,10 @@ function CrewInfo({
       </button>
       {confirmLeave ? (
         <div className="card-outline" style={{ background: 'var(--paper)' }}>
-          <span style={{ fontWeight: 800 }}>Leave {crew.name}? Your plates go back on your own card.</span>
+          <span style={{ fontWeight: 800 }}>
+            Leave {crew.name}? Plates already counted stay with the crew. Your next plates go on your own card
+            {ownPlate != null ? ` (from plate ${ownPlate} of ${total})` : ''}.
+          </span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               className="btn"

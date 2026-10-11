@@ -38,19 +38,19 @@ export const crewApi = {
   get: (slug: string, code?: string | null) =>
     apiClient<CrewPublic>(
       'GET',
-      `/public/${slug}/crew${code ? `?code=${encodeURIComponent(code)}` : ''}`,
+      `/public/${encodeURIComponent(slug)}/crew${code ? `?code=${encodeURIComponent(code)}` : ''}`,
       null,
       customerHeaders(slug),
     ),
   create: (slug: string, name: string) =>
-    apiClient<CrewPublic>('POST', `/public/${slug}/crew`, { name }, customerHeaders(slug)),
+    apiClient<CrewPublic>('POST', `/public/${encodeURIComponent(slug)}/crew`, { name }, customerHeaders(slug)),
   join: (slug: string, code: string) =>
-    apiClient<CrewPublic>('POST', `/public/${slug}/crew/join`, { code }, customerHeaders(slug)),
-  leave: (slug: string) => apiClient<CrewPublic>('POST', `/public/${slug}/crew/leave`, null, customerHeaders(slug)),
+    apiClient<CrewPublic>('POST', `/public/${encodeURIComponent(slug)}/crew/join`, { code }, customerHeaders(slug)),
+  leave: (slug: string) => apiClient<CrewPublic>('POST', `/public/${encodeURIComponent(slug)}/crew/leave`, null, customerHeaders(slug)),
 
-  vendor: (slug: string) => apiClient<VendorCrews>('GET', `/stands/${slug}/crew`),
+  vendor: (slug: string) => apiClient<VendorCrews>('GET', `/stands/${encodeURIComponent(slug)}/crew`),
   setEnabled: (slug: string, enabled: boolean) =>
-    apiClient<VendorCrews>('PUT', `/stands/${slug}/crew/settings`, { enabled }),
+    apiClient<VendorCrews>('PUT', `/stands/${encodeURIComponent(slug)}/crew/settings`, { enabled }),
 };
 
 // The invite code in a share link: /s/<slug>?crew=CODE

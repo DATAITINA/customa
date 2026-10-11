@@ -6,7 +6,7 @@
 .ajo-bank { background: var(--paper); border: 2px solid var(--ink); border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
 .ajo-bank-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ajo-number { font-family: var(--display); font-size: 30px; letter-spacing: 0.06em; line-height: 1; word-break: break-all; }
-.ajo-small-btn { width: auto; height: 40px; padding: 0 16px; font-size: 14px; }
+.btn.ajo-small-btn { width: auto; height: 40px; padding: 0 16px; font-size: 14px; }
 .ajo-actions { display: flex; gap: 8px; }
 .ajo-actions > .btn { flex: 1; min-width: 0; }
 .ajo-wait { display: flex; align-items: flex-start; gap: 10px; font-weight: 700; line-height: 1.4; }
@@ -36,7 +36,7 @@
 .ajo-overlay-stamp { font-size: 15px; font-weight: 700; color: var(--muted); }
 .ajo-overlay-jara { font-size: 18px; font-weight: 800; background: var(--blush); border-radius: 999px; padding: 8px 16px; }
 .ajo-overlay-jara strong { font-family: var(--display); font-weight: 400; font-size: 24px; letter-spacing: 0.06em; }
-.ajo-overlay .btn { max-width: 380px; }
+.ajo-overlay .btn.btn { max-width: 380px; }
 
 /* Vendor panel */
 .ajo-panel { gap: 12px; }
@@ -63,5 +63,5 @@
 }
 .ajo-line:first-of-type { border-top: none; }
 .ajo-line-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-weight: 800; }
-.ajo-ok { background: #1E7B34; }
-.ajo-ok:hover { color: var(--paper); }
+.btn.ajo-ok { background: #1E7B34; }
+.btn.ajo-ok:hover { color: var(--paper); }

@@ -21,6 +21,8 @@ class BundleRequest(BaseModel):
     item: str = Field(max_length=200)
     plates: int
     payer_name: str = Field(max_length=200)
+    # The price the customer's screen showed; the server's menu price always decides.
+    unit_price: int | None = None
 
 
 class AjoSettingsRequest(BaseModel):
@@ -86,6 +88,7 @@ def start_bundle(
         item=body.item,
         plates=body.plates,
         payer_name=body.payer_name,
+        unit_price=body.unit_price,
     )
     return {"bundle": plate_ajo.bundle_view(bundle)}
 
@@ -163,4 +166,16 @@ def reject_bundle(
     bundle = plate_ajo.decide_bundle(
         session, workspace=workspace, bundle_id=bundle_id, confirm=False
     )
+    return {"bundle": plate_ajo.bundle_view(bundle)}
+
+
+@vendor_router.post("/bundles/{bundle_id}/close")
+def close_bundle(
+    bundle_id: int,
+    workspace: Workspace = Depends(deps.get_current_workspace),
+    _member=Depends(deps.get_current_active_member),
+    session: Session = Depends(deps.get_session),
+) -> dict[str, Any]:
+    """End an active bundle early: the vendor refunded or settled it outside Customa."""
+    bundle = plate_ajo.close_bundle(session, workspace=workspace, bundle_id=bundle_id)
     return {"bundle": plate_ajo.bundle_view(bundle)}

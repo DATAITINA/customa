@@ -84,12 +84,18 @@ def customer_view(
     Lunch Crew is on and they are in a crew (crew_name is then set), else their own card (crew
     plates never count there). `last` is their last plate of any kind (for seconds_left).
     open_jara lists their unredeemed jara codes at this stand, so a code is never lost.
+    own_plate_number: plates on their own card toward its next jara (0..N-1); while they are
+    in a crew this is where the own card is paused.
     """
     session = session or object_session(customer)
     plate_number = last.plate_number if last else 0
+    own_plate_number = plate_number % stand_settings.PLATES_FOR_JARA
     crew_name = None
     open_jara: list[dict[str, str]] = []
     if session is not None:
+        own = visit_action.last_own_card_visit(session, customer_id=customer.id)
+        plate_number = own.plate_number if own else 0
+        own_plate_number = plate_number % stand_settings.PLATES_FOR_JARA
         card = lunch_crew.card_for_customer(
             session,
             workspace_id=customer.workspace_id,
@@ -98,9 +104,6 @@ def customer_view(
         )
         if card is not None:
             crew_name, plate_number = card
-        else:
-            own = visit_action.last_own_card_visit(session, customer_id=customer.id)
-            plate_number = own.plate_number if own else 0
         open_jara = [
             {"code": j.code}
             for j in jara_action.open_for_customer(
@@ -114,6 +117,7 @@ def customer_view(
         "window_seconds": window_seconds_for(customer, stand_settings),
         "seconds_left": seconds_left(last, stand_settings),
         "crew_name": crew_name,
+        "own_plate_number": own_plate_number,
         "open_jara": open_jara,
     }
 

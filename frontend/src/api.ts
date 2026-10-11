@@ -24,6 +24,8 @@ export type CustomerState = {
   window_seconds: number;
   seconds_left?: number;
   crew_name?: string | null;
+  // Plates on their own card toward its next jara (0..N-1); paused here while in a crew.
+  own_plate_number?: number;
   open_jara?: { code: string }[];
 };
 

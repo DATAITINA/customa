@@ -21,6 +21,7 @@ READY_WINDOW = timedelta(hours=3)
 MAX_WATCH_ITEMS = 10
 MAX_PLATES_LEFT = 500
 PHONE_HELP = "Enter a Nigerian phone number, like 0803 123 4567 or +234 803 123 4567"
+CONSENT_HELP = "Please agree to WhatsApp messages from the vendor"
 
 
 class PotAlertError(ValueError):
@@ -116,12 +117,16 @@ def set_watches(
     customer: Customer,
     items: list[str],
     phone: str | None,
+    consent: bool = False,
 ) -> list[PotWatch]:
     """Replace this customer's dish list (1 to MAX_WATCH_ITEMS menu dishes, one phone).
 
     An empty phone keeps the number the customer already gave (they only see it masked, so
     they cannot retype it to change dishes); a customer with no number yet must give one.
+    The customer must agree to WhatsApp messages from the vendor on every save (consent=True).
     """
+    if consent is not True:
+        raise PotAlertError(CONSENT_HELP)
     existing = {w.item: w for w in _watches(session, workspace=workspace, customer=customer)}
     if (phone or "").strip():
         normalised = normalise_phone(phone)

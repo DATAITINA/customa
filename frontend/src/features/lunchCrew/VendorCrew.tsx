@@ -8,7 +8,16 @@ export function VendorCrewPanel({ slug }: { slug: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (q.isLoading || q.isError || !q.data) return null;
+  if (q.isLoading) return <p className="note">Loading Lunch Crew…</p>;
+  if (q.isError || !q.data) {
+    return (
+      <div className="card-outline">
+        <span className="eyebrow">LUNCH CREW</span>
+        <p className="error" style={{ margin: 0 }}>Could not load Lunch Crew.</p>
+        <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => q.refetch()}>Try again</button>
+      </div>
+    );
+  }
   const d = q.data;
 
   const toggle = async () => {

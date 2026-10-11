@@ -2,7 +2,7 @@
 // vendor's own account and Customa keeps the plate count.
 import { apiClient, customerHeaders, type ApiError } from '../../api';
 
-export type BundleStatus = 'pending' | 'active' | 'rejected' | 'finished';
+export type BundleStatus = 'pending' | 'active' | 'rejected' | 'finished' | 'closed';
 
 export type Bundle = {
   id: number;
@@ -29,7 +29,13 @@ export type AjoPublic = {
 export type UseResult = {
   bundle: Bundle;
   use: { item: string; plate_number: number; plates_total: number; at: string };
-  stamp: { counted: boolean; plate_number: number | null; jara: { code: string } | null };
+  stamp: {
+    counted: boolean;
+    plate_number: number | null;
+    jara: { code: string } | null;
+    // Set when the plate went on a Lunch Crew card.
+    crew: { name: string; plate_number: number; plates_for_jara: number; jara_to: string | null; jara_to_me: boolean } | null;
+  };
 };
 
 export type AjoVendor = {
@@ -73,7 +79,7 @@ const ven = (slug: string) => `/stands/${encodeURIComponent(slug)}/ajo`;
 
 export const ajoApi = {
   read: (slug: string) => apiClient<AjoPublic>('GET', pub(slug), null, customerHeaders(slug)),
-  start: (slug: string, body: { item: string; plates: number; payer_name: string }) =>
+  start: (slug: string, body: { item: string; plates: number; payer_name: string; unit_price: number }) =>
     apiClient<{ bundle: Bundle }>('POST', `${pub(slug)}/bundles`, body, customerHeaders(slug)),
   use: (slug: string) => apiClient<UseResult>('POST', `${pub(slug)}/use`, null, customerHeaders(slug)),
 
@@ -81,6 +87,7 @@ export const ajoApi = {
   saveSettings: (slug: string, body: AjoSettings) => apiClient<AjoVendor>('PUT', `${ven(slug)}/settings`, body),
   confirm: (slug: string, id: number) => apiClient<{ bundle: Bundle }>('POST', `${ven(slug)}/bundles/${id}/confirm`),
   reject: (slug: string, id: number) => apiClient<{ bundle: Bundle }>('POST', `${ven(slug)}/bundles/${id}/reject`),
+  close: (slug: string, id: number) => apiClient<{ bundle: Bundle }>('POST', `${ven(slug)}/bundles/${id}/close`),
 };
 
 export const naira = (n: number) => `₦${n.toLocaleString('en-NG')}`;

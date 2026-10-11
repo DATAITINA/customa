@@ -126,14 +126,12 @@ def card_for_customer(
 
 
 def is_crew_plate_in_progress(session: Session, visit: Visit) -> bool:
-    """True while count_crew_plate is creating this visit (read by the jara listener)."""
-    if visit.customer_id in session.info.get(CREW_PLATE_MARK, ()):
-        return True
-    if visit.id is None:
-        return False
-    return (
-        session.exec(select(CrewPlate.id).where(CrewPlate.visit_id == visit.id)).first() is not None
-    )
+    """True while count_crew_plate is creating this visit (read by the jara listener).
+
+    The mark is set before the visit is created and cleared only after the commit, so it holds
+    whether MSFLib emits visit-create-pre-commit on create or at commit time.
+    """
+    return visit.customer_id in session.info.get(CREW_PLATE_MARK, ())
 
 
 def count_crew_plate(
@@ -153,7 +151,7 @@ def count_crew_plate(
     visit_action.lock_and_check_window(
         session, customer_id=customer.id, window_seconds=stand_settings.PLATE_WINDOW_SECONDS
     )
-    # Re-read the membership after locking the crew: the customer may have just left it.
+    # Re-check membership under the crew lock: the customer may have just left the crew.
     member = membership(session, workspace_id=workspace.id, customer_id=customer.id)
     crew = _lock_crew(session, member.crew_id) if member else None
     members = _members(session, crew_id=crew.id) if crew else []

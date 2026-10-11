@@ -7,6 +7,7 @@ import {
   setCustomerKey,
   type ApiError,
   type CountResult,
+  type CustomerState,
   type StandPublic,
 } from '../api';
 import { Character, PRESETS } from '../components/Character';
@@ -53,6 +54,8 @@ const naira = (n: number) => `₦${n.toLocaleString('en-NG')}`;
 export function CustomerPage({ slug }: { slug: string }) {
   const [stand, setStand] = useState<StandPublic | null>(null);
   const [view, setView] = useState<View>({ kind: 'loading' });
+  // The latest we know about this customer (card, crew, unredeemed jara codes), from any response.
+  const [me, setMe] = useState<CustomerState | null>(null);
   const started = useRef(false);
 
   // Opened from the stand's QR code. The server saves this only when it first creates the customer.
@@ -62,13 +65,15 @@ export function CustomerPage({ slug }: { slug: string }) {
     try {
       const result = await api.countPlate(slug, fromQr ? { ...body, source: 'qr' } : body);
       setCustomerKey(slug, result.customer.key);
+      setMe(result.customer);
       setView(result.jara ? { kind: 'jara', result } : { kind: 'counted', result });
     } catch (err) {
       const e = err as ApiError;
       const detail = e.raw?.detail as
-        | { seconds_left: number; customer: { first_name: string | null; plate_number: number; window_seconds: number } }
+        | { seconds_left: number; customer: CustomerState }
         | undefined;
       if (e.status === 409 && detail) {
+        if (detail.customer?.key) setMe(detail.customer);
         setView({ kind: 'tooSoon', secondsLeft: detail.seconds_left, windowSeconds: detail.customer.window_seconds ?? stand?.window_seconds ?? 0, plate: detail.customer.plate_number, name: detail.customer.first_name });
       } else if (e.status === 404) {
         // We had a key but the stand forgot us (data deleted): start fresh.
@@ -86,6 +91,7 @@ export function CustomerPage({ slug }: { slug: string }) {
     try {
       const s = await api.stand(slug);
       setStand(s);
+      if (s.customer) setMe(s.customer);
       if (s.customer && (s.customer.seconds_left ?? 0) > 0) {
         setView({ kind: 'tooSoon', secondsLeft: s.customer.seconds_left ?? 0, windowSeconds: s.customer.window_seconds, plate: s.customer.plate_number, name: s.customer.first_name });
       }
@@ -101,6 +107,7 @@ export function CustomerPage({ slug }: { slug: string }) {
       .stand(slug)
       .then((s) => {
         setStand(s);
+        if (s.customer) setMe(s.customer);
         // A scan from a phone we already know is a new visit: count it straight away.
         if (s.customer && getCustomerKey(slug)) handleCount({ consent: true });
         else setView({ kind: 'welcome' });
@@ -125,10 +132,21 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   const ch = stand.character;
   const total = stand.plates_for_jara;
+  // After joining, creating or leaving a crew: re-read which card this customer's plates go to.
+  // Read only, and it keeps the current screen.
+  const refreshMe = async () => {
+    try {
+      const s = await api.stand(slug);
+      if (s.customer) setMe(s.customer);
+    } catch {
+      // The next scan shows the right card.
+    }
+  };
   // The three return-visit features. Each card hides itself when the vendor has not turned it on.
   const featureCards = (
     <>
-      <CrewCard slug={slug} stand={stand} />
+      <OpenJara codes={me?.open_jara ?? []} />
+      <CrewCard slug={slug} stand={stand} onChange={refreshMe} />
       <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
       <PotWatchCard slug={slug} stand={stand} />
     </>
@@ -170,7 +188,8 @@ export function CustomerPage({ slug }: { slug: string }) {
           stand={stand}
           initialSeconds={view.secondsLeft}
           windowSeconds={view.windowSeconds}
-          plate={view.plate}
+          plate={me?.plate_number ?? view.plate}
+          crewName={me?.crew_name ?? null}
           name={view.name}
           onReady={() => handleCount({ consent: true })}
           extras={featureCards}
@@ -183,9 +202,17 @@ export function CustomerPage({ slug }: { slug: string }) {
   const r = view.result;
   const name = r.customer.first_name;
   const left = total - r.plate_number;
-  const bubble = r.returning
-    ? `${name ? name + '! ' : ''}Back again! Plate ${r.plate_number} of ${total}.`
-    : `${name ? name + '! ' : ''}Plate ${r.plate_number} don land. ${left} more and jara na yours.`;
+  const crew = r.crew;
+  const bubble = crew
+    ? crew.jara_to && !crew.jara_to_me
+      ? `Plate ${crew.plate_number} for ${crew.name}! This jara goes to ${crew.jara_to}. Your turn is coming.`
+      : `${name ? name + '! ' : ''}Plate ${crew.plate_number} of ${crew.plates_for_jara} for ${crew.name}.`
+    : r.returning
+      ? `${name ? name + '! ' : ''}Back again! Plate ${r.plate_number} of ${total}.`
+      : `${name ? name + '! ' : ''}Plate ${r.plate_number} don land. ${left} more and jara na yours.`;
+  // The card shown: the latest we know (it follows a crew joined or left on this screen).
+  const cardPlate = me ? me.plate_number : r.plate_number;
+  const cardCrew = me ? me.crew_name ?? null : crew?.name ?? null;
 
   return (
     <Shell stand={stand}>
@@ -193,14 +220,14 @@ export function CustomerPage({ slug }: { slug: string }) {
         <Character {...charProps} expression="excited" pose={r.returning ? 'wave' : 'hop'} size={180} />
       </Hero>
       <div className="stack">
-        <PlateCard plate={r.plate_number} total={total} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} isDemo={stand.window_seconds < 120} />
+        <PlateCard plate={cardPlate} total={total} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} isDemo={stand.window_seconds < 120} />
         {featureCards}
         <Link to={`/s/${slug}/chat`} className="btn">
           <ChatIcon /> Talk to {charName.split(' ')[0]}
         </Link>
         <Rate slug={slug} visitId={r.visit_id} />
         <Menu items={ch?.menu ?? []} />
-        <DeleteMine slug={slug} onDeleted={() => { clearCustomerKey(slug); setView({ kind: 'deleted' }); }} />
+        <DeleteMine slug={slug} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
       </div>
     </Shell>
   );
@@ -238,13 +265,15 @@ function Hero({ bubble, counted, children }: { bubble: string; counted?: boolean
   );
 }
 
-function PlateCard({ plate, total, windowSeconds, isDemo }: { plate: number; total: number; windowSeconds: number; isDemo: boolean }) {
+function PlateCard({ plate, total, windowSeconds, isDemo, crewName }: { plate: number; total: number; windowSeconds: number; isDemo: boolean; crewName?: string | null }) {
   const windowText = windowSeconds < 120 ? `${windowSeconds} seconds${isDemo ? ' (demo stand)' : ''}` : `${Math.round(windowSeconds / 3600)} hours`;
   return (
     <div className="card">
       <div className="row">
-        <span className="eyebrow">YOUR JARA</span>
-        <span style={{ fontSize: 13, fontWeight: 700 }}>Free extra on plate {total}</span>
+        <span className="eyebrow">{crewName ? 'CREW CARD' : 'YOUR JARA'}</span>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>
+          {crewName ? `${crewName} · jara on plate ${total}, by turns` : `Free extra on plate ${total}`}
+        </span>
       </div>
       <span className="plate-count">PLATE {plate}/{total}</span>
       <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate}>
@@ -285,8 +314,8 @@ function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consen
 }
 
 function TooSoon({
-  stand, initialSeconds, windowSeconds, plate, name, onReady, extras,
-}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; name: string | null; onReady: () => void; extras?: React.ReactNode }) {
+  stand, initialSeconds, windowSeconds, plate, crewName, name, onReady, extras,
+}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; crewName?: string | null; name: string | null; onReady: () => void; extras?: React.ReactNode }) {
   // Count down to a fixed end time, not by ticking: phones pause timers while the
   // screen is off or the tab is in the background, which would leave a 6-hour
   // countdown far behind. Re-read the clock on every tick and when the page is shown again.
@@ -322,7 +351,7 @@ function TooSoon({
         </div>
       </Hero>
       <div className="stack">
-        <PlateCard plate={plate} total={total} windowSeconds={windowSeconds} isDemo={stand.window_seconds < 120} />
+        <PlateCard plate={plate} total={total} crewName={crewName} windowSeconds={windowSeconds} isDemo={stand.window_seconds < 120} />
         {extras}
         <div className="card-outline">
           <span className="eyebrow">WHY THE WAIT?</span>
@@ -337,6 +366,20 @@ function TooSoon({
         <Link to={`/s/${stand.stand.slug}/chat`} className="btn btn-outline"><ChatIcon /> Talk to {ch?.name.split(' ')[0] ?? 'us'} while you wait</Link>
       </div>
     </>
+  );
+}
+
+// Unredeemed jara codes at this stand (own card or a crew turn), so a code is never lost.
+function OpenJara({ codes }: { codes: { code: string }[] }) {
+  if (!codes.length) return null;
+  return (
+    <div className="card-outline" role="status" style={{ background: 'var(--blush)', borderColor: 'var(--pepper)' }}>
+      <span className="eyebrow">{codes.length > 1 ? 'YOUR JARA CODES' : 'YOUR JARA'}</span>
+      {codes.map((j) => (
+        <span key={j.code} style={{ fontFamily: 'var(--display)', fontSize: 32, lineHeight: 1, letterSpacing: '0.06em' }}>{j.code}</span>
+      ))}
+      <span style={{ fontSize: 15, fontWeight: 700 }}>Show this to the vendor for a free extra portion. One use.</span>
+    </div>
   );
 }
 
@@ -379,6 +422,22 @@ function Menu({ items }: { items: { item: string; price: number }[] }) {
 
 function DeleteMine({ slug, onDeleted }: { slug: string; onDeleted: () => void }) {
   const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const remove = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.deleteMe(slug);
+      onDeleted();
+    } catch (err) {
+      // e.g. 409: prepaid Plate Ajo plates are still left at this stand.
+      const e = err as ApiError;
+      setError(typeof e.raw?.detail === 'string' ? e.raw.detail : e.message ?? 'Could not delete your data. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
   if (!confirm) {
     return (
       <div className="links">
@@ -389,8 +448,9 @@ function DeleteMine({ slug, onDeleted }: { slug: string; onDeleted: () => void }
   return (
     <div className="card-outline">
       <span style={{ fontWeight: 800 }}>Delete your name, plates, jara and ratings at this stand?</span>
+      {error && <p className="error" role="alert" style={{ margin: 0 }}>{error}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn" onClick={async () => { await api.deleteMe(slug); onDeleted(); }}>Yes, delete</button>
+        <button className="btn" disabled={busy} onClick={remove}>{busy ? 'Deleting…' : 'Yes, delete'}</button>
         <button className="btn btn-outline" onClick={() => setConfirm(false)}>Keep it</button>
       </div>
     </div>
@@ -423,7 +483,9 @@ function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: Cou
         <Logo size={22} />
       </header>
       <div style={{ position: 'relative', paddingTop: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em' }}>{result.plates_for_jara} OF {result.plates_for_jara} PLATES</span>
+        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em' }}>
+          {result.crew ? `${result.crew.name.toUpperCase()}: YOUR TURN · ` : ''}{result.plates_for_jara} OF {result.plates_for_jara} PLATES
+        </span>
         <h1 className="display" style={{ fontSize: 104 }}>JARA!</h1>
       </div>
       <div style={{ position: 'relative' }}>

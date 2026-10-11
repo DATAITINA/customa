@@ -15,7 +15,27 @@ export type Character = {
 export type LastPlates = { left: number; until: string } | null;
 
 // window_seconds is this customer's wait between plates, decided by the server.
-export type CustomerState = { key: string; first_name: string | null; plate_number: number; window_seconds: number; seconds_left?: number };
+// plate_number is the last plate on the card their plates go to now: the Lunch Crew card when
+// crew_name is set, else their own card. open_jara: their unredeemed jara codes at this stand.
+export type CustomerState = {
+  key: string;
+  first_name: string | null;
+  plate_number: number;
+  window_seconds: number;
+  seconds_left?: number;
+  crew_name?: string | null;
+  open_jara?: { code: string }[];
+};
+
+// The crew part of a counted plate (Lunch Crew). jara_to names the winner on the crew's jara
+// plate (null on other plates); when it is someone else, CountResult.jara is null.
+export type CrewCountInfo = {
+  name: string;
+  plate_number: number;
+  plates_for_jara: number;
+  jara_to: string | null;
+  jara_to_me: boolean;
+};
 
 export type StandPublic = {
   stand: { name: string; slug: string; description: string };
@@ -33,6 +53,7 @@ export type CountResult = {
   plate_number: number;
   plates_for_jara: number;
   jara: { code: string } | null;
+  crew?: CrewCountInfo | null;
 };
 
 export type Dashboard = {

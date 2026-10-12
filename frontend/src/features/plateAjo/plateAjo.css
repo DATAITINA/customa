@@ -8,7 +8,7 @@
 .ajo-number { font-family: var(--display); font-size: 30px; letter-spacing: 0.06em; line-height: 1; word-break: break-all; }
 .btn.ajo-small-btn { width: auto; height: 40px; padding: 0 16px; font-size: 14px; }
 .ajo-actions { display: flex; gap: 8px; }
-.ajo-actions > .btn { flex: 1; min-width: 0; }
+.ajo-actions > .btn { flex: 1; min-width: 0; white-space: nowrap; font-size: 15px; padding: 0 10px; }
 .ajo-wait { display: flex; align-items: flex-start; gap: 10px; font-weight: 700; line-height: 1.4; }
 .ajo-wait-dot {
   width: 12px; height: 12px; margin-top: 5px; border-radius: 999px; background: var(--pepper); flex-shrink: 0;
@@ -41,20 +41,8 @@
 /* Vendor panel */
 .ajo-panel { gap: 12px; }
 .ajo-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.ajo-switch {
-  display: inline-flex; align-items: center; gap: 10px; background: none; border: none; padding: 4px 0;
-  font-size: 15px; font-weight: 800; color: var(--ink);
-}
-.ajo-switch-track {
-  width: 52px; height: 30px; border-radius: 999px; background: var(--line); position: relative; flex-shrink: 0;
-  transition: background 0.2s ease;
-}
-.ajo-switch-track::after {
-  content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 999px;
-  background: var(--paper); transition: transform 0.2s ease;
-}
-.ajo-switch[aria-checked='true'] .ajo-switch-track { background: #1E7B34; }
-.ajo-switch[aria-checked='true'] .ajo-switch-track::after { transform: translateX(22px); }
+.btn.ajo-setup-btn { width: auto; align-self: flex-start; height: 48px; padding: 0 22px; font-size: 15px; }
+.ajo-setup-hint { font-size: 14px; font-weight: 700; }
 .ajo-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
 .ajo-section { display: flex; flex-direction: column; gap: 0; }
 .ajo-line {

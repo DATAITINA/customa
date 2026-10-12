@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ajoApi, errorText, naira, timeOf, type AjoVendor } from './ajoApi';
 import './plateAjo.css';
 
@@ -7,6 +7,7 @@ import './plateAjo.css';
 // Customers pay into the vendor's own account; Customa only keeps the plate count.
 export function VendorAjoPanel({ slug }: { slug: string }) {
   const q = useQuery({ queryKey: ['ajo', slug], queryFn: () => ajoApi.vendor(slug), refetchInterval: 10000 });
+  const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<number | null>(null);
@@ -28,8 +29,13 @@ export function VendorAjoPanel({ slug }: { slug: string }) {
     setBusy(key);
     setError(null);
     try {
-      await fn();
-      await q.refetch();
+      const result = await fn();
+      // Settings calls return the whole panel: show it at once instead of a second request.
+      if (result && typeof result === 'object' && 'enabled' in result && 'pending' in result) {
+        qc.setQueryData(['ajo', slug], result as AjoVendor);
+      } else {
+        await q.refetch();
+      }
       return true;
     } catch (err) {
       setError(errorText(err, fallback));
@@ -40,13 +46,18 @@ export function VendorAjoPanel({ slug }: { slug: string }) {
     }
   };
 
-  const toggle = () => {
+  const toggle = async () => {
     if (!d.enabled && !hasBank) {
       setEditing(true); // turning on needs the bank details first
       return;
     }
-    run('switch', () => ajoApi.saveSettings(slug, { enabled: !d.enabled }), 'Could not change Plate Ajo. Try again.');
+    // Flip at once; the save runs in the background and flips back if it fails.
+    const next = !d.enabled;
+    qc.setQueryData(['ajo', slug], { ...d, enabled: next });
+    const ok = await run('switch', () => ajoApi.saveSettings(slug, { enabled: next }), 'Could not change Plate Ajo. Try again.');
+    if (!ok) qc.setQueryData(['ajo', slug], { ...d, enabled: !next });
   };
+  const needsBank = !d.enabled && !hasBank;
 
   const head = (
     <div className="ajo-head">
@@ -55,11 +66,11 @@ export function VendorAjoPanel({ slug }: { slug: string }) {
         type="button"
         role="switch"
         aria-checked={d.enabled}
-        className="ajo-switch"
+        className="switch"
         disabled={busy !== null}
         onClick={toggle}
       >
-        <span className="ajo-switch-track" aria-hidden="true" />
+        <span className="switch-track" aria-hidden="true" />
         {d.enabled ? 'On' : 'Off'}
       </button>
     </div>
@@ -86,6 +97,12 @@ export function VendorAjoPanel({ slug }: { slug: string }) {
           Customers prepay you 5 or 10 plates by transfer to your own account, and use one plate per visit.
           You get cash up front; they beat price rises.
         </span>
+        {needsBank && !editing && (
+          <button type="button" className="btn ajo-setup-btn" onClick={() => setEditing(true)}>Add bank details to turn on</button>
+        )}
+        {needsBank && editing && (
+          <span className="ajo-setup-hint">Add the account customers will pay into. Plate Ajo turns on when you save.</span>
+        )}
         {form}
         {error && <p className="error" role="alert" style={{ margin: 0 }}>{error}</p>}
         {(d.pending.length > 0 || d.active.length > 0) && <Lists slug={slug} d={d} busy={busy} rejecting={rejecting} setRejecting={setRejecting} run={run} />}
@@ -258,7 +275,7 @@ function BankForm({
       <div className="ajo-form">
         <label className="field">
           Bank name
-          <input className="input" value={bank} onChange={(e) => setBank(e.target.value)} maxLength={60} placeholder="e.g. Opay" />
+          <input className="input" value={bank} onChange={(e) => setBank(e.target.value)} maxLength={60} placeholder="e.g. Opay" autoFocus />
         </label>
         <label className="field">
           Account number
@@ -277,6 +294,7 @@ function BankForm({
         </label>
       </div>
       {number && digits.length !== 10 && <span className="error">The account number must be 10 digits.</span>}
+      {!ok && !(number && digits.length !== 10) && <span className="note">Fill in all three to continue.</span>}
       <div className="ajo-actions" style={{ maxWidth: 420 }}>
         <button className="btn" type="submit" disabled={!ok || busy}>
           {busy ? 'Saving…' : turningOn ? 'Save and turn on' : 'Save'}

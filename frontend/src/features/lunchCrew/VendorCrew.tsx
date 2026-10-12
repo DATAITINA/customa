@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { crewApi } from './crewApi';
 
 // Lunch Crew, vendor side: turn it on, see crews and whose turn is next.
 export function VendorCrewPanel({ slug }: { slug: string }) {
   const q = useQuery({ queryKey: ['lunchCrew', slug], queryFn: () => crewApi.vendor(slug), refetchInterval: 15000 });
+  const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,13 +21,17 @@ export function VendorCrewPanel({ slug }: { slug: string }) {
   }
   const d = q.data;
 
+  // Flip at once; the save runs in the background (its reply is the whole panel) and flips
+  // back if it fails.
   const toggle = async () => {
+    const next = !d.enabled;
     setBusy(true);
     setError(null);
+    qc.setQueryData(['lunchCrew', slug], { ...d, enabled: next });
     try {
-      await crewApi.setEnabled(slug, !d.enabled);
-      await q.refetch();
+      qc.setQueryData(['lunchCrew', slug], await crewApi.setEnabled(slug, next));
     } catch {
+      qc.setQueryData(['lunchCrew', slug], { ...d, enabled: !next });
       setError('Could not change Lunch Crew. Try again.');
     } finally {
       setBusy(false);
@@ -37,10 +42,10 @@ export function VendorCrewPanel({ slug }: { slug: string }) {
     <div className="card-outline" style={{ gap: 12 }}>
       <div className="row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <span className="eyebrow">LUNCH CREW</span>
-        <label className="check" style={{ alignItems: 'center', fontSize: 15, fontWeight: 800 }}>
-          <input type="checkbox" checked={d.enabled} disabled={busy} onChange={toggle} />
-          <span>{d.enabled ? 'On' : 'Off'}</span>
-        </label>
+        <button type="button" role="switch" aria-checked={d.enabled} className="switch" disabled={busy} onClick={toggle}>
+          <span className="switch-track" aria-hidden="true" />
+          {d.enabled ? 'On' : 'Off'}
+        </button>
       </div>
       <span className="note" style={{ fontSize: 14 }}>
         Friends (up to {d.max_members}) share one card. Every {d.plates_for_jara}th crew plate, one jara goes to the next

@@ -278,3 +278,20 @@ tr.fresh td { background: var(--blush); }
   .input.lp-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .btn.lp-btn { width: 100%; height: 52px; padding: 0 18px; }
 }
+
+/* On/off switch used by the vendor feature panels. */
+.switch {
+  display: inline-flex; align-items: center; gap: 10px; background: none; border: none; padding: 4px 0;
+  font-size: 15px; font-weight: 800; color: var(--ink);
+}
+.switch-track {
+  width: 52px; height: 30px; border-radius: 999px; background: var(--line); position: relative; flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+.switch-track::after {
+  content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 999px;
+  background: var(--paper); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); transition: transform 0.15s ease;
+}
+.switch[aria-checked='true'] .switch-track { background: #1E7B34; }
+.switch[aria-checked='true'] .switch-track::after { transform: translateX(22px); }
+.switch:disabled { opacity: 1; }

@@ -123,6 +123,16 @@ textarea.input { height: auto; min-height: 96px; padding: 12px 16px; resize: ver
 .msg-me { align-self: flex-end; background: var(--ink); color: var(--paper); border-radius: 22px 22px 6px 22px; }
 .quick { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px; }
 .quick button { height: 40px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper); font-weight: 700; font-size: 14px; }
+.almost-pill { padding: 6px 12px; border-radius: 999px; background: var(--pepper); color: var(--paper); font-size: 14px; font-weight: 800; animation: almost-pulse 1.6s ease-in-out infinite; }
+@keyframes almost-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .almost-pill { animation: none; } }
+.goodbye { margin: 4px 0 0; text-align: center; font-size: 16px; font-weight: 800; }
+.special-form { display: flex; gap: 8px; }
+.special-form .input { flex: 1; min-width: 0; }
+.special-form .btn { width: 96px; flex-shrink: 0; }
+.chat-private { margin: 8px 16px 0; font-size: 13px; font-weight: 700; line-height: 1.4; color: var(--muted); text-align: center; }
+.chat-private svg { vertical-align: -2px; margin-right: 4px; }
+.chat-closed { margin: 0 12px 16px; padding: 18px; border-radius: var(--radius-card); background: var(--blush); display: flex; flex-direction: column; gap: 8px; }
 .chat-form { display: flex; gap: 8px; padding: 12px; position: sticky; bottom: 0; background: var(--paper); }
 
 /* ---- Vendor (desktop + phone) ---- */

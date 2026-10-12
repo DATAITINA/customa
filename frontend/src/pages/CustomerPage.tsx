@@ -224,6 +224,9 @@ export function CustomerPage({ slug }: { slug: string }) {
     bubble = `Plate ${crew.plate_number} for ${crew.name}! This jara goes to ${crew.jara_to}. Your turn is coming.`;
   } else if (crew) {
     bubble = `${hi}Plate ${crew.plate_number} of ${crew.plates_for_jara} for ${crew.name}.`;
+  } else if (left === 1) {
+    // Almost there: people speed up when a reward is close, so make plate 5 feel exciting.
+    bubble = `${hi}Plate ${r.plate_number} don land! Just ONE more plate and jara na yours! 🎉`;
   } else if (r.returning) {
     bubble = `${hi}Back again! Plate ${r.plate_number} of ${total}.`;
   } else {
@@ -246,6 +249,7 @@ export function CustomerPage({ slug }: { slug: string }) {
         </Link>
         <Rate slug={slug} visitId={r.visit_id} />
         <Menu items={ch?.menu ?? []} />
+        <Goodbye name={name} plate={r.plate_number} />
         <DeleteMine slug={slug} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
       </div>
     </Shell>
@@ -293,7 +297,10 @@ function PlateCard({ plate, total, windowSeconds, isDemo, crewName }: { plate: n
           {crewName ? `${crewName} · jara on plate ${total}, by turns` : `Free extra on plate ${total}`}
         </span>
       </div>
-      <span className="plate-count">PLATE {plate}/{total}</span>
+      <div className="row" style={{ alignItems: 'center' }}>
+        <span className="plate-count">PLATE {plate}/{total}</span>
+        {plate === total - 1 && <span className="almost-pill">1 more! 🔥</span>}
+      </div>
       <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate}>
         <div style={{ width: `${(plate / total) * 100}%` }} />
       </div>
@@ -386,6 +393,18 @@ function TooSoon({
       </div>
     </>
   );
+}
+
+// A warm goodbye at the end of every visit (people remember how an experience ends).
+const GOODBYES = [
+  'Enjoy your food, see you next time! 👋',
+  'Thanks for coming, e go sweet you! 😋',
+  'Go well, come back soon o! 🙌',
+  'Chop well, we dey wait for you! 🍲',
+];
+function Goodbye({ name, plate }: { name: string | null; plate: number }) {
+  const line = GOODBYES[plate % GOODBYES.length];
+  return <p className="goodbye">{name ? `${name}, ${line.charAt(0).toLowerCase()}${line.slice(1)}` : line}</p>;
 }
 
 // Unredeemed jara codes at this stand (own card or a crew turn), so a code is never lost.
@@ -503,11 +522,18 @@ function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: Cou
       </header>
       <div style={{ position: 'relative', paddingTop: 6 }}>
         <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em' }}>
-          {result.crew ? `${result.crew.name.toUpperCase()}: YOUR TURN · ` : ''}{result.plates_for_jara} OF {result.plates_for_jara} PLATES
+          {result.surprise
+            ? `${(ch?.name ?? 'THE VENDOR').toUpperCase()} DON DASH YOU · PLATE ${result.plate_number}`
+            : `${result.crew ? `${result.crew.name.toUpperCase()}: YOUR TURN · ` : ''}${result.plates_for_jara} OF ${result.plates_for_jara} PLATES`}
         </span>
-        <h1 className="display" style={{ fontSize: 104 }}>JARA!</h1>
+        <h1 className="display" style={{ fontSize: result.surprise ? 76 : 104 }}>{result.surprise ? 'SURPRISE JARA!' : 'JARA!'}</h1>
       </div>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+        <div className="bubble" style={{ alignSelf: 'center', textAlign: 'center' }}>
+          {result.surprise
+            ? `Today na your lucky day${result.customer.first_name ? ', ' + result.customer.first_name : ''}! 🎁`
+            : `You don try${result.customer.first_name ? ', ' + result.customer.first_name : ''}! Enjoy am, see you soon 👋`}
+        </div>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="excited" pose="jump" size={210} />
       </div>
       <div className="code-card" role="status">
@@ -517,7 +543,7 @@ function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: Cou
         <span className="note">{result.customer.first_name ? `${result.customer.first_name} · ` : ''}one use</span>
       </div>
       <div style={{ position: 'relative', padding: '14px 12px 24px' }}>
-        <button className="btn" onClick={onDone}>Done, start my next {result.plates_for_jara}</button>
+        <button className="btn" onClick={onDone}>{result.surprise ? 'Done, back to my card' : `Done, start my next ${result.plates_for_jara}`}</button>
       </div>
     </main>
   );

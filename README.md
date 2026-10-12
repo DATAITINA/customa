@@ -22,6 +22,11 @@ acceptance criteria: [docs/return-visit-features.md](docs/return-visit-features.
 - **Lunch Crew**: friends share one card; every 6th crew plate earns a jara for the next member in
   turn, like an ajo payout.
 
+The character chat is private (vendors only see food questions), short and warm (one chat per
+plate, closed with a cliffhanger and picked up next plate), and remembers a few things the
+customer can see and clear. Vendors can also set today's special and turn on surprise jara.
+Details: [docs/character-chat-and-delights.md](docs/character-chat-and-delights.md).
+
 ## The problem
 
 Vendors in Uyo told us their biggest daily problem is getting enough customers, so cooked food

@@ -6,6 +6,7 @@ from app import models
 from app.api import deps
 from app.api.api_v1.endpoints import (
     admin,
+    delights,
     lunch_crew,
     plate_ajo,
     public,
@@ -67,3 +68,5 @@ api_router.include_router(public.router)
 for feature in (plate_ajo, lunch_crew):
     api_router.include_router(feature.public_router)
     api_router.include_router(feature.vendor_router)
+# Customer delights (surprise jara, today's special): vendor settings only.
+api_router.include_router(delights.vendor_router)

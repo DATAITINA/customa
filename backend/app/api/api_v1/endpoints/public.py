@@ -24,8 +24,8 @@ from app.actions import (
 from app.api import deps
 from app.core.config import CustomaSettings
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
-from app.services import lunch_crew, plate_ajo
-from app.services.bisi import chat_reply
+from app.services import character_chat, lunch_crew, plate_ajo
+from app.services.bisi import ChatContext, chat_reply
 from app.services.chat_log import forget_customer, record_turn
 from app.services.plates import count_visit
 from app.services.stands import last_plates, resolve_stand_settings
@@ -197,6 +197,8 @@ def count_plate(
         "plate_number": visit.plate_number,
         "plates_for_jara": stand_settings.PLATES_FOR_JARA,
         "jara": {"code": jara.code} if mine else None,
+        # A jara on a plate that is not the jara plate: the vendor's surprise (own card only).
+        "surprise": mine and visit.plate_number != stand_settings.PLATES_FOR_JARA,
         "crew": lunch_crew.count_result(
             session, visit=visit, customer_id=customer.id, stand_settings=stand_settings
         ),
@@ -238,10 +240,48 @@ def delete_my_data(
     for feature in (plate_ajo, lunch_crew):
         feature.forget_customer(session, workspace=workspace, customer=customer)
     forget_customer(session, workspace=workspace, customer=customer)
+    character_chat.delete_memory(session, customer=customer)
     for model, action in ((Rating, rating_action), (JaraReward, jara_action), (Visit, visit_action)):
         action.delete_multi_by_expressions(session, model.customer_id == customer.id)
     customer_action.delete(session, customer.id)
     return {"deleted": True}
+
+
+def _chat_parts(session: Session, workspace: Workspace, customer: Customer | None):
+    """The character, the customer's chat memory (this visit's chat opened if a new plate was
+    counted) and their last plate. Chat is for customers with a counted plate."""
+    character = character_action.get_for_stand(session, workspace_id=workspace.id)
+    if character is None:
+        raise HTTPException(status_code=404, detail="This stand has no character yet")
+    if customer is None or visit_action.last_for_customer(session, customer_id=customer.id) is None:
+        raise HTTPException(status_code=403, detail="Count a plate first, then we can talk!")
+    stand_settings = resolve_stand_settings(session, workspace)
+    memory = character_chat.memory_for(session, customer=customer)
+    last = character_chat.start_or_resume(
+        session, memory=memory, character=character, customer=customer, stand_settings=stand_settings
+    )
+    return character, memory, last, stand_settings
+
+
+def _chat_view(memory, last: Visit | None, stand_settings: CustomaSettings) -> dict[str, Any]:
+    return {
+        **character_chat.chat_status(memory, last, stand_settings),
+        "seconds_left": seconds_left(last, stand_settings),
+        "memory": character_chat.memory_view(memory),
+        "special": character_chat.todays_special(stand_settings),
+    }
+
+
+@router.get("/chat")
+def read_chat(
+    workspace: Workspace = Depends(deps.get_stand_public),
+    customer: Customer | None = Depends(get_customer_or_none),
+    session: Session = Depends(deps.get_session),
+) -> dict[str, Any]:
+    """This visit's chat: open or not, the character's opening line, and what it remembers."""
+    _, memory, last, stand_settings = _chat_parts(session, workspace, customer)
+    session.commit()
+    return _chat_view(memory, last, stand_settings)
 
 
 @router.post("/chat")
@@ -251,21 +291,58 @@ def chat(
     customer: Customer | None = Depends(get_customer_or_none),
     session: Session = Depends(deps.get_session),
 ) -> dict[str, Any]:
-    """Talk to the stand's character (MSFLib ai-core, with a no-AI fallback)."""
-    character = character_action.get_for_stand(session, workspace_id=workspace.id)
-    if character is None:
-        raise HTTPException(status_code=404, detail="This stand has no character yet")
-    last = visit_action.last_for_customer(session, customer_id=customer.id) if customer else None
-    reply, source = chat_reply(
-        character=character,
+    """Talk to the stand's character (MSFLib ai-core, with a no-AI fallback).
+
+    One short chat per counted plate: the last allowed message gets a warm cliffhanger reply
+    and the chat opens again on the next plate. Private: only food questions are saved for the
+    vendor (services/chat_log); the rest is never shown to them.
+    """
+    character, memory, last, stand_settings = _chat_parts(session, workspace, customer)
+    status = character_chat.chat_status(memory, last, stand_settings)
+    if not status["open"]:
+        session.commit()
+        return {"reply": None, "source": None, "chat": _chat_view(memory, last, stand_settings)}
+
+    memory.messages_used += 1
+    closing = memory.messages_used >= stand_settings.CHAT_MESSAGES_PER_PLATE
+    character_chat.remember_from_message(memory, body.message, character)
+    ctx = ChatContext(
         stand_name=workspace.name,
-        customer_name=customer.first_name if customer else None,
+        customer_name=customer.first_name,
         plate=last.plate_number if last else 0,
-        total=resolve_stand_settings(session, workspace).PLATES_FOR_JARA,
-        message=body.message,
-        history=body.history,
-        workspace_id=workspace.id,
+        total=stand_settings.PLATES_FOR_JARA,
+        special=character_chat.todays_special(stand_settings),
+        favourite_item=memory.favourite_item,
+        last_item=memory.last_item,
+        closing=closing,
+        seed=customer.id,
     )
-    if customer is not None:
+    if character_chat.wants_joke(body.message) and not closing:
+        reply, source, follow_up = character_chat.joke_of_the_day(memory.messages_used), "quick", None
+    else:
+        reply, source, follow_up = chat_reply(
+            character=character, ctx=ctx, message=body.message, history=body.history,
+            workspace_id=workspace.id,
+        )
+    if closing:
+        memory.closed = True
+        memory.follow_up = follow_up
+    session.add(memory)
+    session.commit()
+    if character_chat.is_food_question(body.message, character):
         record_turn(session, workspace=workspace, customer=customer, question=body.message, answer=reply)
-    return {"reply": reply, "source": source}
+    return {"reply": reply, "source": source, "chat": _chat_view(memory, last, stand_settings)}
+
+
+@router.delete("/chat/memory")
+def forget_chat_memory(
+    workspace: Workspace = Depends(deps.get_stand_public),
+    customer: Customer = Depends(require_customer),
+    session: Session = Depends(deps.get_session),
+) -> dict[str, Any]:
+    """The customer clears what the character remembers about them."""
+    memory = character_chat.memory_for(session, customer=customer)
+    character_chat.forget_memory(memory)
+    session.add(memory)
+    session.commit()
+    return {"memory": character_chat.memory_view(memory)}

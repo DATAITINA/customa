@@ -8,6 +8,7 @@ import { FoodStamp } from '../components/FoodStamp';
 import { StandPhoto } from '../components/StandPhoto';
 import { VendorAjoPanel } from '../features/plateAjo/VendorAjo';
 import { VendorCrewPanel } from '../features/lunchCrew/VendorCrew';
+import { VendorDelightsPanel } from '../features/delights/VendorDelights';
 import { LastPlatesBanner } from '../components/LastPlates';
 import { Link } from '../App';
 
@@ -342,8 +343,9 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
       <div className="grid-2">
         <OpenJara slug={slug} items={d.open_jara} onChange={() => q.refetch()} />
         <div className="card-outline">
-          <span className="eyebrow">WHAT CUSTOMERS ASKED {ch?.name.split(' ')[0].toUpperCase() ?? ''}</span>
-          {d.recent_questions.length === 0 && <span className="note">No questions yet.</span>}
+          <span className="eyebrow">FOOD QUESTIONS FOR {ch?.name.split(' ')[0].toUpperCase() ?? ''}</span>
+          <span className="note" style={{ fontSize: 13 }}>Customers' chats are private. You only see their questions about the food.</span>
+          {d.recent_questions.length === 0 && <span className="note">No food questions yet.</span>}
           {d.recent_questions.map((m) => (
             <div key={m.id} className="row" style={{ fontSize: 15 }}>
               <span style={{ fontWeight: 600 }}>"{m.question}"</span>
@@ -353,6 +355,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         </div>
       </div>
       {/* Return-visit features sit below the daily essentials (plates, jara to give out). */}
+      <VendorDelightsPanel slug={slug} />
       <VendorAjoPanel slug={slug} />
       <VendorCrewPanel slug={slug} />
       <button type="button" className="add-stand" onClick={onNewStand}>

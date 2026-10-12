@@ -36,6 +36,18 @@ class CustomaSettings(ModuleSettingsBase):
     LUNCH_CREW_ENABLED: bool = False
     LUNCH_CREW_MAX_MEMBERS: int = 6
 
+    # Chat with the stand character: a short, warm chat with each counted plate. After this many
+    # customer messages the character closes with a cliffhanger; the chat opens again on the
+    # next plate and picks up from there.
+    CHAT_MESSAGES_PER_PLATE: int = 8
+    # Surprise jara: now and then a plate that is not the jara plate gets a free extra too.
+    # Off until the vendor turns it on; about one plate in SURPRISE_JARA_ONE_IN.
+    SURPRISE_JARA_ENABLED: bool = False
+    SURPRISE_JARA_ONE_IN: int = 15
+    # Today's special, set by the vendor. It shows only on the day it was set (Nigeria time).
+    TODAYS_SPECIAL: str | None = None
+    TODAYS_SPECIAL_DATE: str | None = None  # ISO date, e.g. "2026-10-13"
+
 
 class AppSettings(
     CustomaSettings,

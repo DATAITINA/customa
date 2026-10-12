@@ -55,7 +55,24 @@ export type CountResult = {
   plate_number: number;
   plates_for_jara: number;
   jara: { code: string } | null;
+  // True when the jara came on a plate that is not the jara plate: the vendor's surprise.
+  surprise?: boolean;
   crew?: CrewCountInfo | null;
+};
+
+// What the stand character remembers about this customer (only they see it, and can clear it).
+export type ChatMemory = { favourite_item: string | null; last_item: string | null; follow_up: string | null };
+
+// This visit's chat: one short chat per counted plate. `opener` is the character's first line;
+// when `open` is false the chat opens again on the next plate (seconds_left away).
+export type ChatState = {
+  open: boolean;
+  messages_left: number;
+  opener: string | null;
+  visit_id: number | null;
+  seconds_left: number;
+  memory: ChatMemory;
+  special: string | null;
 };
 
 export type Dashboard = {
@@ -73,6 +90,10 @@ export type Dashboard = {
   open_jara: { code: string; name: string; at: string }[];
   recent_questions: { id: number; who: string; question: string; at: string }[];
 };
+
+// Customer delights, vendor side: surprise jara (about one plate in surprise_one_in) and
+// today's special (null when none is set for today).
+export type Delights = { surprise_enabled: boolean; surprise_one_in: number; special: string | null };
 
 export type StandSummary = { name: string; slug: string; description: string; character: Character | null };
 
@@ -101,13 +122,17 @@ export const api = {
   rate: (slug: string, visitId: number, stars: number) =>
     apiClient('POST', `/public/${slug}/ratings`, { visit_id: visitId, stars }, customerHeaders(slug)),
   deleteMe: (slug: string) => apiClient('DELETE', `/public/${slug}/me`, null, customerHeaders(slug)),
+  chatState: (slug: string) => apiClient<ChatState>('GET', `/public/${slug}/chat`, null, customerHeaders(slug)),
+  // reply is null when this visit's chat is already closed.
   chat: (slug: string, message: string, history: { role: string; content: string }[]) =>
-    apiClient<{ reply: string; source: string }>(
+    apiClient<{ reply: string | null; source: string | null; chat: ChatState }>(
       'POST',
       `/public/${slug}/chat`,
       { message, history },
       customerHeaders(slug),
     ),
+  forgetChatMemory: (slug: string) =>
+    apiClient<{ memory: ChatMemory }>('DELETE', `/public/${slug}/chat/memory`, null, customerHeaders(slug)),
 
   myStands: () => apiClient<StandSummary[]>('GET', '/stands/mine'),
   createStand: (body: { name: string; description: string; character: Partial<Character> & { name: string } }) =>
@@ -119,6 +144,10 @@ export const api = {
     apiClient<{ last_plates: LastPlates }>('POST', `/stands/${slug}/last-plates`, { plates_left, minutes }),
   updateCharacter: (slug: string, body: Partial<Character>) =>
     apiClient<StandSummary>('PUT', `/stands/${slug}/character`, body),
+  delights: (slug: string) => apiClient<Delights>('GET', `/stands/${slug}/delights`),
+  setSurprise: (slug: string, enabled: boolean) =>
+    apiClient<Delights>('PUT', `/stands/${slug}/delights/surprise`, { enabled }),
+  setSpecial: (slug: string, text: string) => apiClient<Delights>('PUT', `/stands/${slug}/delights/special`, { text }),
   suggestCharacter: (description: string) =>
     apiClient<Partial<Character> & { source: string }>('POST', '/stands/suggest-character', { description }),
 };

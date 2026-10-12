@@ -1,8 +1,9 @@
 """Saved chats with the stand character, stored with msflib-conversation.
 
-Each customer gets one private conversation per stand. The customer posts as a
-"user" member and the character posts as an "agent" member, so the vendor can
-read what customers ask. Logging never breaks the chat: failures are logged.
+Each customer gets one conversation per stand. The customer posts as a "user" member and the
+character posts as an "agent" member. Only food questions are saved here (the public chat
+route checks is_food_question), because the vendor reads them on the dashboard; the rest of
+the chat stays private. Logging never breaks the chat: failures are logged.
 """
 
 import logging
@@ -15,7 +16,9 @@ from msflib.conversation.models import Conversation, ConversationCreate, Message
 from msflib.conversation.services import AccessService, ChannelService, MembershipService, MessagingService
 from sqlmodel import Session, select
 
+from ..actions import character_action
 from ..models import Customer, Workspace
+from .character_chat import is_food_question
 
 logger = logging.getLogger("customa.chat")
 AGENT_ID = "stand-character"
@@ -76,7 +79,12 @@ def record_turn(session: Session, *, workspace: Workspace, customer: Customer, q
 
 
 def recent_questions(session: Session, *, workspace: Workspace, limit: int = 10) -> list[dict[str, Any]]:
-    """The latest questions customers asked at this stand, for the dashboard."""
+    """The latest food questions customers asked at this stand, for the dashboard.
+
+    Only food questions are saved now (public chat route), and older saved messages are
+    filtered again here, so a customer's private chat never reaches the vendor.
+    """
+    character = character_action.get_for_stand(session, workspace_id=workspace.id)
     rows = session.exec(
         select(Message, Conversation)
         .join(Conversation, Conversation.id == Message.conversation_id)
@@ -87,12 +95,13 @@ def recent_questions(session: Session, *, workspace: Workspace, limit: int = 10)
             Message.deleted_at.is_(None),
         )
         .order_by(Message.id.desc())
-        .limit(limit)
+        .limit(limit * 5)
     ).all()
     return [
         {"id": m.id, "who": (c.name or "").replace("Chat with ", ""), "question": m.content, "at": m.created_at}
         for m, c in rows
-    ]
+        if character is not None and is_food_question(m.content or "", character)
+    ][:limit]
 
 
 def forget_customer(session: Session, *, workspace: Workspace, customer: Customer) -> None:

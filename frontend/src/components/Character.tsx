@@ -181,7 +181,8 @@ export function Character({
   const stroke = { stroke: '#141414', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   return (
-    <svg width={size} height={Math.round(size * 1.2)} viewBox="0 0 200 240" role="img" aria-label={`${bodyKey} character`}>
+    // overflow visible: when the character bobs or jumps, its hat may rise above the frame.
+    <svg width={size} height={Math.round(size * 1.2)} viewBox="0 0 200 240" role="img" aria-label={`${bodyKey} character`} style={{ overflow: 'visible' }}>
       <ellipse cx="100" cy="226" rx={shadowRx} ry="6" fill="#141414" opacity="0.08" />
       <g transform={`translate(0 ${lift})`}>
         <g>

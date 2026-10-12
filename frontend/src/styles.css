@@ -295,3 +295,27 @@ tr.fresh td { background: var(--blush); }
 .switch[aria-checked='true'] .switch-track { background: #1E7B34; }
 .switch[aria-checked='true'] .switch-track::after { transform: translateX(22px); }
 .switch:disabled { opacity: 1; }
+
+/* Vendor sign-in: Sign in | Create account toggle. */
+.auth-tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px;
+  background: var(--stone); border-radius: 999px;
+}
+.auth-tabs button {
+  height: 44px; border: none; border-radius: 999px; background: transparent; color: var(--muted);
+  font-size: 15px; font-weight: 800; transition: background 0.15s ease, color 0.15s ease;
+}
+.auth-tabs button[aria-selected='true'] { background: var(--ink); color: var(--paper); }
+.auth-tabs button:not([aria-selected='true']):hover { color: var(--ink); }
+
+/* Dashboard: add another stand. */
+.add-stand {
+  display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; height: 64px;
+  border: 2px dashed var(--ink); border-radius: var(--radius-card); background: var(--paper); color: var(--ink);
+  font-size: 16px; font-weight: 800; transition: background 0.15s ease;
+}
+.add-stand:hover { background: var(--stone); }
+.add-stand-plus {
+  width: 28px; height: 28px; border-radius: 999px; background: var(--ink); color: var(--paper);
+  display: inline-flex; align-items: center; justify-content: center;
+}

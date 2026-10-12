@@ -70,6 +70,14 @@ function SignIn() {
   return (
     <div style={{ maxWidth: 420, margin: '24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Character body="pepper" color="pepper" accessory="chef" expression="happy" pose="wave" size={150} />
+      <div className="auth-tabs" role="tablist" aria-label="Sign in or create an account">
+        {(['login', 'register'] as const).map((m) => (
+          <button key={m} type="button" role="tab" aria-selected={mode === m}
+            onClick={() => { setMode(m); setError(null); }}>
+            {m === 'login' ? 'Sign in' : 'Create account'}
+          </button>
+        ))}
+      </div>
       <h1 className="display" style={{ fontSize: 40 }}>{mode === 'login' ? 'VENDOR SIGN IN' : 'START YOUR STAND'}</h1>
       <form
         className="stack"
@@ -96,10 +104,8 @@ function SignIn() {
         <button className="btn" type="submit" disabled={loading.login || loading.register}>
           {mode === 'login' ? 'Sign in' : 'Create account'}
         </button>
+        {mode === 'register' && <span className="note" style={{ textAlign: 'center' }}>Free to start. You set up your stand in about 5 minutes.</span>}
       </form>
-      <button className="link-btn" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
-        {mode === 'login' ? 'New vendor? Create an account' : 'Have an account? Sign in'}
-      </button>
     </div>
   );
 }
@@ -349,7 +355,12 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
       {/* Return-visit features sit below the daily essentials (plates, jara to give out). */}
       <VendorAjoPanel slug={slug} />
       <VendorCrewPanel slug={slug} />
-      <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={onNewStand}>Add another stand</button>
+      <button type="button" className="add-stand" onClick={onNewStand}>
+        <span className="add-stand-plus" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+        </span>
+        Add another stand
+      </button>
     </div>
   );
 }

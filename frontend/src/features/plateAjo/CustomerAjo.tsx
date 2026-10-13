@@ -53,7 +53,7 @@ export function AjoCard({ slug, stand, onPlateCounted }: { slug: string; stand: 
   const active = data.bundles.filter((b) => b.status === 'active' && b.plates_left > 0).reverse(); // oldest first
   if (!data.available && !pending && active.length === 0) return null;
 
-  const vendor = stand.stand.name.replace(' (Demo)', '');
+  const vendor = stand.stand.name;
   const latest = data.bundles[0];
   const ended = latest && (latest.status === 'rejected' || latest.status === 'closed') ? latest : null;
 

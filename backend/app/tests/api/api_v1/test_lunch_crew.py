@@ -1,7 +1,7 @@
 """Lunch Crew through the real API: friends share one card; every 6th crew plate's jara goes to
 the next member in join order (like ajo). Customers not in a crew count exactly as before.
 
-Uses a normal stand with the default 6-hour window (not the 30-second demo stand).
+Uses a normal stand with the default 6-hour window.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -39,7 +39,7 @@ def stand(session: Session):
         character=CharacterCreate(name="Pot"),
         slug=SLUG,
     )
-    # Outside a request the owner-membership hook does not run (see app/seed/demo.py).
+    # Outside a request the owner-membership hook does not run .
     user_action.create_membership(
         session, account_id=owner.id, workspace_id=workspace.id, owner_id=owner.id
     )

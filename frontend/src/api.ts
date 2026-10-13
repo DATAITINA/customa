@@ -1,6 +1,7 @@
 // All calls to the Customa backend go through @msflib/core's configured API
 // client: one place for the base URL, the bearer token and error handling.
 import { configuredApiClient, storage } from '@msflib/core';
+import { API_BASE } from './application';
 
 export type Character = {
   name: string;
@@ -46,8 +47,10 @@ export type StandPublic = {
   window_seconds: number;
   last_plates: LastPlates;
   customer: CustomerState | null;
-  // Only on the demo stand (shown to vendors without a printed QR): its public scan code.
-  demo_scan?: string | null;
+  // The stand's photo, a path under the API (see photoUrl), or null.
+  photo?: string | null;
+  // Which optional cards this stand shows, so the page skips asking switched-off features.
+  features?: { plate_ajo: boolean; lunch_crew: boolean; alerts: boolean };
 };
 
 export type CountResult = {
@@ -99,7 +102,10 @@ export type Dashboard = {
 // today's special (null when none is set for today).
 export type Delights = { surprise_enabled: boolean; surprise_one_in: number; special: string | null };
 
-export type StandSummary = { name: string; slug: string; description: string; character: Character | null };
+export type StandSummary = { name: string; slug: string; description: string; character: Character | null; photo?: string | null };
+
+/** Full URL of an API path such as a stand photo ("/public/x/photo?v=2"). */
+export const photoUrl = (path: string) => `${API_BASE}${path}`;
 
 // Customer and stand routes are not workspace-scoped on the client: the stand
 // slug is already in the path.
@@ -124,15 +130,12 @@ const scanName = (slug: string) => `customa:scan:${slug}`;
 type ScanState = { code: string; at: number; counted: boolean };
 const memoryScan = new Map<string, ScanState>();
 
-/** Demo stand only: act as if the customer scanned the QR code (its scan code is public). */
-export function pretendScan(slug: string, code: string) {
-  const state = { code, at: Date.now(), counted: false };
-  memoryScan.set(slug, state);
-  try { sessionStorage.setItem(scanName(slug), JSON.stringify(state)); } catch { /* kept in memory */ }
-}
-
 export function captureScan(slug: string) {
   const params = new URLSearchParams(window.location.search);
+  // Opened from the Home Screen app (start URL from /m/{slug}): on iPhone that app has its own
+  // storage, so the customer's key comes with the start URL. Keep it, never replace one.
+  const installKey = params.get('k');
+  if (installKey && !getCustomerKey(slug)) setCustomerKey(slug, installKey);
   const code = params.get('s');
   if (code) {
     try {
@@ -142,9 +145,8 @@ export function captureScan(slug: string) {
       memoryScan.set(slug, { code, at: Date.now(), counted: false });
     }
   }
-  if (params.has('s') || params.has('src')) {
-    params.delete('s');
-    params.delete('src');
+  if (params.has('s') || params.has('src') || params.has('k') || params.has('app')) {
+    for (const p of ['s', 'src', 'k', 'app']) params.delete(p);
     const qs = params.toString();
     window.history.replaceState(window.history.state, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
   }
@@ -169,6 +171,15 @@ export function markScanCounted(slug: string) {
   const next = { ...state, counted: true };
   memoryScan.set(slug, next);
   try { sessionStorage.setItem(scanName(slug), JSON.stringify(next)); } catch { /* kept in memory */ }
+}
+
+/** "Add to Home Screen" on a stand page installs that stand, with this customer's card
+ * (frontend vercel.json rewrites /m/{slug} to the API's manifest for the stand). */
+export function setStandManifest(slug: string, key: string | null) {
+  const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+  if (!link) return;
+  const href = `/m/${slug}${key ? `?k=${encodeURIComponent(key)}` : ''}`;
+  if (link.getAttribute('href') !== href) link.setAttribute('href', href);
 }
 
 /** Error thrown by the API client for a non-2xx response. */
@@ -196,6 +207,9 @@ export const api = {
   myStands: () => apiClient<StandSummary[]>('GET', '/stands/mine'),
   createStand: (body: { name: string; description: string; character: Partial<Character> & { name: string } }) =>
     apiClient<StandSummary>('POST', '/stands', body),
+  // The stand's photo: a data URL from shrinkPhoto (null removes it).
+  setPhoto: (slug: string, dataUrl: string) => apiClient<StandSummary>('PUT', `/stands/${slug}/photo`, { data_url: dataUrl }),
+  removePhoto: (slug: string) => apiClient<StandSummary>('DELETE', `/stands/${slug}/photo`),
   dashboard: (slug: string) => apiClient<Dashboard>('GET', `/stands/${slug}/dashboard`),
   redeemJara: (slug: string, code: string) =>
     apiClient<{ code: string; redeemed: boolean }>('POST', `/stands/${slug}/jara/${encodeURIComponent(code)}/redeem`),

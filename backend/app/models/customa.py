@@ -16,6 +16,11 @@ class CharacterBody(BaseEnum):
     cup = "cup"
     pot = "pot"
     blob = "blob"
+    # Animal friends (migration scripts/migrations/2026-10-14_animal_characters.sql).
+    panda = "panda"
+    chick = "chick"
+    bunny = "bunny"
+    cat = "cat"
 
 
 # --- Character: the stand's friendly face (one per stand) -------------------

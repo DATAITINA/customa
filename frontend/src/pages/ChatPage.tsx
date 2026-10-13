@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Logo } from '../components/Logo';
 import { api, type ApiError, type ChatState, type StandPublic } from '../api';
 import { Character } from '../components/Character';
+import { CharacterLoader } from '../components/Loading';
 import { Link } from '../App';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
@@ -98,7 +99,7 @@ export function ChatPage({ slug }: { slug: string }) {
 
   const ch = stand?.character;
   const first = ch?.name.split(' ')[0] ?? 'Bisi';
-  const standName = stand?.stand.name.replace(' (Demo)', '') ?? 'The vendor';
+  const standName = stand?.stand.name ?? 'The vendor';
   const quick = ['What should I eat today?', 'Any special today?', 'Tell me a joke 😄', 'How do I get jara?'];
   const mem = chat?.memory;
   const remembered = mem
@@ -117,14 +118,18 @@ export function ChatPage({ slug }: { slug: string }) {
         <span style={{ fontWeight: 800 }}>Talk to {first}</span>
         <Logo size={22} />
       </header>
-      <div style={{ display: 'flex', justifyContent: 'center', background: 'var(--blush)', margin: '0 12px', borderRadius: 28 }}>
-        <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression={closed ? 'wink' : thinking ? 'proud' : 'happy'} pose={closed || !thinking ? 'wave' : 'idle'} size={110} />
+      {/* The character glows softly while it thinks, like a voice assistant's orb. */}
+      <div className={`chat-stage${thinking ? ' thinking' : ''}`}>
+        <span className="chat-orb" aria-hidden="true" />
+        <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression={closed ? 'wink' : thinking ? 'proud' : 'happy'} pose={closed || !thinking ? 'wave' : 'idle'} size={110} react follow />
       </div>
       <p className="chat-private">
         <LockIcon /> Private chat. {standName} only sees questions about the food.
       </p>
 
-      {noPlate ? (
+      {!chat && !noPlate && !loadError ? (
+        <CharacterLoader kind="chat" character={ch} size={70} />
+      ) : noPlate ? (
         <div className="stack">
           <div className="card-outline">
             <span style={{ fontSize: 17, fontWeight: 800 }}>Count a plate first, then we can talk! 🍛</span>
@@ -140,7 +145,11 @@ export function ChatPage({ slug }: { slug: string }) {
             {msgs.map((m, i) => (
               <div key={i} className={`msg ${m.role === 'user' ? 'msg-me' : 'msg-bisi'}`}>{m.content}</div>
             ))}
-            {thinking && <div className="msg msg-bisi" aria-label={`${first} is typing`}>…</div>}
+            {thinking && (
+              <div className="msg msg-bisi typing" role="status" aria-label={`${first} is typing`}>
+                <i /><i /><i />
+              </div>
+            )}
             {slow && <p className="note" style={{ margin: 0 }}>{first} is a bit slow right now. Tap a quick question:</p>}
             <div ref={end} />
           </div>

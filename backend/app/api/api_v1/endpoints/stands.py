@@ -23,7 +23,8 @@ from app.models import (
     Visit,
     Workspace,
 )
-from app.services import alerts
+from app.services import alerts, stand_photo
+from app.services.stand_photo import PhotoError
 from app.services.bisi import suggest_character
 from app.services.chat_log import recent_questions
 from app.services.qr import scan_code
@@ -45,6 +46,7 @@ def stand_view(session: Session, workspace: Workspace) -> dict[str, Any]:
         "slug": workspace.slug,
         "description": workspace.description,
         "character": character.model_dump(exclude={"workspace_id"}) if character else None,
+        "photo": stand_photo.photo_path(session, workspace),
     }
 
 
@@ -98,6 +100,7 @@ def dashboard(
     session: Session = Depends(deps.get_session),
 ) -> dict[str, Any]:
     ws = workspace.id
+    stand_settings = resolve_stand_settings(session, workspace)
     today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
     def count(stmt) -> int:
@@ -136,9 +139,9 @@ def dashboard(
         "stand": stand_view(session, workspace),
         "open_jara": [{"code": j.code, "name": c.first_name or "Guest", "at": j.created_at} for j, c in open_jara],
         "recent_questions": recent_questions(session, workspace=workspace),
-        "last_plates": last_plates(resolve_stand_settings(session, workspace)),
+        "last_plates": last_plates(stand_settings),
         "alert_subscribers": alerts.subscriber_count(session, workspace=workspace),
-        "plates_for_jara": resolve_stand_settings(session, workspace).PLATES_FOR_JARA,
+        "plates_for_jara": stand_settings.PLATES_FOR_JARA,
         "stats": {
             "plates_today": plates_today,
             "customers": customers,
@@ -248,3 +251,33 @@ def make_new_qr(
     set_stand_setting(session, workspace, "QR_VERSION", version)
     session.commit()
     return read_qr(workspace=workspace, _member=_member, session=session)
+
+
+class PhotoRequest(BaseModel):
+    # A data URL (data:image/jpeg;base64,...). The phone shrinks the photo first.
+    data_url: str = Field(min_length=30, max_length=1_300_000)
+
+
+@router.put("/{workspace_slug}/photo")
+def upload_photo(
+    body: PhotoRequest,
+    workspace: Workspace = Depends(deps.get_current_workspace),
+    _member=Depends(deps.get_current_active_member),
+    session: Session = Depends(deps.get_session),
+) -> dict[str, Any]:
+    """Set (or replace) the photo of the stand."""
+    try:
+        stand_photo.save(session, workspace, body.data_url)
+    except PhotoError as exc:
+        raise HTTPException(status_code=400, detail=exc.message)
+    return stand_view(session, workspace)
+
+
+@router.delete("/{workspace_slug}/photo")
+def remove_photo(
+    workspace: Workspace = Depends(deps.get_current_workspace),
+    _member=Depends(deps.get_current_active_member),
+    session: Session = Depends(deps.get_session),
+) -> dict[str, Any]:
+    stand_photo.remove(session, workspace)
+    return stand_view(session, workspace)

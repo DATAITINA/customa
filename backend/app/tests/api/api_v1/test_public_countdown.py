@@ -1,17 +1,17 @@
 """The wait between plates: the stand's window (6 hours) for every customer, however they arrived.
 
-Uses a normal stand with the default 6-hour window (not the 30-second demo stand).
+Uses a normal stand with the default 6-hour window.
 """
 
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.actions import account_action, customer_action, visit_action
 from app.core.config import settings
-from app.models import CharacterCreate, CustomerCreate, Visit, Workspace
+from app.models import CharacterCreate, CustomerCreate, Visit
 from app.services.qr import scan_code
 from app.services.stands import create_stand, resolve_stand_settings
 
@@ -169,14 +169,3 @@ def test_existing_customer_keeps_6_hours(client: TestClient, session: Session, s
     r = scan_again(client, customer.key, source="qr")
     assert r.status_code == 409
     assert r.json()["detail"]["seconds_left"] > SIX_HOURS - 120
-
-
-def test_demo_stand_unchanged(client: TestClient, session: Session) -> None:
-    # The demo stand keeps its own 30-second window so it can be shown to vendors.
-    demo = session.exec(select(Workspace).where(Workspace.slug == "iya-bisi-demo")).one()
-    scan = scan_code(demo, resolve_stand_settings(session, demo))
-    r = client.post(
-        f"{settings.API_V1_STR}/public/iya-bisi-demo/visits", json={"consent": True, "scan": scan}
-    )
-    assert r.status_code == 200
-    assert r.json()["customer"]["window_seconds"] == 30

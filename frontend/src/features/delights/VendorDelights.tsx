@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type Delights } from '../../api';
+import { PanelSkeleton } from '../../components/Loading';
 
 // Customer delights, vendor side: today's special (the character announces it in the chat)
 // and surprise jara (now and then a plate that is not the jara plate gets a free extra too).
@@ -14,7 +15,7 @@ export function VendorDelightsPanel({ slug }: { slug: string }) {
 
   useEffect(() => { setSpecial(q.data?.special ?? ''); }, [q.data?.special]);
 
-  if (q.isLoading) return <p className="note">Loading…</p>;
+  if (q.isLoading) return <PanelSkeleton label="today's special" />;
   if (q.isError || !q.data) {
     return (
       <div className="card-outline">

@@ -123,7 +123,7 @@ def last_plates_message(
     """The notification, in the character's voice. The phone draws it (frontend public/sw.js)."""
     name = character.name if character else workspace.name
     first = name.split(" ")[0]
-    stand = workspace.name.replace(" (Demo)", "")
+    stand = workspace.name
     plates = f"{plates_left} plate{'' if plates_left == 1 else 's'}"
     return {
         "type": "last_plates",

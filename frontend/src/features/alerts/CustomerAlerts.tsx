@@ -15,11 +15,13 @@ export function AlertsCard({ slug, stand }: { slug: string; stand: StandPublic }
   const support = pushSupport();
   const ch = stand.character;
   const first = ch?.name.split(' ')[0] ?? 'We';
-  const standName = stand.stand.name.replace(' (Demo)', '');
+  const standName = stand.stand.name;
 
+  const offered = stand.features?.alerts ?? true;
   useEffect(() => {
+    if (!offered) return;
     alertsApi.info(slug).then(setInfo).catch(() => setInfo(null));
-  }, [slug]);
+  }, [slug, offered]);
 
   // Alerts on: redraw the character's picture now and then, in case the vendor changed it.
   useEffect(() => {

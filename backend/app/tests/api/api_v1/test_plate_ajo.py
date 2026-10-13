@@ -43,7 +43,7 @@ def stand(session: Session):
         character=CharacterCreate(name="Pot", menu=MENU),
         slug=SLUG,
     )
-    # Outside a request the owner-membership hook does not fire (see app/seed/demo.py).
+    # Outside a request the owner-membership hook does not fire .
     user_action.create_membership(
         session, account_id=owner.id, workspace_id=workspace.id, owner_id=owner.id
     )

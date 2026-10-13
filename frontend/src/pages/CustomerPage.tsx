@@ -7,7 +7,8 @@ import {
   getCustomerKey,
   getScan,
   markScanCounted,
-  pretendScan,
+  photoUrl,
+  setStandManifest,
   setCustomerKey,
   type ApiError,
   type CountResult,
@@ -20,6 +21,8 @@ import { LastPlatesBanner } from '../components/LastPlates';
 import { AjoCard } from '../features/plateAjo/CustomerAjo';
 import { CrewCard } from '../features/lunchCrew/CustomerCrew';
 import { AlertsCard } from '../features/alerts/CustomerAlerts';
+import { CharacterLoader } from '../components/Loading';
+import { DeleteMyData } from '../components/DeleteMyData';
 
 type View =
   | { kind: 'loading' }
@@ -70,6 +73,16 @@ export function CustomerPage({ slug }: { slug: string }) {
     setMeVersion((v) => v + 1);
   };
   const started = useRef(false);
+  // A playful line after the customer taps the character; it fades back to the real message.
+  const [tapLine, setTapLine] = useState<string | null>(null);
+  useEffect(() => {
+    if (!tapLine) return;
+    const t = setTimeout(() => setTapLine(null), 2600);
+    return () => clearTimeout(t);
+  }, [tapLine]);
+  // "Add to Home Screen" installs this stand with this customer's card (iPhone keeps a
+  // Home Screen app's storage apart from Safari's).
+  useEffect(() => { setStandManifest(slug, me?.key ?? getCustomerKey(slug)); }, [slug, me?.key]);
 
   // A plate counts only with the scan code from the stand's QR code (read in the effect below).
   const handleCount = async (body: { first_name?: string; consent: boolean }) => {
@@ -146,7 +159,7 @@ export function CustomerPage({ slug }: { slug: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
-  if (view.kind === 'loading') return <Shell stand={stand}><p className="note" style={{ padding: 20 }}>Loading…</p></Shell>;
+  if (view.kind === 'loading') return <Shell stand={stand}><CharacterLoader kind="card" character={stand?.character} /></Shell>;
   if (view.kind === 'error' || !stand) {
     return (
       <Shell stand={stand}>
@@ -179,7 +192,11 @@ export function CustomerPage({ slug }: { slug: string }) {
       <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
     </>
   );
-  const charProps = { body: ch?.body, color: ch?.color, accessory: ch?.accessory };
+  // The hero character reacts to a tap with a jump and a line, and its eyes follow the finger.
+  const charProps = {
+    body: ch?.body, color: ch?.color, accessory: ch?.accessory, react: true, follow: true,
+    onTap: () => setTapLine(TAP_LINES[Math.floor(Math.random() * TAP_LINES.length)]),
+  };
   const charName = ch?.name ?? 'your host';
 
   if (view.kind === 'jara') return <JaraScreen stand={stand} result={view.result} onDone={() => setView({ kind: 'counted', result: { ...view.result, jara: null } })} />;
@@ -187,7 +204,7 @@ export function CustomerPage({ slug }: { slug: string }) {
   if (view.kind === 'deleted') {
     return (
       <Shell stand={stand}>
-        <Hero bubble={`Done. I don forget you. Come back anytime!`}>
+        <Hero tapLine={tapLine} bubble={`Done. I don forget you. Come back anytime!`}>
           <Character {...charProps} expression="happy" pose="idle" size={170} />
         </Hero>
         <div className="stack">
@@ -201,7 +218,7 @@ export function CustomerPage({ slug }: { slug: string }) {
   if (view.kind === 'welcome') {
     return (
       <Shell stand={stand}>
-        <Hero bubble={`${ch?.greeting ?? 'Welcome!'} Wetin be your name?`}>
+        <Hero tapLine={tapLine} bubble={`${ch?.greeting ?? 'Welcome!'} Wetin be your name?`}>
           <Character {...charProps} expression="excited" pose="wave" size={180} />
         </Hero>
         <WelcomeForm onSubmit={handleCount} />
@@ -218,28 +235,20 @@ export function CustomerPage({ slug }: { slug: string }) {
         : `${ch?.greeting ?? 'Welcome!'} Scan the QR code at the stand to count your first plate.`;
     return (
       <Shell stand={stand}>
-        <Hero bubble={bubble}>
+        <Hero tapLine={tapLine} bubble={bubble}>
           <Character {...charProps} expression="happy" pose="wave" size={170} />
         </Hero>
         <div className="stack">
           <ScanHint charName={charName} />
-          {stand.demo_scan && (
-            // Demo stand only: show the whole flow without a printed QR code.
-            <button className="btn" onClick={() => { pretendScan(slug, stand.demo_scan!); setView({ kind: 'loading' }); handleCount({ consent: true }); }}>
-              📷 Pretend I scanned the QR (demo)
-            </button>
-          )}
           {me && (
             <>
-              <PlateCard plate={me.plate_number} total={total} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} isDemo={stand.window_seconds < 120} />
+              <PlateCard plate={me.plate_number} total={total} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} />
               {featureCards}
-              <Link to={`/s/${slug}/chat`} className="btn btn-outline">
-                <ChatIcon /> Talk to {charName.split(' ')[0]}
-              </Link>
+              <TalkAndPlay slug={slug} first={charName.split(' ')[0]} outline />
             </>
           )}
           <Menu items={ch?.menu ?? []} />
-          {me && <DeleteMine slug={slug} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />}
+          {me && <DeleteMyData slug={slug} standName={stand.stand.name} plates={me?.own_plate_number ?? (me?.plate_number ?? 0) % total} total={total} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />}
         </div>
       </Shell>
     );
@@ -260,7 +269,7 @@ export function CustomerPage({ slug }: { slug: string }) {
           extras={featureCards}
         />
         <div className="stack">
-          <DeleteMine slug={slug} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+          <DeleteMyData slug={slug} standName={stand.stand.name} plates={me?.own_plate_number ?? (me?.plate_number ?? 0) % total} total={total} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
         </div>
       </Shell>
     );
@@ -298,42 +307,51 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   return (
     <Shell stand={stand}>
-      <Hero bubble={bubble} counted>
+      <Hero tapLine={tapLine} bubble={bubble} counted>
         <Character {...charProps} expression="excited" pose={r.returning ? 'wave' : 'hop'} size={180} />
       </Hero>
       <div className="stack">
-        <PlateCard plate={cardPlate} total={total} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} isDemo={stand.window_seconds < 120} />
+        <PlateCard plate={cardPlate} total={total} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} />
         {featureCards}
-        <Link to={`/s/${slug}/chat`} className="btn">
-          <ChatIcon /> Talk to {charName.split(' ')[0]}
-        </Link>
+        <TalkAndPlay slug={slug} first={charName.split(' ')[0]} />
         <Rate slug={slug} visitId={r.visit_id} />
         <Menu items={ch?.menu ?? []} />
         <Goodbye name={name} plate={r.plate_number} />
-        <DeleteMine slug={slug} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+        <DeleteMyData slug={slug} standName={stand.stand.name} plates={me?.own_plate_number ?? (me?.plate_number ?? 0) % total} total={total} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
       </div>
     </Shell>
   );
 }
 
 function Shell({ stand, children }: { stand: StandPublic | null; children: React.ReactNode }) {
-  const isDemo = stand?.stand.name.includes('(Demo)');
   return (
     <main className="phone">
       <header className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <span className="stand-name">{stand?.stand.name.replace(' (Demo)', '') ?? ''}</span>
-          {isDemo && <span className="badge">DEMO</span>}
+          <span className="stand-name">{stand?.stand.name ?? ''}</span>
         </div>
         <Logo size={22} />
       </header>
+      {stand?.photo && (
+        <div className="stand-cover">
+          <img src={photoUrl(stand.photo)} alt={`${stand.stand.name}, the food stand`} loading="lazy" decoding="async" />
+        </div>
+      )}
       {stand?.last_plates && <div style={{ padding: '0 12px 10px' }}><LastPlatesBanner lp={stand.last_plates} /></div>}
       {children}
     </main>
   );
 }
 
-function Hero({ bubble, counted, children }: { bubble: string; counted?: boolean; children: React.ReactNode }) {
+const TAP_LINES = [
+  'Hehe, that tickles! 😆',
+  'I dey here o! 👋🏾',
+  'Abeg no press me too much 😂',
+  'You don chop today? 🍲',
+  'Hi again! You fine die 😄',
+];
+
+function Hero({ bubble, tapLine, counted, children }: { bubble: string; tapLine?: string | null; counted?: boolean; children: React.ReactNode }) {
   return (
     <section className="hero">
       {counted && (
@@ -341,14 +359,14 @@ function Hero({ bubble, counted, children }: { bubble: string; counted?: boolean
           <Check /> Visit counted
         </div>
       )}
-      <div className="bubble" style={counted ? { marginTop: 18 } : undefined} aria-live="polite">{bubble}</div>
+      <div className="bubble" key={tapLine ?? 'main'} style={counted ? { marginTop: 18 } : undefined} aria-live="polite">{tapLine ?? bubble}</div>
       <div className="hero-row">{children}</div>
     </section>
   );
 }
 
-function PlateCard({ plate, total, windowSeconds, isDemo, crewName }: { plate: number; total: number; windowSeconds: number; isDemo: boolean; crewName?: string | null }) {
-  const windowText = windowSeconds < 120 ? `${windowSeconds} seconds${isDemo ? ' (demo stand)' : ''}` : `${Math.round(windowSeconds / 3600)} hours`;
+function PlateCard({ plate, total, windowSeconds, crewName }: { plate: number; total: number; windowSeconds: number; crewName?: string | null }) {
+  const windowText = windowSeconds < 120 ? `${windowSeconds} seconds` : `${Math.round(windowSeconds / 3600)} hours`;
   return (
     <div className="card">
       <div className="row">
@@ -427,7 +445,7 @@ function TooSoon({
   return (
     <>
       <Hero bubble={`You don collect this plate already${name ? ', ' + name : ''}! I dey count the next one.`}>
-        <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={170} />
+        <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={170} react follow />
         <div className="timer" style={{ background: `conic-gradient(#141414 0 ${pct}%, #FFFFFF ${pct}% 100%)` }} aria-label={`Next plate in ${label}`}>
           <div className="timer-inner">
             {/* One line always: hours ("5h 59m") get a smaller size so they fit the ring. */}
@@ -437,13 +455,12 @@ function TooSoon({
         </div>
       </Hero>
       <div className="stack">
-        <PlateCard plate={plate} total={total} crewName={crewName} windowSeconds={windowSeconds} isDemo={stand.window_seconds < 120} />
+        <PlateCard plate={plate} total={total} crewName={crewName} windowSeconds={windowSeconds} />
         {extras}
         <div className="card-outline">
           <span className="eyebrow">WHY THE WAIT?</span>
           <span style={{ fontSize: 15, lineHeight: 1.45, fontWeight: 600 }}>
             One plate per visit keeps the jara fair for everyone.
-            {stand.window_seconds < 120 ? ' On this demo stand a visit is 30 seconds. On real stands it is 6 hours.' : ''}
           </span>
         </div>
         {seconds > 0 ? (
@@ -454,9 +471,20 @@ function TooSoon({
         ) : (
           <ScanHint charName={ch?.name ?? 'your host'} done />
         )}
-        <Link to={`/s/${stand.stand.slug}/chat`} className="btn btn-outline"><ChatIcon /> Talk to {ch?.name.split(' ')[0] ?? 'us'} while you wait</Link>
+        <TalkAndPlay slug={stand.stand.slug} first={ch?.name.split(' ')[0] ?? 'us'} outline />
       </div>
     </>
+  );
+}
+
+// The two ways to spend time with the character: chat (AI, limited per plate) and play
+// (games run on the phone, no AI).
+function TalkAndPlay({ slug, first, outline }: { slug: string; first: string; outline?: boolean }) {
+  return (
+    <div className="duo">
+      <Link to={`/s/${slug}/chat`} className={outline ? 'btn btn-outline' : 'btn'}><ChatIcon /> Talk to {first}</Link>
+      <Link to={`/s/${slug}/play`} className="btn btn-outline"><span aria-hidden="true">🎮</span> Play</Link>
+    </div>
   );
 }
 
@@ -545,43 +573,6 @@ function Menu({ items }: { items: { item: string; price: number }[] }) {
   );
 }
 
-function DeleteMine({ slug, onDeleted }: { slug: string; onDeleted: () => void }) {
-  const [confirm, setConfirm] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const remove = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await api.deleteMe(slug);
-      onDeleted();
-    } catch (err) {
-      // e.g. 409: prepaid Plate Ajo plates are still left at this stand.
-      const e = err as ApiError;
-      setError(typeof e.raw?.detail === 'string' ? e.raw.detail : e.message ?? 'Could not delete your data. Try again.');
-    } finally {
-      setBusy(false);
-    }
-  };
-  if (!confirm) {
-    return (
-      <div className="links">
-        <button className="link-btn" onClick={() => setConfirm(true)}>Delete my data</button>
-      </div>
-    );
-  }
-  return (
-    <div className="card-outline">
-      <span style={{ fontWeight: 800 }}>Delete your name, plates, jara and ratings at this stand?</span>
-      {error && <p className="error" role="alert" style={{ margin: 0 }}>{error}</p>}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn" disabled={busy} onClick={remove}>{busy ? 'Deleting…' : 'Yes, delete'}</button>
-        <button className="btn btn-outline" onClick={() => setConfirm(false)}>Keep it</button>
-      </div>
-    </div>
-  );
-}
-
 function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: CountResult; onDone: () => void }) {
   const ch = stand.character;
   const colors = Object.values(PRESETS).map((p) => p.fill);
@@ -604,7 +595,7 @@ function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: Cou
         }} />
       ))}
       <header className="topbar" style={{ position: 'relative' }}>
-        <span className="stand-name">{stand.stand.name.replace(' (Demo)', '')}</span>
+        <span className="stand-name">{stand.stand.name}</span>
         <Logo size={22} />
       </header>
       <div style={{ position: 'relative', paddingTop: 6 }}>

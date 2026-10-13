@@ -13,8 +13,7 @@ class CustomaSettings(ModuleSettingsBase):
     """Customa's own settings namespace.
 
     These are tiered: the defaults below apply to every stand, and a stand
-    (workspace) can override them through msflib-workspace-config. The demo
-    stand overrides PLATE_WINDOW_SECONDS to 30 so a judge can scan twice on stage.
+    (workspace) can override them through msflib-workspace-config.
     """
 
     namespace: ClassVar[str] = "CUSTOMA"
@@ -71,9 +70,6 @@ class AppSettings(
     # so new accounts must not be dropped into a shared default workspace.
     AUTO_CREATE_DEFAULT_WORKSPACE: bool = False
 
-    # Login for the seeded demo stand (set real values in .env).
-    DEMO_VENDOR_EMAIL: str = "iyabisi@example.com"
-    DEMO_VENDOR_PASSWORD: str = "change-me-demo"
 
     # Web push for leftover-food alerts (generate with scripts/generate_vapid_keys.py and set
     # them in the backend's environment). Without them, alerts are simply not offered.

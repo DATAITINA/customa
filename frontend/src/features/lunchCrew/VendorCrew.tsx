@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { crewApi } from './crewApi';
+import { PanelSkeleton } from '../../components/Loading';
 
 // Lunch Crew, vendor side: turn it on, see crews and whose turn is next.
 export function VendorCrewPanel({ slug }: { slug: string }) {
-  const q = useQuery({ queryKey: ['lunchCrew', slug], queryFn: () => crewApi.vendor(slug), refetchInterval: 15000 });
+  const q = useQuery({ queryKey: ['lunchCrew', slug], queryFn: () => crewApi.vendor(slug), refetchInterval: 30000 });
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (q.isLoading) return <p className="note">Loading Lunch Crew…</p>;
+  if (q.isLoading) return <PanelSkeleton label="Lunch Crew" />;
   if (q.isError || !q.data) {
     return (
       <div className="card-outline">

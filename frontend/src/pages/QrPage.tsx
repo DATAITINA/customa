@@ -5,6 +5,7 @@ import { api, type StandPublic } from '../api';
 import { Character } from '../components/Character';
 import { Link } from '../App';
 import { LastPlatesBanner } from '../components/LastPlates';
+import { Skeleton } from '../components/Loading';
 
 // The sign a vendor puts up (or shows on a screen): scan to be welcomed and count a plate.
 // The code carries the stand's secret scan code (?s=), so only a real scan counts a plate.
@@ -47,11 +48,11 @@ export function QrPage({ slug }: { slug: string }) {
   return (
     <main className="qr-sign">
       <Logo size={36} />
-      <h1 className="display" style={{ fontSize: 46 }}>{stand?.stand.name.replace(' (Demo)', '') ?? ' '}</h1>
+      <h1 className="display" style={{ fontSize: 46 }}>{stand?.stand.name ?? ' '}</h1>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="excited" pose="wave" size={180} />
         <div className="qr-box">
-          {scan ? <QRCodeSVG value={`${url}?s=${scan}`} size={260} level="M" marginSize={1} /> : <div style={{ width: 260, height: 260 }} />}
+          {scan ? <QRCodeSVG value={`${url}?s=${scan}`} size={260} level="M" marginSize={1} /> : <Skeleton h={260} w={260} r={8} />}
         </div>
       </div>
       <LastPlatesBanner lp={stand?.last_plates ?? null} big />

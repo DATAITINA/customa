@@ -122,7 +122,9 @@ def announce(client: TestClient, plates: int = 12) -> dict:
 
 
 def test_not_offered_without_keys(client: TestClient, stand) -> None:
-    assert client.get(f"{BASE}/alerts").json() == {"available": False, "public_key": None}
+    assert client.get(f"{BASE}/alerts").json() == {
+        "available": False, "public_key": None, "sms": False, "sms_terms": None, "texting": None,
+    }
 
 
 def test_turn_on_then_get_the_alert(client: TestClient, session: Session, stand, vapid, push_service) -> None:
@@ -138,7 +140,7 @@ def test_turn_on_then_get_the_alert(client: TestClient, session: Session, stand,
     assert client.get(f"{VENDOR}/dashboard", headers=VENDOR_AUTH).json()["alert_subscribers"] == 1
 
     result = announce(client, 12)
-    assert result["alert"] == {"sent": 1, "skipped": None}
+    assert result["alert"] == {"sent": 1, "texts": 0, "skipped": None}
     call = push_service.calls[0]
     assert call["url"] == FCM
     assert call["headers"]["Urgency"] == "high" and int(call["headers"]["ttl"]) > 0
@@ -155,7 +157,7 @@ def test_one_alert_per_hour(client: TestClient, session: Session, stand, vapid, 
     ada = customer(client, session, stand)
     client.post(f"{BASE}/alerts", json=Phone().subscription(), headers=ada)
     assert announce(client)["alert"]["sent"] == 1
-    assert announce(client, 5)["alert"] == {"sent": 0, "skipped": "recently_alerted"}
+    assert announce(client, 5)["alert"] == {"sent": 0, "texts": 0, "skipped": "recently_alerted"}
     # An hour later the vendor can alert again.
     set_stand_setting(
         session, stand, "LAST_PLATES_ALERTED_AT",

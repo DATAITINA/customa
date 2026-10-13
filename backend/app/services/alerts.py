@@ -1,5 +1,5 @@
-"""Leftover-food alerts: a push notification to customers' phones when the vendor announces
-"last plates", written in the stand character's voice.
+"""Leftover-food alerts: a push notification (and a text message, services/sms_alerts.py) to
+customers' phones when the vendor announces "last plates", written in the stand character's voice.
 
 Web push (VAPID): works in Chrome, Edge, Firefox and Samsung Internet on Android, and on iPhone
 (iOS 16.4+) when Customa is added to the Home Screen. The phone's service worker (frontend
@@ -19,6 +19,7 @@ from sqlmodel import Session, select
 
 from ..core.config import CustomaSettings, settings
 from ..models import Character, Customer, PushSubscription, Workspace
+from . import sms_alerts
 from .character_chat import NIGERIA
 from .stands import set_stand_setting
 
@@ -174,40 +175,58 @@ def send_last_plates(
     until: str,
     now: datetime,
 ) -> dict[str, Any]:
-    """Alert every subscribed phone, at most once per ALERT_GAP_MINUTES per stand.
+    """Alert every subscribed phone (push) and text every number (SMS), at most once per
+    ALERT_GAP_MINUTES per stand.
 
-    Returns {"sent": n, "skipped": reason or None}. Phones that unsubscribed (404/410 from the
-    push service) are removed.
+    Returns {"sent": phones reached, "texts": of which by text, "skipped": reason or None}.
+    Phones that unsubscribed (404/410 from the push service) are removed.
     """
-    if not alerts_available():
-        return {"sent": 0, "skipped": "unavailable"}
+    push_on, sms_on = alerts_available(), sms_alerts.sms_available()
+    if not (push_on or sms_on):
+        return {"sent": 0, "texts": 0, "skipped": "unavailable"}
     last = stand_settings.LAST_PLATES_ALERTED_AT
     if last and now - datetime.fromisoformat(last) < timedelta(minutes=stand_settings.ALERT_GAP_MINUTES):
-        return {"sent": 0, "skipped": "recently_alerted"}
+        return {"sent": 0, "texts": 0, "skipped": "recently_alerted"}
     # Plain values for the sending threads (they never touch the database session).
-    subs = [
-        {"id": s.id, "endpoint": s.endpoint, "p256dh": s.p256dh, "auth": s.auth}
-        for s in session.exec(select(PushSubscription).where(PushSubscription.workspace_id == workspace.id)).all()
-    ]
-    if not subs:
-        return {"sent": 0, "skipped": "no_subscribers"}
+    subs = (
+        [
+            {"id": s.id, "endpoint": s.endpoint, "p256dh": s.p256dh, "auth": s.auth}
+            for s in session.exec(select(PushSubscription).where(PushSubscription.workspace_id == workspace.id)).all()
+        ]
+        if push_on
+        else []
+    )
+    numbers = sms_alerts.numbers(session, workspace=workspace) if sms_on else []
+    if not subs and not numbers:
+        return {"sent": 0, "texts": 0, "skipped": "no_subscribers"}
 
     set_stand_setting(session, workspace, "LAST_PLATES_ALERTED_AT", now.isoformat(timespec="seconds"))
-    message = last_plates_message(workspace=workspace, character=character, plates_left=plates_left, until=until)
-    payload = json.dumps(message)
+    payload = json.dumps(
+        last_plates_message(workspace=workspace, character=character, plates_left=plates_left, until=until)
+    )
     # Drop the alert if a phone is offline until the announcement is over.
     ttl = max(60, int((datetime.fromisoformat(until) - now).total_seconds()))
-    futures = {_pool.submit(_send_one, sub, payload, ttl): sub for sub in subs}
-    done, _ = wait(futures, timeout=SEND_DEADLINE_SECONDS)
+    pushes = {_pool.submit(_send_one, sub, payload, ttl): sub for sub in subs}
+    text = sms_alerts.last_plates_text(
+        workspace=workspace, character=character, plates_left=plates_left, until_label=nigeria_time(until)
+    )
+    texts = [_pool.submit(sms_alerts.send_chunk, chunk, text) for chunk in sms_alerts.chunks(numbers)]
+    done, _ = wait([*pushes, *texts], timeout=SEND_DEADLINE_SECONDS)
     sent = 0
-    for future in done:
+    for future, sub in pushes.items():
+        if future not in done:
+            continue
         status = future.result()
         if status is None:
             sent += 1
         elif status in (404, 410):
-            gone = session.get(PushSubscription, futures[future]["id"])
+            gone = session.get(PushSubscription, sub["id"])
             if gone is not None:
                 session.delete(gone)
+    texted = sum(future.result() for future in texts if future in done)
     session.commit()
-    logger.info("last-plates alert for %s: %s of %s phones", workspace.slug, sent, len(subs))
-    return {"sent": sent, "skipped": None}
+    logger.info(
+        "last-plates alert for %s: %s of %s phones, %s of %s texts",
+        workspace.slug, sent, len(subs), texted, len(numbers),
+    )
+    return {"sent": sent + texted, "texts": texted, "skipped": None}

@@ -13,6 +13,7 @@ import { VendorAjoPanel } from '../features/plateAjo/VendorAjo';
 import { VendorCrewPanel } from '../features/lunchCrew/VendorCrew';
 import { VendorDelightsPanel } from '../features/delights/VendorDelights';
 import { LastPlatesBanner } from '../components/LastPlates';
+import { GoogleButton } from '../features/googleSignIn/GoogleSignIn';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -62,7 +63,7 @@ function VendorTop() {
   );
 }
 
-// --- Sign in / register (MSFLib auth: POST /login, POST /open) -------------
+// --- Sign in / register (MSFLib auth: POST /login, POST /open, or Google) ---
 
 function SignIn() {
   const { login, register, loading } = useAuth();
@@ -110,6 +111,7 @@ function SignIn() {
         </button>
         {mode === 'register' && <span className="note" style={{ textAlign: 'center' }}>Free to start. You set up your stand in about 5 minutes.</span>}
       </form>
+      <GoogleButton />
     </div>
   );
 }

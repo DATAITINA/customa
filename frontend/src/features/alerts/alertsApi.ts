@@ -1,20 +1,30 @@
-// Leftover-food alerts (web push): turn a stand's alerts on or off on this phone.
+// Leftover-food alerts: text messages (any phone) and web push (browsers that support it).
 import { apiClient, customerHeaders } from '../../api';
 
-export type AlertsInfo = { available: boolean; public_key: string | null };
+export type AlertsInfo = {
+  available: boolean; // web push
+  public_key: string | null;
+  sms: boolean; // text messages
+  sms_terms: string | null; // what the customer agrees to
+  texting: string | null; // this customer's number, masked, when texts are on
+};
 
 const pub = (slug: string) => `/public/${slug}/alerts`;
 
 export const alertsApi = {
-  info: (slug: string) => apiClient<AlertsInfo>('GET', pub(slug)),
+  info: (slug: string) => apiClient<AlertsInfo>('GET', pub(slug), null, customerHeaders(slug)),
+  textMe: (slug: string, phone: string) =>
+    apiClient<{ texting: string }>('POST', `${pub(slug)}/sms`, { phone, agree: true }, customerHeaders(slug)),
+  stopTexts: (slug: string) => apiClient<{ texting: null }>('POST', `${pub(slug)}/sms/off`, {}, customerHeaders(slug)),
   turnOn: (slug: string, subscription: PushSubscriptionJSON) =>
     apiClient<{ subscribed: boolean }>('POST', pub(slug), subscription, customerHeaders(slug)),
   turnOff: (slug: string, endpoint: string) =>
     apiClient<{ subscribed: boolean }>('POST', `${pub(slug)}/off`, { endpoint }, customerHeaders(slug)),
 };
 
-// What this phone can do. iPhones get web push only from the Home Screen app (iOS 16.4+).
-export type PushSupport = 'ok' | 'ios-install' | 'unsupported';
+// Whether this browser can get push alerts. iPhone Safari cannot (only a Home Screen app can),
+// so iPhones use text messages instead.
+export type PushSupport = 'ok' | 'unsupported';
 
 export function isIos(): boolean {
   return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -26,7 +36,7 @@ export function isStandalone(): boolean {
 
 export function pushSupport(): PushSupport {
   const hasPush = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-  if (isIos() && !isStandalone()) return 'ios-install';
+  if (isIos() && !isStandalone()) return 'unsupported';
   return hasPush ? 'ok' : 'unsupported';
 }
 

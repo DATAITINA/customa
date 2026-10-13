@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { StandPublic } from '../../api';
+import type { ApiError, StandPublic } from '../../api';
 import { Character } from '../../components/Character';
 import { alertsApi, alertsOnHere, keyBytes, pushSupport, rememberAlerts, type AlertsInfo } from './alertsApi';
 import { drawAlertArt, saveAlertArt } from './characterArt';
@@ -8,7 +8,9 @@ import './alerts.css';
 type Phase = 'idle' | 'busy' | 'on' | 'denied' | 'error';
 
 // "Tell me when food is almost finished": the stand character's leftover-food alerts.
-// Hidden until the server offers alerts and the customer has a card at this stand.
+// Text messages work on every phone (iPhone and Android, no app); push notifications are a free
+// extra in browsers that support them. Hidden until the server offers alerts and the customer
+// has a card at this stand.
 export function AlertsCard({ slug, stand }: { slug: string; stand: StandPublic }) {
   const [info, setInfo] = useState<AlertsInfo | null>(null);
   const [phase, setPhase] = useState<Phase>(() => (alertsOnHere(slug) ? 'on' : 'idle'));
@@ -29,7 +31,8 @@ export function AlertsCard({ slug, stand }: { slug: string; stand: StandPublic }
     drawAlertArt(ch, standName).then((art) => saveAlertArt(slug, art)).catch(() => undefined);
   }, [phase, slug, ch, standName]);
 
-  if (!info?.available || !info.public_key || support === 'unsupported') return null;
+  const pushOffered = !!info?.available && !!info.public_key && support === 'ok';
+  if (!info || (!info.sms && !pushOffered)) return null;
 
   const turnOn = async () => {
     setPhase('busy');
@@ -102,36 +105,103 @@ export function AlertsCard({ slug, stand }: { slug: string; stand: StandPublic }
         </div>
       </div>
 
-      {support === 'ios-install' ? (
-        <div className="alerts-steps">
-          <strong>On iPhone, alerts come from the Customa app on your Home Screen:</strong>
-          <span>1. Tap the Share button <ShareIcon /> below.</span>
-          <span>2. Tap <b>Add to Home Screen</b>.</span>
-          <span>3. Open Customa from your Home Screen and turn alerts on here.</span>
-        </div>
-      ) : phase === 'on' ? (
+      {info.sms && <TextAlerts slug={slug} first={first} terms={info.sms_terms ?? ''} texting={info.texting} />}
+
+      {pushOffered && (phase === 'on' ? (
         <>
-          <span style={{ fontSize: 15, fontWeight: 600 }}>{first} go tell you when food is almost finished. 🔔</span>
-          <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={turnOff}>Turn alerts off</button>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>🔔 {first} go also ping this phone when food is almost finished.</span>
+          <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={turnOff}>Turn phone pings off</button>
         </>
       ) : phase === 'denied' ? (
-        <span className="note">Alerts are blocked on this phone. Allow notifications for this site in your browser settings, then try again.</span>
+        <span className="note">Pings are blocked on this phone. Allow notifications for this site in your browser settings, then try again.</span>
+      ) : info.sms ? (
+        <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} disabled={phase === 'busy'} onClick={turnOn}>
+          {phase === 'busy' ? 'Turning on…' : 'Or get free pings on this phone instead 🔔'}
+        </button>
       ) : (
         <>
           <span style={{ fontSize: 15, fontWeight: 600 }}>Get a ping when {first} has food left before closing. Only then, no spam.</span>
           <button type="button" className="btn" disabled={phase === 'busy'} onClick={turnOn}>
             {phase === 'busy' ? 'Turning on…' : `🔔 Get ${first}'s alerts`}
           </button>
-          {phase === 'error' && <span className="error">Could not turn on alerts. Check your connection and try again.</span>}
         </>
-      )}
+      ))}
+      {pushOffered && phase === 'error' && <span className="error">Could not turn on pings. Check your connection and try again.</span>}
     </div>
   );
 }
 
-const ShareIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-label="Share" style={{ verticalAlign: -3 }}>
-    <path d="M12 3v12M7 8l5-5 5 5" />
-    <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
-  </svg>
-);
+// Text-message alerts: the customer's number and their "I agree" to the terms (shown in full).
+function TextAlerts({ slug, first, terms, texting }: { slug: string; first: string; terms: string; texting: string | null }) {
+  const [number, setNumber] = useState<string | null>(texting);
+  const [phone, setPhone] = useState('');
+  const [agree, setAgree] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const textMe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agree || !phone.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setNumber((await alertsApi.textMe(slug, phone)).texting);
+      setPhone('');
+    } catch (err) {
+      setError((err as ApiError).message || 'Could not turn on texts. Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const stop = async () => {
+    setBusy(true);
+    try {
+      await alertsApi.stopTexts(slug);
+      setNumber(null);
+      setAgree(false);
+    } catch {
+      setError('Could not stop texts. Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (number) {
+    return (
+      <>
+        <span style={{ fontSize: 15, fontWeight: 600 }}>📱 {first} go text {number} when food is almost finished.</span>
+        <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} disabled={busy} onClick={stop}>Stop texts</button>
+        {error && <span className="error">{error}</span>}
+      </>
+    );
+  }
+
+  return (
+    <form className="text-alerts" onSubmit={textMe}>
+      <span style={{ fontSize: 15, fontWeight: 600 }}>Get a text when {first} has food left before closing. Any phone, no app.</span>
+      <label className="field" htmlFor={`sms-phone-${slug}`}>
+        <span>Your phone number</span>
+        <input
+          id={`sms-phone-${slug}`}
+          className="input"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="0803 123 4567"
+          value={phone}
+          maxLength={24}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+      </label>
+      <label className="text-alerts-agree">
+        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+        <span>{terms}</span>
+      </label>
+      <button type="submit" className="btn" disabled={busy || !agree || !phone.trim()}>
+        {busy ? 'Turning on…' : '📱 Text me'}
+      </button>
+      {error && <span className="error" role="alert">{error}</span>}
+    </form>
+  );
+}

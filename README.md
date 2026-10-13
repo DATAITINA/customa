@@ -25,8 +25,10 @@ customer can see and clear. Vendors can also set today's special and turn on sur
 Details: [docs/character-chat-and-delights.md](docs/character-chat-and-delights.md).
 
 A plate counts only after a real scan of the stand's QR code (it carries a secret scan code),
-and customers can turn on leftover-food alerts: a push notification in the character's voice
-when the vendor taps "Tell my customers". Details: [docs/scan-and-alerts.md](docs/scan-and-alerts.md).
+and customers can turn on leftover-food alerts: a text message (any phone) or a push notification
+in the character's voice when the vendor taps "Tell my customers". Details:
+[docs/scan-and-alerts.md](docs/scan-and-alerts.md). Vendors can sign in with Google:
+[docs/google-sign-in.md](docs/google-sign-in.md).
 
 Vendors pick a character (now with a **panda**, chick, bunny and cat), add a photo of their
 stand, and customers can install the stand on their Home Screen, play quick games with the

@@ -80,6 +80,11 @@ button:disabled { opacity: 0.55; cursor: default; }
 .btn:hover { color: var(--paper); }
 .btn-outline { background: var(--paper); color: var(--ink); border: 2px solid var(--ink); }
 .btn-outline:hover { color: var(--ink); }
+/* "Continue with Google": white with Google's mark, as Google's sign-in guidelines ask. */
+.btn-google { background: #FFFFFF; color: #1F1F1F; border: 2px solid var(--ink); gap: 10px; }
+.btn-google:hover { color: #1F1F1F; }
+.auth-or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 2px; background: var(--stone); }
 .links { display: flex; justify-content: center; gap: 16px; padding-top: 2px; }
 .link-btn { background: none; border: none; padding: 8px 4px; font-size: 13px; font-weight: 700; text-decoration: underline; color: var(--ink); }
 

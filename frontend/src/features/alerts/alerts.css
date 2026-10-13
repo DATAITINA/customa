@@ -6,4 +6,6 @@
 .alert-preview-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; line-height: 1.35; }
 .alert-preview-text strong { font-size: 15px; }
 .alert-preview-app { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: var(--muted); }
-.alerts-steps { display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.4; }
+.text-alerts { display: flex; flex-direction: column; gap: 12px; }
+.text-alerts-agree { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.text-alerts-agree input { flex-shrink: 0; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--ink); }

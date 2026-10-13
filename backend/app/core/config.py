@@ -28,6 +28,8 @@ class CustomaSettings(ModuleSettingsBase):
     # When the last leftover-food alert went out (ISO, UTC): one alert per ALERT_GAP_MINUTES.
     LAST_PLATES_ALERTED_AT: str | None = None
     ALERT_GAP_MINUTES: int = 60
+    # Text-message alerts cost the stand money per text: at most this many numbers per stand.
+    SMS_MAX_SUBSCRIBERS: int = 300
 
     # Plate Ajo: customers prepay plates at today's price by transfer to the vendor's own account.
     PLATE_AJO_ENABLED: bool = False
@@ -76,6 +78,15 @@ class AppSettings(
     VAPID_PUBLIC_KEY: str | None = None
     VAPID_PRIVATE_KEY: str | None = None
     VAPID_SUBJECT: str = "mailto:alerts@customa.app"
+
+    # Text-message (SMS) leftover-food alerts through Termii: they reach every phone, iPhone and
+    # Android, with no app. Without an API key and an approved sender ID, texts are not offered.
+    TERMII_API_KEY: str | None = None
+    TERMII_SENDER_ID: str | None = None  # approved on the Termii dashboard, e.g. "Customa"
+    TERMII_BASE_URL: str = "https://api.ng.termii.com"  # your account's base URL (Termii dashboard)
+    TERMII_CHANNEL: str = "dnd"  # "dnd" reaches numbers on Do-Not-Disturb; "generic" does not
+    # The customer website, for the link in a text.
+    PUBLIC_WEB_URL: str = "https://customa-web.vercel.app"
 
     REDIS_HOST: str | None = None
     REDIS_PORT: str | None = None

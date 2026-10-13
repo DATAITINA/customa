@@ -27,7 +27,7 @@ from app.actions import (
 from app.api import deps
 from app.core.config import CustomaSettings
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
-from app.services import alerts, character_chat, lunch_crew, plate_ajo, stand_photo
+from app.services import alerts, character_chat, lunch_crew, plate_ajo, sms_alerts, stand_photo
 from app.services.bisi import ChatContext, chat_reply
 from app.services.chat_log import forget_customer, record_turn
 from app.services.plates import count_visit
@@ -169,7 +169,7 @@ def read_stand(
         "features": {
             "plate_ajo": stand_settings.PLATE_AJO_ENABLED,
             "lunch_crew": stand_settings.LUNCH_CREW_ENABLED,
-            "alerts": alerts.alerts_available(),
+            "alerts": alerts.alerts_available() or sms_alerts.sms_available(),
         },
     }
 
@@ -324,6 +324,7 @@ def delete_my_data(
     forget_customer(session, workspace=workspace, customer=customer)
     character_chat.delete_memory(session, customer=customer)
     alerts.forget_customer(session, workspace=workspace, customer=customer)
+    sms_alerts.forget_customer(session, workspace=workspace, customer=customer)
     for model, action in ((Rating, rating_action), (JaraReward, jara_action), (Visit, visit_action)):
         action.delete_multi_by_expressions(session, model.customer_id == customer.id)
     customer_action.delete(session, customer.id)

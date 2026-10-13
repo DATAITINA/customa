@@ -23,11 +23,11 @@ from app.models import (
     Visit,
     Workspace,
 )
-from app.services import alerts, stand_photo
-from app.services.stand_photo import PhotoError
+from app.services import alerts, sms_alerts, stand_photo
 from app.services.bisi import suggest_character
 from app.services.chat_log import recent_questions
 from app.services.qr import scan_code
+from app.services.stand_photo import PhotoError
 from app.services.stands import create_stand, last_plates, resolve_stand_settings, set_stand_setting
 
 router = APIRouter(prefix="/stands", tags=["stands"])
@@ -140,7 +140,9 @@ def dashboard(
         "open_jara": [{"code": j.code, "name": c.first_name or "Guest", "at": j.created_at} for j, c in open_jara],
         "recent_questions": recent_questions(session, workspace=workspace),
         "last_plates": last_plates(stand_settings),
-        "alert_subscribers": alerts.subscriber_count(session, workspace=workspace),
+        # Phones that get "last plates" alerts: push subscriptions plus text-message numbers.
+        "alert_subscribers": alerts.subscriber_count(session, workspace=workspace)
+        + sms_alerts.subscriber_count(session, workspace=workspace),
         "plates_for_jara": stand_settings.PLATES_FOR_JARA,
         "stats": {
             "plates_today": plates_today,
@@ -213,9 +215,9 @@ def announce_last_plates(
     set_stand_setting(session, workspace, "LAST_PLATES_UNTIL", until if body.plates_left else None)
     session.commit()
     stand_settings = resolve_stand_settings(session, workspace)
-    alert = {"sent": 0, "skipped": "ended"}
+    alert = {"sent": 0, "texts": 0, "skipped": "ended"}
     if body.plates_left:
-        # Push the news to customers' phones, in the character's voice (services/alerts.py).
+        # Push and text the news to customers' phones, in the character's voice (services/alerts.py).
         alert = alerts.send_last_plates(
             session,
             workspace=workspace,

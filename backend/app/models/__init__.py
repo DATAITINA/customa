@@ -51,7 +51,7 @@ from .customa import (
     VisitCreate,
     VisitUpdate,
 )
-from .alerts import PushSubscription  # noqa: E402
+from .alerts import PushSubscription, SmsSubscription  # noqa: E402
 from .character_chat import ChatMemory  # noqa: E402
 from .lunch_crew import Crew, CrewMember, CrewPlate  # noqa: E402
 from .plate_ajo import PlateBundle, PlateUse  # noqa: E402

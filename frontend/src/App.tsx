@@ -9,6 +9,7 @@ const ChatPage = lazy(() => import('./pages/ChatPage').then((m) => ({ default: m
 const VendorPage = lazy(() => import('./pages/VendorPage').then((m) => ({ default: m.VendorPage })));
 const QrPage = lazy(() => import('./pages/QrPage').then((m) => ({ default: m.QrPage })));
 const PlayPage = lazy(() => import('./features/games/PlayPage').then((m) => ({ default: m.PlayPage })));
+const GoogleReturnPage = lazy(() => import('./features/googleSignIn/GoogleSignIn').then((m) => ({ default: m.GoogleReturnPage })));
 
 // A tiny router: a few kinds of page, no library needed.
 export function navigate(path: string) {
@@ -76,6 +77,7 @@ function route(parts: string[]) {
     return <CustomerPage slug={parts[1]} />;
   }
   if (parts[0] === 'qr' && parts[1]) return <QrPage slug={parts[1]} />;
+  if (parts[0] === 'vendor' && parts[1] === 'google') return <GoogleReturnPage />;
   if (parts[0] === 'vendor') return <VendorPage />;
   return <Home />;
 }

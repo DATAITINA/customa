@@ -32,7 +32,7 @@ export function AlertsCard({ slug, stand }: { slug: string; stand: StandPublic }
   }, [phase, slug, ch, standName]);
 
   const pushOffered = !!info?.available && !!info.public_key && support === 'ok';
-  if (!info || (!info.sms && !pushOffered)) return null;
+  if (!info) return null;
 
   const turnOn = async () => {
     setPhase('busy');
@@ -127,6 +127,7 @@ export function AlertsCard({ slug, stand }: { slug: string; stand: StandPublic }
         </>
       ))}
       {pushOffered && phase === 'error' && <span className="error">Could not turn on pings. Check your connection and try again.</span>}
+      {!info.sms && <span className="alerts-soon">📱 Text alerts: coming soon</span>}
     </div>
   );
 }

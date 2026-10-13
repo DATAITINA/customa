@@ -9,3 +9,4 @@
 .text-alerts { display: flex; flex-direction: column; gap: 12px; }
 .text-alerts-agree { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--muted); }
 .text-alerts-agree input { flex-shrink: 0; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--ink); }
+.alerts-soon { align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: var(--stone); font-size: 13px; font-weight: 700; }

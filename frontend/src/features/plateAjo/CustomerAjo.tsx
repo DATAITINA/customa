@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { StandPublic } from '../../api';
+import { getScan, type StandPublic } from '../../api';
 import { ajoApi, errorText, naira, parseUtc, timeOf, type AjoPublic, type Bundle, type UseResult } from './ajoApi';
 import './plateAjo.css';
 
@@ -53,7 +53,7 @@ export function AjoCard({ slug, stand, onPlateCounted }: { slug: string; stand: 
   const active = data.bundles.filter((b) => b.status === 'active' && b.plates_left > 0).reverse(); // oldest first
   if (!data.available && !pending && active.length === 0) return null;
 
-  const vendor = stand.stand.name.replace(' (Demo)', '');
+  const vendor = stand.stand.name;
   const latest = data.bundles[0];
   const ended = latest && (latest.status === 'rejected' || latest.status === 'closed') ? latest : null;
 
@@ -90,7 +90,12 @@ function ActivePlates({
     setBusy(true);
     setError(null);
     try {
-      const r = await ajoApi.use(slug);
+      const scan = getScan(slug);
+      if (!scan) {
+        setError('Scan the QR code at the stand first, then use your prepaid plate.');
+        return;
+      }
+      const r = await ajoApi.use(slug, scan.code);
       setAsking(false);
       onUsed(r);
     } catch (err) {

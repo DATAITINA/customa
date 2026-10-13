@@ -1,7 +1,7 @@
 """Lunch Crew through the real API: friends share one card; every 6th crew plate's jara goes to
 the next member in join order (like ajo). Customers not in a crew count exactly as before.
 
-Uses a normal stand with the default 6-hour window (not the 30-second demo stand).
+Uses a normal stand with the default 6-hour window.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -13,12 +13,14 @@ from sqlmodel import Session, select
 from app.actions import account_action, customer_action, user_action, visit_action
 from app.core.config import settings
 from app.models import CharacterCreate, Crew, CrewMember, CrewPlate, JaraReward, Visit
-from app.services.stands import create_stand, set_stand_setting
+from app.services.qr import scan_code
+from app.services.stands import create_stand, resolve_stand_settings, set_stand_setting
 
 SIX_HOURS = 6 * 60 * 60
 SLUG = "crew-test-stand"
 BASE = f"{settings.API_V1_STR}/public/{SLUG}"
 VENDOR = f"{settings.API_V1_STR}/stands/{SLUG}/crew"
+SCAN = ""  # the stand's QR scan code, set by the stand fixture
 
 
 def utcnow() -> datetime:
@@ -37,11 +39,13 @@ def stand(session: Session):
         character=CharacterCreate(name="Pot"),
         slug=SLUG,
     )
-    # Outside a request the owner-membership hook does not run (see app/seed/demo.py).
+    # Outside a request the owner-membership hook does not run .
     user_action.create_membership(
         session, account_id=owner.id, workspace_id=workspace.id, owner_id=owner.id
     )
     session.commit()
+    global SCAN
+    SCAN = scan_code(workspace, resolve_stand_settings(session, workspace))
     return workspace
 
 
@@ -58,7 +62,7 @@ def h(key: str) -> dict[str, str]:
 
 def sign_up(client: TestClient, name: str) -> str:
     """A new customer: their first plate counts on their own card."""
-    r = client.post(f"{BASE}/visits", json={"consent": True, "first_name": name})
+    r = client.post(f"{BASE}/visits", json={"consent": True, "first_name": name, "scan": SCAN})
     assert r.status_code == 200, r.text
     assert r.json()["crew"] is None
     return r.json()["customer"]["key"]
@@ -75,7 +79,7 @@ def wait_6_hours(session: Session, key: str) -> None:
 
 def scan(client: TestClient, session: Session, key: str) -> dict:
     wait_6_hours(session, key)
-    r = client.post(f"{BASE}/visits", json={"consent": True}, headers=h(key))
+    r = client.post(f"{BASE}/visits", json={"consent": True, "scan": SCAN}, headers=h(key))
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -189,7 +193,7 @@ def test_crew_plates_rotation_and_open_jara(client: TestClient, session: Session
     assert numbers == [1, 2, 3, 4, 5]
 
     # The 6-hour rule is still per person.
-    r = client.post(f"{BASE}/visits", json={"consent": True}, headers=h(bayo))
+    r = client.post(f"{BASE}/visits", json={"consent": True, "scan": SCAN}, headers=h(bayo))
     assert r.status_code == 409
     assert r.json()["detail"]["seconds_left"] > SIX_HOURS - 10
     assert r.json()["detail"]["customer"]["plate_number"] == 5

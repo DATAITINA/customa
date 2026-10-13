@@ -2,14 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { Logo } from '../components/Logo';
 import { useAuth } from '@msflib/react-auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, type ApiError, type Character as CharacterT, type StandSummary } from '../api';
-import { Character, PRESETS } from '../components/Character';
+import { api, photoUrl, type ApiError, type Character as CharacterT, type StandSummary } from '../api';
+import { Character } from '../components/Character';
+import { CharacterPicker } from '../components/CharacterPicker';
+import { CharacterLoader, DashboardSkeleton } from '../components/Loading';
+import { shrinkPhoto } from '../utils/photo';
 import { FoodStamp } from '../components/FoodStamp';
 import { StandPhoto } from '../components/StandPhoto';
 import { VendorAjoPanel } from '../features/plateAjo/VendorAjo';
 import { VendorCrewPanel } from '../features/lunchCrew/VendorCrew';
 import { VendorDelightsPanel } from '../features/delights/VendorDelights';
 import { LastPlatesBanner } from '../components/LastPlates';
+import { GoogleButton } from '../features/googleSignIn/GoogleSignIn';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -17,7 +21,7 @@ export function VendorPage() {
   return (
     <main className="vendor">
       <VendorTop />
-      {status === 'loading' && <p className="note">Loading…</p>}
+      {status === 'loading' && <CharacterLoader kind="vendor" />}
       {status === 'unauthenticated' && <SignIn />}
       {status === 'authenticated' && <VendorHome />}
     </main>
@@ -59,7 +63,7 @@ function VendorTop() {
   );
 }
 
-// --- Sign in / register (MSFLib auth: POST /login, POST /open) -------------
+// --- Sign in / register (MSFLib auth: POST /login, POST /open, or Google) ---
 
 function SignIn() {
   const { login, register, loading } = useAuth();
@@ -107,6 +111,7 @@ function SignIn() {
         </button>
         {mode === 'register' && <span className="note" style={{ textAlign: 'center' }}>Free to start. You set up your stand in about 5 minutes.</span>}
       </form>
+      <GoogleButton />
     </div>
   );
 }
@@ -118,7 +123,7 @@ function VendorHome() {
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  if (stands.isLoading) return <p className="note">Loading your stands…</p>;
+  if (stands.isLoading) return <CharacterLoader kind="vendor" />;
   if (stands.isError) return <p className="error">Could not load your stands.</p>;
   const list = stands.data ?? [];
   if (creating || list.length === 0) {
@@ -141,8 +146,6 @@ function VendorHome() {
 
 // --- Stand setup: the vendor describes their stand, picks the character ----
 
-const BODIES = ['pepper', 'cup', 'pot', 'blob'];
-const ACCESSORIES = ['headwrap', 'chef', 'sunglasses', 'bowtie', 'none'];
 
 function parseMenu(text: string) {
   // One item per line: "Jollof rice 1500"
@@ -164,6 +167,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
 
   const suggest = async () => {
     if (!description.trim()) return;
@@ -199,6 +203,11 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
                 menu: parseMenu(menuText),
               },
             });
+            // The photo goes up after the stand exists. If it fails, the stand is still made and
+            // the vendor can add the photo from "Customize your stand".
+            if (photo) {
+              try { await api.setPhoto(stand.slug, await shrinkPhoto(photo)); } catch { /* added later */ }
+            }
             onCreated(stand);
           } catch (err) {
             setError((err as ApiError).message ?? 'Could not create the stand');
@@ -226,7 +235,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
             <span className="note">English or Nigerian Pidgin. We turn it into your stand's words.</span>
           </div>
         </div>
-        <StandPhoto />
+        <StandPhoto onChange={setPhoto} />
         <button type="button" className="btn btn-outline" onClick={suggest} disabled={suggesting || !description.trim()}>
           {suggesting ? 'Thinking…' : 'Suggest a character from my words'}
         </button>
@@ -240,7 +249,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
       <section className="hero" style={{ margin: 0, padding: 20, gap: 14 }} aria-label="Your character">
         <div className="bubble">{char.greeting || (name ? `Welcome to ${name}!` : 'Hello! I go welcome your customers.')}</div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <Character body={char.body} color={char.color} accessory={char.accessory} expression="excited" pose="wave" size={200} />
+          <Character body={char.body} color={char.color} accessory={char.accessory} expression="excited" pose="wave" size={200} react follow />
         </div>
         <label className="field">Character name
           <input className="input" value={char.name ?? ''} onChange={(e) => setChar({ ...char, name: e.target.value })} placeholder="e.g. Ekaette Pot" />
@@ -248,29 +257,16 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
         <label className="field">Greeting
           <input className="input" value={char.greeting ?? ''} onChange={(e) => setChar({ ...char, greeting: e.target.value })} placeholder="Welcome! Soup dey hot." />
         </label>
-        <span className="eyebrow">BODY</span>
-        <div className="seg">
-          {BODIES.map((b) => <button type="button" key={b} aria-pressed={char.body === b} onClick={() => setChar({ ...char, body: b })}>{b}</button>)}
-        </div>
-        <span className="eyebrow">COLOUR</span>
-        <div className="swatches">
-          {Object.entries(PRESETS).map(([k, v]) => (
-            <button type="button" key={k} className="swatch" aria-label={k} aria-pressed={char.color === k} style={{ background: v.fill }} onClick={() => setChar({ ...char, color: k })} />
-          ))}
-        </div>
-        <span className="eyebrow">ACCESSORY</span>
-        <div className="seg">
-          {ACCESSORIES.map((a) => <button type="button" key={a} aria-pressed={char.accessory === a} onClick={() => setChar({ ...char, accessory: a })}>{a}</button>)}
-        </div>
+        <CharacterPicker value={char} onChange={(look) => setChar({ ...char, ...look })} />
       </section>
     </div>
   );
 }
 
-// --- Live dashboard (refreshes every 5 seconds) -----------------------------
+// --- Live dashboard (refreshes every 10 seconds while open) -------------------
 
 function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void }) {
-  const q = useQuery({ queryKey: ['dashboard', slug], queryFn: () => api.dashboard(slug), refetchInterval: 5000 });
+  const q = useQuery({ queryKey: ['dashboard', slug], queryFn: () => api.dashboard(slug), refetchInterval: 10000 });
   const seen = useRef<Set<number> | null>(null);
   const [fresh, setFresh] = useState<Set<number>>(new Set());
 
@@ -284,7 +280,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
     seen.current = new Set(ids);
   }, [q.data]);
 
-  if (q.isLoading) return <p className="note">Loading dashboard…</p>;
+  if (q.isLoading) return <DashboardSkeleton />;
   if (q.isError || !q.data) return <p className="error">Could not load the dashboard.</p>;
   const d = q.data;
   const ch = d.stand.character;
@@ -299,10 +295,10 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="dash-head">
         <div className="dash-title">
-          {ch && <Character body={ch.body} color={ch.color} accessory={ch.accessory} pose="idle" size={64} />}
+          {ch && <Character body={ch.body} color={ch.color} accessory={ch.accessory} pose="idle" size={64} react />}
           <div style={{ minWidth: 0 }}>
             <h1 className="display" style={{ fontSize: 34 }}>{d.stand.name}</h1>
-            <span className="live">Live, updates every 5 seconds</span>
+            <span className="live">Live, updates every 10 seconds</span>
           </div>
         </div>
         <div className="dash-actions">
@@ -310,7 +306,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           <Link to={`/s/${slug}`} className="btn btn-outline dash-action"><PhoneIcon />Customer page</Link>
         </div>
       </div>
-      <LastPlatesControl slug={slug} current={d.last_plates} onChange={() => q.refetch()} />
+      <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
       <div className="stats">
         {stats.map((s) => (
           <div key={s.label} className="stat">
@@ -355,6 +351,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         </div>
       </div>
       {/* Return-visit features sit below the daily essentials (plates, jara to give out). */}
+      <CustomizeStand slug={slug} stand={d.stand} onSaved={() => q.refetch()} />
       <VendorDelightsPanel slug={slug} />
       <VendorAjoPanel slug={slug} />
       <VendorCrewPanel slug={slug} />
@@ -389,12 +386,31 @@ function OpenJara({ slug, items, onChange }: { slug: string; items: { code: stri
 }
 
 // Food left over near closing time? One tap tells every customer who opens the stand page.
-function LastPlatesControl({ slug, current, onChange }: { slug: string; current: import('../api').LastPlates; onChange: () => void }) {
+function LastPlatesControl({ slug, current, subscribers, onChange }: { slug: string; current: import('../api').LastPlates; subscribers: number; onChange: () => void }) {
   const [n, setN] = useState(10);
   const [busy, setBusy] = useState(false);
+  const [sentNote, setSentNote] = useState<string | null>(null);
   const send = async (plates: number) => {
     setBusy(true);
-    try { await api.announceLastPlates(slug, plates); onChange(); } finally { setBusy(false); }
+    setSentNote(null);
+    try {
+      const r = await api.announceLastPlates(slug, plates);
+      const a = r.alert;
+      if (plates && a) {
+        setSentNote(
+          a.sent > 0
+            ? `🔔 Alert sent to ${a.sent} phone${a.sent === 1 ? '' : 's'}.`
+            : a.skipped === 'recently_alerted'
+              ? 'Your banner is updated. Phones already got an alert in the last hour, so no new alert (no spam).'
+              : a.skipped === null
+                ? 'Your banner is updated, but no phone could be reached right now.'
+                : null,
+        );
+      }
+      onChange();
+    } finally {
+      setBusy(false);
+    }
   };
   const step = (by: number) => setN((v) => Math.min(500, Math.max(1, (Number.isFinite(v) ? v : 1) + by)));
   // Layout lives in styles.css (.lp-*): desktop keeps one compact line; phones get a
@@ -420,6 +436,88 @@ function LastPlatesControl({ slug, current, onChange }: { slug: string; current:
           <button className="btn lp-btn" disabled={busy || n < 1} onClick={() => send(n)}>
             {busy ? 'Telling…' : 'Tell my customers'}
           </button>
+        </div>
+      )}
+      {sentNote ? (
+        <span className="lp-alert-note" role="status">{sentNote}</span>
+      ) : (
+        <span className="lp-alert-note">
+          {subscribers > 0
+            ? `🔔 ${subscribers === 1 ? '1 customer phone gets' : `${subscribers} customer phones get`} an alert from your character when you tell them.`
+            : 'Customers can turn on alerts on their stand page, then they get a ping when you tell them.'}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// --- Customize: the character and the stand photo, after the stand is made -------
+
+function CustomizeStand({ slug, stand, onSaved }: { slug: string; stand: StandSummary; onSaved: () => void }) {
+  const ch = stand.character;
+  const [open, setOpen] = useState(false);
+  const [look, setLook] = useState<Partial<CharacterT>>({});
+  const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const current = { ...ch, ...look };
+  const changed = Object.keys(look).some((k) => (look as Record<string, unknown>)[k] !== (ch as Record<string, unknown> | null)?.[k]);
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.updateCharacter(slug, look);
+      setLook({});
+      setNote('Saved. Your customers see the new look now.');
+      onSaved();
+    } catch {
+      setError('Could not save. Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changePhoto = async (file: File | null) => {
+    setPhotoBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      if (file) await api.setPhoto(slug, await shrinkPhoto(file));
+      else await api.removePhoto(slug);
+      setNote(file ? 'Photo saved. Customers see it on your page.' : 'Photo removed.');
+      onSaved();
+    } catch (err) {
+      setError((err as Error).message || 'Could not save the photo. Try again.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  return (
+    <div className="card-outline customize" style={{ gap: 12 }}>
+      <button type="button" className="customize-head" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="eyebrow">CUSTOMIZE YOUR STAND</span>
+        <span className="note" style={{ fontSize: 14 }}>Character, colours and a photo of your stand</span>
+        <span className="customize-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div className="customize-body">
+          <div className="customize-preview">
+            <Character body={current.body} color={current.color} accessory={current.accessory} expression="excited" pose="wave" size={130} react follow />
+          </div>
+          <label className="field">Character name
+            <input className="input" value={current.name ?? ''} maxLength={30} onChange={(e) => setLook({ ...look, name: e.target.value })} />
+          </label>
+          <label className="field">Greeting
+            <input className="input" value={current.greeting ?? ''} maxLength={120} onChange={(e) => setLook({ ...look, greeting: e.target.value })} />
+          </label>
+          <CharacterPicker value={current} onChange={(next) => setLook({ ...look, ...next })} />
+          <button type="button" className="btn" disabled={!changed || busy} onClick={save}>{busy ? 'Saving…' : 'Save character'}</button>
+          <StandPhoto key={stand.photo ?? 'none'} initialUrl={stand.photo ? photoUrl(stand.photo) : null} busy={photoBusy} onChange={changePhoto} />
+          {note && <span style={{ fontSize: 14, fontWeight: 700 }} role="status">{note}</span>}
+          {error && <span className="error" role="alert">{error}</span>}
         </div>
       )}
     </div>

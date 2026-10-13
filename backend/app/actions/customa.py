@@ -87,8 +87,8 @@ class VisitAction(ModelAction[Visit, VisitCreate, VisitUpdate]):
     ) -> None:
         """Lock the customer's row, then raise PlateTooSoon if their last plate is too recent.
 
-        This is the anti-cheat rule: one plate per window (6 hours, or 30 seconds on the demo
-        stand), per customer, whatever card the plate goes on.
+        This is the anti-cheat rule: one plate per window (6 hours by default, a per-stand
+        setting), per customer, whatever card the plate goes on.
         """
         # Lock this customer's row until the visit is saved, so two scans arriving at
         # the same moment (double tap, network retry, two tabs) cannot both pass the

@@ -17,9 +17,11 @@ export function CrewCard({
   const [name, setName] = useState('');
   const [code, setCode] = useState(inviteCodeFromUrl);
   const hasKey = !!getCustomerKey(slug);
+  // The stand view says when Lunch Crew is off: then there is nothing to ask the server.
+  const on = stand.features?.lunch_crew ?? true;
 
   useEffect(() => {
-    if (!hasKey) return;
+    if (!hasKey || !on) return;
     let live = true;
     crewApi
       .get(slug, code)
@@ -28,9 +30,9 @@ export function CrewCard({
     return () => {
       live = false;
     };
-  }, [slug, code, hasKey, refreshKey]);
+  }, [slug, code, hasKey, on, refreshKey]);
 
-  if (!hasKey || failed || !data || !data.enabled) return null;
+  if (!hasKey || !on || failed || !data || !data.enabled) return null;
 
   const run = async (call: () => Promise<CrewPublic>) => {
     setBusy(true);

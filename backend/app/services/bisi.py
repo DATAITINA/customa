@@ -201,7 +201,7 @@ def chat_reply(
 
 # --- Character suggestion (structured output, validated) --------------------
 
-Body = Literal["pepper", "cup", "pot", "blob"]
+Body = Literal["pepper", "cup", "pot", "blob", "panda", "chick", "bunny", "cat"]
 Color = Literal["pepper", "palm", "yolk", "okra", "lagoon", "adire", "zobo", "puff"]
 Accessory = Literal["headwrap", "chef", "sunglasses", "bowtie", "none"]
 
@@ -218,6 +218,15 @@ class CharacterSuggestion(BaseModel):
 def default_suggestion(description: str) -> CharacterSuggestion:
     """A sensible character from keywords, used when the AI is unavailable."""
     text = description.lower()
+    animal = next((a for a in ("panda", "chick", "bunny", "cat") if re.search(rf"\b{a}\b", text)), None)
+    if animal:
+        colors = {"panda": "pepper", "chick": "yolk", "bunny": "puff", "cat": "palm"}
+        names = {"panda": "Pandy", "chick": "Chicky Chops", "bunny": "Bunny Bite", "cat": "Mama Cat"}
+        return CharacterSuggestion(
+            name=names[animal], body=animal, color=colors[animal], accessory="chef",
+            greeting="Welcome! Food dey ready, sit down make I serve you.",
+            personality="Cute, warm and cheerful, proud of the food. Speaks simple English with light Pidgin.",
+        )
     if any(w in text for w in ("drink", "zobo", "tea", "juice", "coffee", "smoothie")):
         body, color = "cup", "zobo"
     elif any(w in text for w in ("soup", "stew", "pot", "rice", "jollof", "beans")):
@@ -238,7 +247,8 @@ SUGGEST_PROMPT = """Design a friendly mascot character for a small Nigerian food
 Stand description: {description}
 
 Return ONLY a JSON object with these keys:
-"name" (2-30 chars, catchy, fits the food), "body" (one of: pepper, cup, pot, blob),
+"name" (2-30 chars, catchy, fits the food), "body" (one of: pepper, cup, pot, blob, panda, chick, bunny, cat; use an animal only if the
+vendor mentions one or wants something cute),
 "color" (one of: pepper, palm, yolk, okra, lagoon, adire, zobo, puff),
 "accessory" (one of: headwrap, chef, sunglasses, bowtie, none),
 "greeting" (one warm sentence, may use light Pidgin, max 120 chars),

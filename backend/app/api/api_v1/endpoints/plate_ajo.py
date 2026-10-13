@@ -9,6 +9,7 @@ from sqlmodel import Session
 
 from app.actions import character_action, customer_action
 from app.api import deps
+from app.api.api_v1.endpoints.public import require_genuine_scan
 from app.models import Customer, Workspace
 from app.services import plate_ajo
 from app.services.stands import resolve_stand_settings, set_stand_setting
@@ -23,6 +24,11 @@ class BundleRequest(BaseModel):
     payer_name: str = Field(max_length=200)
     # The price the customer's screen showed; the server's menu price always decides.
     unit_price: int | None = None
+
+
+class UsePlateRequest(BaseModel):
+    # The scan code from the stand's QR code: a prepaid plate is used (and stamped) at the stand.
+    scan: str | None = Field(default=None, max_length=40)
 
 
 class AjoSettingsRequest(BaseModel):
@@ -95,15 +101,19 @@ def start_bundle(
 
 @public_router.post("/use")
 def use_prepaid_plate(
+    body: UsePlateRequest | None = None,
     workspace: Workspace = Depends(deps.get_stand_public),
     customer: Customer = Depends(ajo_customer),
     session: Session = Depends(deps.get_session),
 ) -> dict[str, Any]:
+    stand_settings = resolve_stand_settings(session, workspace)
+    # Using a prepaid plate also counts a stamp, so it needs a real scan like any plate.
+    require_genuine_scan(body.scan if body else None, workspace, stand_settings)
     return plate_ajo.use_plate(
         session,
         workspace=workspace,
         customer=customer,
-        stand_settings=resolve_stand_settings(session, workspace),
+        stand_settings=stand_settings,
     )
 
 

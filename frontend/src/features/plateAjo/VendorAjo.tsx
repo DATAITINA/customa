@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PanelSkeleton } from '../../components/Loading';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ajoApi, errorText, naira, timeOf, type AjoVendor } from './ajoApi';
 import './plateAjo.css';
@@ -6,14 +7,14 @@ import './plateAjo.css';
 // Plate Ajo, vendor side: turn it on, bank details, confirm transfers, see plates left.
 // Customers pay into the vendor's own account; Customa only keeps the plate count.
 export function VendorAjoPanel({ slug }: { slug: string }) {
-  const q = useQuery({ queryKey: ['ajo', slug], queryFn: () => ajoApi.vendor(slug), refetchInterval: 10000 });
+  const q = useQuery({ queryKey: ['ajo', slug], queryFn: () => ajoApi.vendor(slug), refetchInterval: 15000 });
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (q.isLoading) return null;
+  if (q.isLoading) return <PanelSkeleton label="Plate Ajo" />;
   if (q.isError || !q.data) {
     return (
       <div className="card ajo-panel">

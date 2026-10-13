@@ -6,11 +6,8 @@ stand's character greets them by name, counts their plate, and every 6th plate e
 
 Built in 5 hours at the KodeHauz Decennium Sprint, on **MSFLib**.
 
-- Live app: https://customa-web.vercel.app (demo stand: `/s/iya-bisi-demo`, QR sign: `/qr/iya-bisi-demo`)
+- Live app: https://customa-web.vercel.app (a stand's page: `/s/{slug}`, its QR sign: `/qr/{slug}`)
 - API: https://customa-api.vercel.app/docs
-
-> The demo stand, *Iya Bisi's Yam & Fish (Demo)*, is fictional. On it a plate counts every
-> **30 seconds** so it can be shown on stage; real stands count one plate per **6 hours**.
 
 ## Return-visit features (Oct 2026)
 
@@ -27,6 +24,17 @@ plate, closed with a cliffhanger and picked up next plate), and remembers a few 
 customer can see and clear. Vendors can also set today's special and turn on surprise jara.
 Details: [docs/character-chat-and-delights.md](docs/character-chat-and-delights.md).
 
+A plate counts only after a real scan of the stand's QR code (it carries a secret scan code),
+and customers can turn on leftover-food alerts: a text message (any phone) or a push notification
+in the character's voice when the vendor taps "Tell my customers". Details:
+[docs/scan-and-alerts.md](docs/scan-and-alerts.md). Vendors can sign in with Google:
+[docs/google-sign-in.md](docs/google-sign-in.md).
+
+Vendors pick a character (now with a **panda**, chick, bunny and cat), add a photo of their
+stand, and customers can install the stand on their Home Screen, play quick games with the
+character and delete their data from a clear sheet. Details:
+[docs/stand-look-and-install.md](docs/stand-look-and-install.md).
+
 ## The problem
 
 Vendors in Uyo told us their biggest daily problem is getting enough customers, so cooked food
@@ -41,13 +49,12 @@ coming back.
 | Vendor sign-up, sign-in, protected routes | `msflib-auth` (JWT login, `get_current_active_account`), `msflib-account` (accounts, open registration) | `@msflib/react-auth` (`AuthProvider`, `useAuth`) | POST `/logout` shim for react-auth |
 | A stand per vendor | `msflib-workspaces` (`WorkspaceAction.create_with_owner`, membership), `msflib-tenancy` (default tenant), workspace membership checks from `msflib-auth` (`get_user_dependencies`, `PathParameterResolver`) | | `services/stands.py` |
 | Count a plate, block repeats | core `ModelBase` tables + `ModelAction` (`VisitAction.count_plate` holds the one-plate-per-window rule) | `@msflib/core` `configuredApiClient` | `actions/customa.py` |
-| 6-hour window, 30 s on the demo stand | core tiered settings (`ModuleSettingsBase` namespace `CUSTOMA`) + `msflib-workspace-config` (`ScopedConfigService`: per-stand override) | | `CustomaSettings` |
+| 6-hour window (a per-stand setting) | core tiered settings (`ModuleSettingsBase` namespace `CUSTOMA`) + `msflib-workspace-config` (`ScopedConfigService`: per-stand override) | | `CustomaSettings` |
 | Jara on the 6th plate | core event bus: listener on `visit-create-pre-commit` issues the reward **in the same transaction** | | `eventbus/__init__.py` |
 | Redeem a jara once | core `ModelAction.update` | | `/stands/{slug}/jara/{code}/redeem` |
 | Chat with the character | `msflib-ai-core` (`get_ai_dependencies().get_llm()`, `TokenUsageCallback` for tokens, logged with latency) | | persona + guardrails prompt, menu-based fallback (`services/bisi.py`) |
-| Saved chats the vendor can read | `msflib-conversation` (`ChannelService`, `AccessService`, `MembershipService.add_agent`, `MessagingService`) | | `services/chat_log.py` |
+| Food questions the vendor can read (chats stay private) | `msflib-conversation` (`ChannelService`, `AccessService`, `MembershipService.add_agent`, `MessagingService`) | | `services/chat_log.py` |
 | Character from the vendor's own words | `msflib-ai-core` model, output validated by a Pydantic schema, one retry, safe default | | `suggest_character` |
-| Demo stand ready instantly | core models/actions in an idempotent seed (`app/seed/demo.py`) run by the template's `initial_data` | | |
 | App shell | the official **MSFLib FastAPI template** (settings, session, keystore, auth/account routers, workspace hooks) | `@msflib/core` `configureApplication` | |
 
 Installed but not yet in a user flow: `msflib-ai-api`, `msflib-drivelink` (planned: stand photo storage).
@@ -64,9 +71,9 @@ Backend (Python 3.11+, Poetry). MSFLib is a private repo: set up access as the o
 
 ```bash
 cd backend
-cp .env-example .env          # set SECRET_KEY, USE_SQLITE=true, DEMO_VENDOR_PASSWORD, ...
+cp .env-example .env          # set SECRET_KEY, USE_SQLITE=true, ...
 poetry install
-poetry run python -m app.initial_data   # tables + demo stand
+poetry run python -m app.initial_data   # tables
 poetry run uvicorn app.main:app --reload
 ```
 
@@ -100,7 +107,6 @@ backend/app/
   eventbus/             jara listener
   services/             stands (tiered settings), bisi (AI), chat_log (conversation)
   api/api_v1/endpoints/ public (customer), stands (vendor), session
-  seed/demo.py          Iya Bisi demo stand
 frontend/src/
   application.ts        configureApplication (MSFLib)
   api.ts                configuredApiClient calls

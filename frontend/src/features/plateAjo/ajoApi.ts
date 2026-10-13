@@ -81,7 +81,8 @@ export const ajoApi = {
   read: (slug: string) => apiClient<AjoPublic>('GET', pub(slug), null, customerHeaders(slug)),
   start: (slug: string, body: { item: string; plates: number; payer_name: string; unit_price: number }) =>
     apiClient<{ bundle: Bundle }>('POST', `${pub(slug)}/bundles`, body, customerHeaders(slug)),
-  use: (slug: string) => apiClient<UseResult>('POST', `${pub(slug)}/use`, null, customerHeaders(slug)),
+  // scan: the code from the stand's QR code; a prepaid plate is used at the stand.
+  use: (slug: string, scan: string) => apiClient<UseResult>('POST', `${pub(slug)}/use`, { scan }, customerHeaders(slug)),
 
   vendor: (slug: string) => apiClient<AjoVendor>('GET', ven(slug)),
   saveSettings: (slug: string, body: AjoSettings) => apiClient<AjoVendor>('PUT', `${ven(slug)}/settings`, body),
@@ -103,6 +104,9 @@ export function errorText(err: unknown, fallback: string): string {
   const e = err as ApiError | undefined;
   const detail = e?.raw?.detail;
   if (typeof detail === 'string') return detail;
+  if (detail && typeof detail === 'object' && typeof (detail as { message?: unknown }).message === 'string') {
+    return (detail as { message: string }).message;
+  }
   if (e?.status === 422 || !e?.status) return fallback;
   return e.message || fallback;
 }

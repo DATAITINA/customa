@@ -5,10 +5,13 @@ lookup), and the customer is recognised by a random key their phone keeps and
 sends back in the X-Customer-Key header.
 """
 
+import base64
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import object_session
 from sqlmodel import Session
@@ -24,10 +27,11 @@ from app.actions import (
 from app.api import deps
 from app.core.config import CustomaSettings
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
-from app.services import character_chat, lunch_crew, plate_ajo
+from app.services import alerts, character_chat, lunch_crew, plate_ajo, sms_alerts, stand_photo
 from app.services.bisi import ChatContext, chat_reply
 from app.services.chat_log import forget_customer, record_turn
 from app.services.plates import count_visit
+from app.services.qr import is_genuine_scan
 from app.services.stands import last_plates, resolve_stand_settings
 
 router = APIRouter(prefix="/public/{workspace_slug}", tags=["customer"])
@@ -39,6 +43,8 @@ class CountPlateRequest(BaseModel):
     # "qr" when the page was opened from the stand's QR code. Saved once, when the
     # customer is first created, so the vendor can see how customers arrive.
     source: str | None = Field(default=None, max_length=20)
+    # The scan code from the stand's QR code. A plate counts only with it (services/qr.py).
+    scan: str | None = Field(default=None, max_length=40)
 
 
 class ChatRequest(BaseModel):
@@ -59,6 +65,18 @@ def get_customer_or_none(
     if not x_customer_key:
         return None
     return customer_action.get_by_key(session, workspace_id=workspace.id, key=x_customer_key)
+
+
+SCAN_REQUIRED = {
+    "code": "scan_required",
+    "message": "Scan the QR code at the stand to count your plate.",
+}
+
+
+def require_genuine_scan(code: str | None, workspace: Workspace, stand_settings: CustomaSettings) -> None:
+    """403 unless `code` is the scan code from this stand's current QR code."""
+    if not is_genuine_scan(code, workspace, stand_settings):
+        raise HTTPException(status_code=403, detail=SCAN_REQUIRED)
 
 
 def require_customer(customer: Customer | None = Depends(get_customer_or_none)) -> Customer:
@@ -146,7 +164,69 @@ def read_stand(
         "window_seconds": stand_settings.PLATE_WINDOW_SECONDS,
         "last_plates": last_plates(stand_settings),
         "customer": customer_view(customer, last, stand_settings, session) if customer else None,
+        "photo": stand_photo.photo_path(session, workspace),
+        # Which optional cards to show, so the page does not ask each feature separately.
+        "features": {
+            "plate_ajo": stand_settings.PLATE_AJO_ENABLED,
+            "lunch_crew": stand_settings.LUNCH_CREW_ENABLED,
+            "alerts": alerts.alerts_available() or sms_alerts.sms_available(),
+        },
     }
+
+
+@router.get("/photo")
+def read_photo(
+    workspace: Workspace = Depends(deps.get_stand_public),
+    session: Session = Depends(deps.get_session),
+) -> Response:
+    """The stand's photo. Its URL carries the version (?v=), so phones may keep it for good."""
+    row = stand_photo.get(session, workspace)
+    if row is None:
+        raise HTTPException(status_code=404, detail="This stand has no photo yet")
+    return Response(
+        content=base64.b64decode(row.data),
+        media_type=row.content_type,
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
+
+
+_KEY_SHAPE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")
+
+
+@router.get("/manifest")
+def install_manifest(
+    k: str | None = None,
+    workspace: Workspace = Depends(deps.get_stand_public),
+    session: Session = Depends(deps.get_session),
+) -> JSONResponse:
+    """The web app manifest for "Add to Home Screen" on this stand's page.
+
+    The installed app opens on this stand, not the homepage. On iPhone, a Home Screen app has
+    its own storage, separate from Safari, so it would not know the customer: their key (`k`,
+    from their own phone) goes into the start URL, and the page stores it on first launch.
+    Served through the web app's own domain (frontend vercel.json rewrite /m/{slug}).
+    """
+    start = f"/s/{workspace.slug}?app=1"
+    if k and _KEY_SHAPE.match(k) and customer_action.get_by_key(session, workspace_id=workspace.id, key=k):
+        start += f"&k={k}"
+    name = workspace.name
+    manifest = {
+        "id": f"/s/{workspace.slug}",
+        "name": f"{name} · Customa",
+        "short_name": name if len(name) <= 14 else "Customa",
+        "description": "Your food spot's loyalty card. Scan, eat, come back, get jara.",
+        "start_url": start,
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#FFFFFF",
+        "theme_color": "#FDE6E2",
+        "icons": [
+            {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+            {"src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
+    }
+    return JSONResponse(manifest, media_type="application/manifest+json", headers={"Cache-Control": "no-store"})
 
 
 @router.post("/visits")
@@ -156,6 +236,9 @@ def count_plate(
     customer: Customer | None = Depends(get_customer_or_none),
     session: Session = Depends(deps.get_session),
 ) -> dict[str, Any]:
+    stand_settings = resolve_stand_settings(session, workspace)
+    # Only a real scan counts: not a bookmark, the browser history or a shared link.
+    require_genuine_scan(body.scan, workspace, stand_settings)
     returning = customer is not None
     if customer is None:
         # We only keep a name when the customer agreed to it.
@@ -166,11 +249,10 @@ def count_plate(
             data=CustomerCreate(
                 first_name=first_name,
                 consent=body.consent,
-                source="qr" if body.source == "qr" else None,
+                source="qr",
             ),
         )
 
-    stand_settings = resolve_stand_settings(session, workspace)
     try:
         visit = count_visit(
             session, workspace=workspace, customer=customer, stand_settings=stand_settings
@@ -241,6 +323,8 @@ def delete_my_data(
         feature.forget_customer(session, workspace=workspace, customer=customer)
     forget_customer(session, workspace=workspace, customer=customer)
     character_chat.delete_memory(session, customer=customer)
+    alerts.forget_customer(session, workspace=workspace, customer=customer)
+    sms_alerts.forget_customer(session, workspace=workspace, customer=customer)
     for model, action in ((Rating, rating_action), (JaraReward, jara_action), (Visit, visit_action)):
         action.delete_multi_by_expressions(session, model.customer_id == customer.id)
     customer_action.delete(session, customer.id)

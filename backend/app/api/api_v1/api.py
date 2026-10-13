@@ -6,6 +6,7 @@ from app import models
 from app.api import deps
 from app.api.api_v1.endpoints import (
     admin,
+    alerts,
     delights,
     lunch_crew,
     plate_ajo,
@@ -70,3 +71,5 @@ for feature in (plate_ajo, lunch_crew):
     api_router.include_router(feature.vendor_router)
 # Customer delights (surprise jara, today's special): vendor settings only.
 api_router.include_router(delights.vendor_router)
+# Leftover-food alerts (web push): customers turn them on; the vendor's last-plates sends them.
+api_router.include_router(alerts.public_router)

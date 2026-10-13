@@ -13,7 +13,8 @@ from sqlmodel import Session, select
 from app.actions import account_action, character_action, customer_action, user_action
 from app.core.config import settings
 from app.models import CharacterCreate, PlateBundle, PlateUse, Visit
-from app.services.stands import create_stand, set_stand_setting
+from app.services.qr import scan_code
+from app.services.stands import create_stand, resolve_stand_settings, set_stand_setting
 
 SLUG = "ajo-pot-test"
 PUBLIC = f"{settings.API_V1_STR}/public/{SLUG}"
@@ -24,6 +25,7 @@ MENU = [
 ]
 BANK = {"bank_name": "Opay", "account_number": "8031234567", "account_name": "Mama Afang"}
 SIX_HOURS = 6 * 60 * 60
+SCAN = ""  # the stand's QR scan code, set by the stand fixture
 
 
 def utcnow() -> datetime:
@@ -46,6 +48,8 @@ def stand(session: Session):
         session, account_id=owner.id, workspace_id=workspace.id, owner_id=owner.id
     )
     session.commit()
+    global SCAN
+    SCAN = scan_code(workspace, resolve_stand_settings(session, workspace))
     return workspace
 
 
@@ -63,7 +67,7 @@ def ajo_on(session: Session, stand):
 
 
 def new_customer(client: TestClient, name: str = "Ada") -> dict[str, str]:
-    r = client.post(f"{PUBLIC}/visits", json={"consent": True, "first_name": name})
+    r = client.post(f"{PUBLIC}/visits", json={"consent": True, "first_name": name, "scan": SCAN})
     assert r.status_code == 200, r.text
     return {"X-Customer-Key": r.json()["customer"]["key"]}
 
@@ -77,7 +81,7 @@ def buy(client: TestClient, who: dict, item="Afang and garri", plates=5, payer="
 
 
 def use(client: TestClient, who: dict):
-    return client.post(f"{PUBLIC}/ajo/use", headers=who)
+    return client.post(f"{PUBLIC}/ajo/use", json={"scan": SCAN}, headers=who)
 
 
 def last_use_back(session: Session, seconds: int) -> None:

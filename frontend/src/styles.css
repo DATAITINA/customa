@@ -123,6 +123,11 @@ textarea.input { height: auto; min-height: 96px; padding: 12px 16px; resize: ver
 .msg-me { align-self: flex-end; background: var(--ink); color: var(--paper); border-radius: 22px 22px 6px 22px; }
 .quick { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px; }
 .quick button { height: 40px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper); font-weight: 700; font-size: 14px; }
+.qr-tools { display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; max-width: 420px; }
+@media print { .qr-tools, .qr-sign .link-btn { display: none; } }
+.lp-alert-note { font-size: 14px; font-weight: 700; line-height: 1.4; }
+.scan-hint { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--radius-card); border: 2px dashed var(--ink); background: var(--paper); font-size: 16px; line-height: 1.4; }
+.scan-hint-icon { flex-shrink: 0; width: 40px; height: 40px; border-radius: 999px; background: var(--pepper); color: var(--paper); display: flex; align-items: center; justify-content: center; }
 .almost-pill { padding: 6px 12px; border-radius: 999px; background: var(--pepper); color: var(--paper); font-size: 14px; font-weight: 800; animation: almost-pulse 1.6s ease-in-out infinite; }
 @keyframes almost-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
 @media (prefers-reduced-motion: reduce) { .almost-pill { animation: none; } }

@@ -46,6 +46,8 @@ export type StandPublic = {
   window_seconds: number;
   last_plates: LastPlates;
   customer: CustomerState | null;
+  // Only on the demo stand (shown to vendors without a printed QR): its public scan code.
+  demo_scan?: string | null;
 };
 
 export type CountResult = {
@@ -79,6 +81,8 @@ export type Dashboard = {
   stand: { name: string; slug: string; description: string; character: Character | null };
   plates_for_jara: number;
   last_plates: LastPlates;
+  // Phones that get this stand's leftover-food alerts.
+  alert_subscribers?: number;
   stats: {
     plates_today: number;
     customers: number;
@@ -112,12 +116,67 @@ export function customerHeaders(slug: string): RequestInit {
   return key ? { headers: { 'X-Customer-Key': key } } : {};
 }
 
+// The scan code from the stand's QR code (?s=...). A plate counts only with it, so a bookmark,
+// the browser history or a shared link never counts a plate. It is read once, removed from the
+// address bar (a refresh must not count again), and kept for this browser tab for one visit.
+const SCAN_VISIT_MS = 30 * 60 * 1000;
+const scanName = (slug: string) => `customa:scan:${slug}`;
+type ScanState = { code: string; at: number; counted: boolean };
+const memoryScan = new Map<string, ScanState>();
+
+/** Demo stand only: act as if the customer scanned the QR code (its scan code is public). */
+export function pretendScan(slug: string, code: string) {
+  const state = { code, at: Date.now(), counted: false };
+  memoryScan.set(slug, state);
+  try { sessionStorage.setItem(scanName(slug), JSON.stringify(state)); } catch { /* kept in memory */ }
+}
+
+export function captureScan(slug: string) {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('s');
+  if (code) {
+    try {
+      sessionStorage.setItem(scanName(slug), JSON.stringify({ code, at: Date.now(), counted: false }));
+    } catch {
+      // Storage blocked: the code is still used for this page load below.
+      memoryScan.set(slug, { code, at: Date.now(), counted: false });
+    }
+  }
+  if (params.has('s') || params.has('src')) {
+    params.delete('s');
+    params.delete('src');
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`);
+  }
+}
+
+/** This visit's scan, if the customer scanned the stand's QR code in the last 30 minutes. */
+export function getScan(slug: string): ScanState | null {
+  let state: ScanState | null = memoryScan.get(slug) ?? null;
+  try {
+    const raw = sessionStorage.getItem(scanName(slug));
+    if (raw) state = JSON.parse(raw) as ScanState;
+  } catch {
+    // Fall back to the in-memory copy.
+  }
+  return state && Date.now() - state.at < SCAN_VISIT_MS ? state : null;
+}
+
+/** The scan has counted its plate: a refresh must not try to count again. */
+export function markScanCounted(slug: string) {
+  const state = getScan(slug);
+  if (!state) return;
+  const next = { ...state, counted: true };
+  memoryScan.set(slug, next);
+  try { sessionStorage.setItem(scanName(slug), JSON.stringify(next)); } catch { /* kept in memory */ }
+}
+
 /** Error thrown by the API client for a non-2xx response. */
 export type ApiError = { status?: number; message: string; raw?: { detail?: unknown } };
 
 export const api = {
   stand: (slug: string) => apiClient<StandPublic>('GET', `/public/${slug}`, null, customerHeaders(slug)),
-  countPlate: (slug: string, body: { first_name?: string; consent: boolean; source?: 'qr' }) =>
+  countPlate: (slug: string, body: { first_name?: string; consent: boolean; scan?: string }) =>
     apiClient<CountResult>('POST', `/public/${slug}/visits`, body, customerHeaders(slug)),
   rate: (slug: string, visitId: number, stars: number) =>
     apiClient('POST', `/public/${slug}/ratings`, { visit_id: visitId, stars }, customerHeaders(slug)),
@@ -140,10 +199,16 @@ export const api = {
   dashboard: (slug: string) => apiClient<Dashboard>('GET', `/stands/${slug}/dashboard`),
   redeemJara: (slug: string, code: string) =>
     apiClient<{ code: string; redeemed: boolean }>('POST', `/stands/${slug}/jara/${encodeURIComponent(code)}/redeem`),
+  // alert.sent: phones alerted; alert.skipped: why none were (recently_alerted, no_subscribers, ...).
   announceLastPlates: (slug: string, plates_left: number, minutes = 90) =>
-    apiClient<{ last_plates: LastPlates }>('POST', `/stands/${slug}/last-plates`, { plates_left, minutes }),
+    apiClient<{ last_plates: LastPlates; alert?: { sent: number; skipped: string | null } }>(
+      'POST', `/stands/${slug}/last-plates`, { plates_left, minutes },
+    ),
   updateCharacter: (slug: string, body: Partial<Character>) =>
     apiClient<StandSummary>('PUT', `/stands/${slug}/character`, body),
+  // The scan code for the stand's QR code (stand members only), and a new one that turns old prints off.
+  qrCode: (slug: string) => apiClient<{ scan: string; version: number }>('GET', `/stands/${slug}/qr`),
+  newQrCode: (slug: string) => apiClient<{ scan: string; version: number }>('POST', `/stands/${slug}/qr/new`),
   delights: (slug: string) => apiClient<Delights>('GET', `/stands/${slug}/delights`),
   setSurprise: (slug: string, enabled: boolean) =>
     apiClient<Delights>('PUT', `/stands/${slug}/delights/surprise`, { enabled }),

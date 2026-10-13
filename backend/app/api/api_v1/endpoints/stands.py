@@ -23,8 +23,10 @@ from app.models import (
     Visit,
     Workspace,
 )
+from app.services import alerts
 from app.services.bisi import suggest_character
 from app.services.chat_log import recent_questions
+from app.services.qr import scan_code
 from app.services.stands import create_stand, last_plates, resolve_stand_settings, set_stand_setting
 
 router = APIRouter(prefix="/stands", tags=["stands"])
@@ -135,6 +137,7 @@ def dashboard(
         "open_jara": [{"code": j.code, "name": c.first_name or "Guest", "at": j.created_at} for j, c in open_jara],
         "recent_questions": recent_questions(session, workspace=workspace),
         "last_plates": last_plates(resolve_stand_settings(session, workspace)),
+        "alert_subscribers": alerts.subscriber_count(session, workspace=workspace),
         "plates_for_jara": resolve_stand_settings(session, workspace).PLATES_FOR_JARA,
         "stats": {
             "plates_today": plates_today,
@@ -201,8 +204,47 @@ def announce_last_plates(
 ) -> dict[str, Any]:
     """Tell customers how many plates are left tonight, stored as a per-stand tiered setting.
     plates_left=0 ends the announcement."""
-    until = (datetime.utcnow() + timedelta(minutes=body.minutes)).isoformat(timespec="seconds")
+    now = datetime.utcnow()
+    until = (now + timedelta(minutes=body.minutes)).isoformat(timespec="seconds")
     set_stand_setting(session, workspace, "LAST_PLATES_LEFT", body.plates_left)
     set_stand_setting(session, workspace, "LAST_PLATES_UNTIL", until if body.plates_left else None)
     session.commit()
-    return {"last_plates": last_plates(resolve_stand_settings(session, workspace))}
+    stand_settings = resolve_stand_settings(session, workspace)
+    alert = {"sent": 0, "skipped": "ended"}
+    if body.plates_left:
+        # Push the news to customers' phones, in the character's voice (services/alerts.py).
+        alert = alerts.send_last_plates(
+            session,
+            workspace=workspace,
+            character=character_action.get_for_stand(session, workspace_id=workspace.id),
+            stand_settings=stand_settings,
+            plates_left=body.plates_left,
+            until=until,
+            now=now,
+        )
+    return {"last_plates": last_plates(stand_settings), "alert": alert}
+
+
+@router.get("/{workspace_slug}/qr")
+def read_qr(
+    workspace: Workspace = Depends(deps.get_current_workspace),
+    _member=Depends(deps.get_current_active_member),
+    session: Session = Depends(deps.get_session),
+) -> dict[str, Any]:
+    """The scan code to put in the stand's QR code. Only stand members can read it."""
+    stand_settings = resolve_stand_settings(session, workspace)
+    return {"scan": scan_code(workspace, stand_settings), "version": stand_settings.QR_VERSION}
+
+
+@router.post("/{workspace_slug}/qr/new")
+def make_new_qr(
+    workspace: Workspace = Depends(deps.get_current_workspace),
+    _member=Depends(deps.get_current_active_member),
+    session: Session = Depends(deps.get_session),
+) -> dict[str, Any]:
+    """A new QR code, for when the old one was copied or photographed. Older prints stop
+    counting plates; the vendor prints or shows the new one."""
+    version = resolve_stand_settings(session, workspace).QR_VERSION + 1
+    set_stand_setting(session, workspace, "QR_VERSION", version)
+    session.commit()
+    return read_qr(workspace=workspace, _member=_member, session=session)

@@ -21,12 +21,14 @@ from app.core.config import settings
 from app.models import CharacterCreate, ChatMemory
 from app.services import bisi
 from app.services.character_chat import JOKES, is_food_question
-from app.services.stands import create_stand, set_stand_setting
+from app.services.qr import scan_code
+from app.services.stands import create_stand, resolve_stand_settings, set_stand_setting
 
 SIX_HOURS = 6 * 60 * 60
 SLUG = "chat-test-stand"
 BASE = f"{settings.API_V1_STR}/public/{SLUG}"
 VENDOR = f"{settings.API_V1_STR}/stands/{SLUG}"
+SCAN = ""  # the stand's QR scan code, set by the stand fixture
 MENU = [{"item": "Jollof rice", "price": 1500}, {"item": "Afang and fufu", "price": 2500}]
 
 
@@ -54,6 +56,8 @@ def stand(session: Session):
         session, account_id=owner.id, workspace_id=workspace.id, owner_id=owner.id
     )
     session.commit()
+    global SCAN
+    SCAN = scan_code(workspace, resolve_stand_settings(session, workspace))
     return workspace
 
 
@@ -62,7 +66,7 @@ def h(key: str) -> dict[str, str]:
 
 
 def sign_up(client: TestClient, name: str = "Bassey") -> str:
-    r = client.post(f"{BASE}/visits", json={"consent": True, "first_name": name})
+    r = client.post(f"{BASE}/visits", json={"consent": True, "first_name": name, "scan": SCAN})
     assert r.status_code == 200, r.text
     return r.json()["customer"]["key"]
 
@@ -74,7 +78,7 @@ def next_plate(client: TestClient, session: Session, key: str) -> dict:
     visit.created_at = utcnow() - timedelta(seconds=SIX_HOURS)
     session.add(visit)
     session.commit()
-    r = client.post(f"{BASE}/visits", json={"consent": True}, headers=h(key))
+    r = client.post(f"{BASE}/visits", json={"consent": True, "scan": SCAN}, headers=h(key))
     assert r.status_code == 200, r.text
     return r.json()
 

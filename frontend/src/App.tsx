@@ -38,9 +38,25 @@ function usePath() {
   return path;
 }
 
+// Opened from the Home Screen (the installed app starts at /?app=1): go back to the last stand.
+const LAST_STAND = 'customa:last-stand';
+export function rememberStand(slug: string) {
+  try { localStorage.setItem(LAST_STAND, slug); } catch { /* not kept */ }
+}
+
 export function App() {
   const path = usePath();
   const parts = path.split('/').filter(Boolean);
+
+  useEffect(() => {
+    if (path !== '/' || new URLSearchParams(window.location.search).get('app') !== '1') return;
+    let last: string | null = null;
+    try { last = localStorage.getItem(LAST_STAND); } catch { /* none */ }
+    if (last) {
+      window.history.replaceState({}, '', `/s/${last}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  }, [path]);
 
   if (parts[0] === 's' && parts[1]) {
     return parts[2] === 'chat' ? <ChatPage slug={parts[1]} /> : <CustomerPage slug={parts[1]} />;

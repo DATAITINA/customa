@@ -1,0 +1,135 @@
+import { useEffect, useState } from 'react';
+import type { StandPublic } from '../../api';
+import { Character } from '../../components/Character';
+import { alertsApi, alertsOnHere, keyBytes, pushSupport, rememberAlerts, type AlertsInfo } from './alertsApi';
+import { drawAlertArt, saveAlertArt } from './characterArt';
+import './alerts.css';
+
+type Phase = 'idle' | 'busy' | 'on' | 'denied' | 'error';
+
+// "Tell me when food is almost finished": the stand character's leftover-food alerts.
+// Hidden until the server offers alerts and the customer has a card at this stand.
+export function AlertsCard({ slug, stand }: { slug: string; stand: StandPublic }) {
+  const [info, setInfo] = useState<AlertsInfo | null>(null);
+  const [phase, setPhase] = useState<Phase>(() => (alertsOnHere(slug) ? 'on' : 'idle'));
+  const support = pushSupport();
+  const ch = stand.character;
+  const first = ch?.name.split(' ')[0] ?? 'We';
+  const standName = stand.stand.name.replace(' (Demo)', '');
+
+  useEffect(() => {
+    alertsApi.info(slug).then(setInfo).catch(() => setInfo(null));
+  }, [slug]);
+
+  // Alerts on: redraw the character's picture now and then, in case the vendor changed it.
+  useEffect(() => {
+    if (phase !== 'on') return;
+    drawAlertArt(ch, standName).then((art) => saveAlertArt(slug, art)).catch(() => undefined);
+  }, [phase, slug, ch, standName]);
+
+  if (!info?.available || !info.public_key || support === 'unsupported') return null;
+
+  const turnOn = async () => {
+    setPhase('busy');
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPhase('denied');
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const sub =
+        (await reg.pushManager.getSubscription()) ??
+        (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(info.public_key!) }));
+      await alertsApi.turnOn(slug, sub.toJSON());
+      rememberAlerts(slug, true);
+      let art = null;
+      try {
+        art = await drawAlertArt(ch, standName);
+        await saveAlertArt(slug, art);
+      } catch {
+        // The alert still works with the Customa icon.
+      }
+      setPhase('on');
+      // A first, friendly alert so the customer sees what they will get.
+      try {
+        await reg.showNotification(`${first}: alerts are on! 🔔`, {
+          body: `I go tell you when food is almost finished at ${standName}. No spam, promise 🤞🏾`,
+          icon: art?.icon ?? '/icons/icon-192.png',
+          badge: '/icons/badge-96.png',
+          tag: `alerts-on-${slug}`,
+          data: { url: `/s/${slug}` },
+        } as NotificationOptions);
+      } catch {
+        // Alerts are on; this welcome is only a preview.
+      }
+    } catch {
+      setPhase('error');
+    }
+  };
+
+  const turnOff = async () => {
+    setPhase('busy');
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await alertsApi.turnOff(slug, sub.endpoint);
+    } catch {
+      // Turned off on this phone anyway; the server drops it on the next alert if it is gone.
+    }
+    rememberAlerts(slug, false);
+    setPhase('idle');
+  };
+
+  return (
+    <div className="alerts-card">
+      <div className="row" style={{ alignItems: 'center' }}>
+        <span className="eyebrow">LAST PLATES ALERTS</span>
+        {phase === 'on' && <span className="alerts-on-pill">On</span>}
+      </div>
+
+      {/* What the alert looks like on the phone. */}
+      <div className="alert-preview" aria-hidden="true">
+        <div className="alert-preview-avatar">
+          <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="excited" pose="idle" size={44} />
+        </div>
+        <div className="alert-preview-text">
+          <span className="alert-preview-app">CUSTOMA · now</span>
+          <strong>{first}: last plates tonight! 🍲</strong>
+          <span>Only 8 plates left at {standName}. Come chop before 8:30 PM 🏃🏾</span>
+        </div>
+      </div>
+
+      {support === 'ios-install' ? (
+        <div className="alerts-steps">
+          <strong>On iPhone, alerts come from the Customa app on your Home Screen:</strong>
+          <span>1. Tap the Share button <ShareIcon /> below.</span>
+          <span>2. Tap <b>Add to Home Screen</b>.</span>
+          <span>3. Open Customa from your Home Screen and turn alerts on here.</span>
+        </div>
+      ) : phase === 'on' ? (
+        <>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>{first} go tell you when food is almost finished. 🔔</span>
+          <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={turnOff}>Turn alerts off</button>
+        </>
+      ) : phase === 'denied' ? (
+        <span className="note">Alerts are blocked on this phone. Allow notifications for this site in your browser settings, then try again.</span>
+      ) : (
+        <>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>Get a ping when {first} has food left before closing. Only then, no spam.</span>
+          <button type="button" className="btn" disabled={phase === 'busy'} onClick={turnOn}>
+            {phase === 'busy' ? 'Turning on…' : `🔔 Get ${first}'s alerts`}
+          </button>
+          {phase === 'error' && <span className="error">Could not turn on alerts. Check your connection and try again.</span>}
+        </>
+      )}
+    </div>
+  );
+}
+
+const ShareIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-label="Share" style={{ verticalAlign: -3 }}>
+    <path d="M12 3v12M7 8l5-5 5 5" />
+    <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+  </svg>
+);

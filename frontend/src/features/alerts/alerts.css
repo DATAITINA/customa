@@ -1,0 +1,9 @@
+.alerts-card { border: 2px solid var(--ink); border-radius: var(--radius-card); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; background: var(--paper); }
+.alerts-on-pill { padding: 4px 10px; border-radius: 999px; background: #1F8A4C; color: var(--paper); font-size: 12px; font-weight: 800; }
+.alert-preview { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 18px; background: var(--stone); box-shadow: 0 6px 18px rgba(20, 20, 20, 0.08); }
+.alert-preview-avatar { flex-shrink: 0; width: 52px; height: 52px; border-radius: 999px; background: var(--blush); border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.alert-preview-avatar svg { margin-top: 8px; }
+.alert-preview-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; line-height: 1.35; }
+.alert-preview-text strong { font-size: 15px; }
+.alert-preview-app { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: var(--muted); }
+.alerts-steps { display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 1.4; }

@@ -26,6 +26,9 @@ class CustomaSettings(ModuleSettingsBase):
     # "Last plates tonight": set by the vendor to sell leftover food before closing.
     LAST_PLATES_LEFT: int = 0
     LAST_PLATES_UNTIL: str | None = None  # ISO time (UTC) when the announcement ends
+    # When the last leftover-food alert went out (ISO, UTC): one alert per ALERT_GAP_MINUTES.
+    LAST_PLATES_ALERTED_AT: str | None = None
+    ALERT_GAP_MINUTES: int = 60
 
     # Plate Ajo: customers prepay plates at today's price by transfer to the vendor's own account.
     PLATE_AJO_ENABLED: bool = False
@@ -44,6 +47,8 @@ class CustomaSettings(ModuleSettingsBase):
     # Off until the vendor turns it on; about one plate in SURPRISE_JARA_ONE_IN.
     SURPRISE_JARA_ENABLED: bool = False
     SURPRISE_JARA_ONE_IN: int = 15
+    # The QR code's scan code changes when the vendor makes a new QR code (old prints stop counting).
+    QR_VERSION: int = 1
     # Today's special, set by the vendor. It shows only on the day it was set (Nigeria time).
     TODAYS_SPECIAL: str | None = None
     TODAYS_SPECIAL_DATE: str | None = None  # ISO date, e.g. "2026-10-13"
@@ -69,6 +74,12 @@ class AppSettings(
     # Login for the seeded demo stand (set real values in .env).
     DEMO_VENDOR_EMAIL: str = "iyabisi@example.com"
     DEMO_VENDOR_PASSWORD: str = "change-me-demo"
+
+    # Web push for leftover-food alerts (generate with scripts/generate_vapid_keys.py and set
+    # them in the backend's environment). Without them, alerts are simply not offered.
+    VAPID_PUBLIC_KEY: str | None = None
+    VAPID_PRIVATE_KEY: str | None = None
+    VAPID_SUBJECT: str = "mailto:alerts@customa.app"
 
     REDIS_HOST: str | None = None
     REDIS_PORT: str | None = None

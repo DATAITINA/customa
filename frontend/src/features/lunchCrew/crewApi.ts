@@ -54,9 +54,21 @@ export const crewApi = {
 };
 
 // The invite code in a share link: /s/<slug>?crew=CODE
-export const inviteCodeFromUrl = () => new URLSearchParams(window.location.search).get('crew');
+// The invite code from a crew share link (?crew=). Kept for this browser tab too: a friend
+// who opens the link away from the stand still has it after scanning the stand's QR code.
+const INVITE_KEY = 'customa:crew-invite';
+export function inviteCodeFromUrl(): string | null {
+  const fromUrl = new URLSearchParams(window.location.search).get('crew');
+  try {
+    if (fromUrl) sessionStorage.setItem(INVITE_KEY, fromUrl);
+    return fromUrl ?? sessionStorage.getItem(INVITE_KEY);
+  } catch {
+    return fromUrl;
+  }
+}
 
 export function dropInviteFromUrl() {
+  try { sessionStorage.removeItem(INVITE_KEY); } catch { /* storage blocked: nothing kept */ }
   const params = new URLSearchParams(window.location.search);
   if (!params.has('crew')) return;
   params.delete('crew');

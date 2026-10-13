@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { StandPublic } from '../../api';
+import { getScan, type StandPublic } from '../../api';
 import { ajoApi, errorText, naira, parseUtc, timeOf, type AjoPublic, type Bundle, type UseResult } from './ajoApi';
 import './plateAjo.css';
 
@@ -90,7 +90,12 @@ function ActivePlates({
     setBusy(true);
     setError(null);
     try {
-      const r = await ajoApi.use(slug);
+      const scan = getScan(slug);
+      if (!scan) {
+        setError('Scan the QR code at the stand first, then use your prepaid plate.');
+        return;
+      }
+      const r = await ajoApi.use(slug, scan.code);
       setAsking(false);
       onUsed(r);
     } catch (err) {

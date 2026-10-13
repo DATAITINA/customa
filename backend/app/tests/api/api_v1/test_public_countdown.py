@@ -7,16 +7,18 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.actions import account_action, customer_action, visit_action
 from app.core.config import settings
-from app.models import CharacterCreate, CustomerCreate, Visit
-from app.services.stands import create_stand
+from app.models import CharacterCreate, CustomerCreate, Visit, Workspace
+from app.services.qr import scan_code
+from app.services.stands import create_stand, resolve_stand_settings
 
 SIX_HOURS = 6 * 60 * 60
 SLUG = "mama-put-test"
 BASE = f"{settings.API_V1_STR}/public/{SLUG}"
+SCAN = ""  # the stand's QR scan code, set by the stand fixture
 
 
 def utcnow() -> datetime:
@@ -36,18 +38,20 @@ def stand(session: Session):
         slug=SLUG,
     )
     session.commit()
+    global SCAN
+    SCAN = scan_code(workspace, resolve_stand_settings(session, workspace))
     return workspace
 
 
 def sign_up(client: TestClient, **body) -> dict:
-    r = client.post(f"{BASE}/visits", json={"consent": True, **body})
+    r = client.post(f"{BASE}/visits", json={"consent": True, "scan": SCAN, **body})
     assert r.status_code == 200, r.text
     return r.json()
 
 
 def scan_again(client: TestClient, key: str, **body):
     return client.post(
-        f"{BASE}/visits", json={"consent": True, **body}, headers={"X-Customer-Key": key}
+        f"{BASE}/visits", json={"consent": True, "scan": SCAN, **body}, headers={"X-Customer-Key": key}
     )
 
 
@@ -63,7 +67,8 @@ def move_last_visit_back(session: Session, key: str, seconds: int) -> None:
 def test_normal_customer_gets_6_hours(client: TestClient, session: Session, stand) -> None:
     data = sign_up(client)
     assert data["customer"]["window_seconds"] == SIX_HOURS
-    assert customer_action.get_by_all(session, key=data["customer"]["key"]).source is None
+    # Every plate now comes from a real QR scan, so every customer arrived by QR.
+    assert customer_action.get_by_all(session, key=data["customer"]["key"]).source == "qr"
 
     r = scan_again(client, data["customer"]["key"])
     assert r.status_code == 409
@@ -133,7 +138,7 @@ def test_refresh_keeps_remaining_time(client: TestClient, session: Session, stan
 def test_unknown_source_is_ignored(client: TestClient, session: Session, stand) -> None:
     data = sign_up(client, source="vip")
     assert data["customer"]["window_seconds"] == SIX_HOURS
-    assert customer_action.get_by_all(session, key=data["customer"]["key"]).source is None
+    assert customer_action.get_by_all(session, key=data["customer"]["key"]).source == "qr"
 
 
 def test_window_cannot_be_sent_by_client(client: TestClient, session: Session, stand) -> None:
@@ -166,8 +171,12 @@ def test_existing_customer_keeps_6_hours(client: TestClient, session: Session, s
     assert r.json()["detail"]["seconds_left"] > SIX_HOURS - 120
 
 
-def test_demo_stand_unchanged(client: TestClient) -> None:
+def test_demo_stand_unchanged(client: TestClient, session: Session) -> None:
     # The demo stand keeps its own 30-second window so it can be shown to vendors.
-    r = client.post(f"{settings.API_V1_STR}/public/iya-bisi-demo/visits", json={"consent": True})
+    demo = session.exec(select(Workspace).where(Workspace.slug == "iya-bisi-demo")).one()
+    scan = scan_code(demo, resolve_stand_settings(session, demo))
+    r = client.post(
+        f"{settings.API_V1_STR}/public/iya-bisi-demo/visits", json={"consent": True, "scan": scan}
+    )
     assert r.status_code == 200
     assert r.json()["customer"]["window_seconds"] == 30

@@ -310,7 +310,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           <Link to={`/s/${slug}`} className="btn btn-outline dash-action"><PhoneIcon />Customer page</Link>
         </div>
       </div>
-      <LastPlatesControl slug={slug} current={d.last_plates} onChange={() => q.refetch()} />
+      <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
       <div className="stats">
         {stats.map((s) => (
           <div key={s.label} className="stat">
@@ -389,12 +389,31 @@ function OpenJara({ slug, items, onChange }: { slug: string; items: { code: stri
 }
 
 // Food left over near closing time? One tap tells every customer who opens the stand page.
-function LastPlatesControl({ slug, current, onChange }: { slug: string; current: import('../api').LastPlates; onChange: () => void }) {
+function LastPlatesControl({ slug, current, subscribers, onChange }: { slug: string; current: import('../api').LastPlates; subscribers: number; onChange: () => void }) {
   const [n, setN] = useState(10);
   const [busy, setBusy] = useState(false);
+  const [sentNote, setSentNote] = useState<string | null>(null);
   const send = async (plates: number) => {
     setBusy(true);
-    try { await api.announceLastPlates(slug, plates); onChange(); } finally { setBusy(false); }
+    setSentNote(null);
+    try {
+      const r = await api.announceLastPlates(slug, plates);
+      const a = r.alert;
+      if (plates && a) {
+        setSentNote(
+          a.sent > 0
+            ? `🔔 Alert sent to ${a.sent} phone${a.sent === 1 ? '' : 's'}.`
+            : a.skipped === 'recently_alerted'
+              ? 'Your banner is updated. Phones already got an alert in the last hour, so no new alert (no spam).'
+              : a.skipped === null
+                ? 'Your banner is updated, but no phone could be reached right now.'
+                : null,
+        );
+      }
+      onChange();
+    } finally {
+      setBusy(false);
+    }
   };
   const step = (by: number) => setN((v) => Math.min(500, Math.max(1, (Number.isFinite(v) ? v : 1) + by)));
   // Layout lives in styles.css (.lp-*): desktop keeps one compact line; phones get a
@@ -421,6 +440,15 @@ function LastPlatesControl({ slug, current, onChange }: { slug: string; current:
             {busy ? 'Telling…' : 'Tell my customers'}
           </button>
         </div>
+      )}
+      {sentNote ? (
+        <span className="lp-alert-note" role="status">{sentNote}</span>
+      ) : (
+        <span className="lp-alert-note">
+          {subscribers > 0
+            ? `🔔 ${subscribers === 1 ? '1 customer phone gets' : `${subscribers} customer phones get`} an alert from your character when you tell them.`
+            : 'Customers can turn on alerts on their stand page, then they get a ping when you tell them.'}
+        </span>
       )}
     </div>
   );

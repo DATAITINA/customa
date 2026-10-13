@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Logo } from '../components/Logo';
 import {
   api,
+  captureScan,
   clearCustomerKey,
   getCustomerKey,
+  getScan,
+  markScanCounted,
+  pretendScan,
   setCustomerKey,
   type ApiError,
   type CountResult,
@@ -11,15 +15,18 @@ import {
   type StandPublic,
 } from '../api';
 import { Character, PRESETS } from '../components/Character';
-import { Link } from '../App';
+import { Link, rememberStand } from '../App';
 import { LastPlatesBanner } from '../components/LastPlates';
 import { AjoCard } from '../features/plateAjo/CustomerAjo';
 import { CrewCard } from '../features/lunchCrew/CustomerCrew';
+import { AlertsCard } from '../features/alerts/CustomerAlerts';
 
 type View =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'welcome' }
+  // Not counted: no fresh scan of the stand's QR code (stale = the code was old or wrong).
+  | { kind: 'scan'; stale?: boolean }
   | { kind: 'counted'; result: CountResult }
   | { kind: 'tooSoon'; secondsLeft: number; windowSeconds: number; plate: number; name: string | null }
   | { kind: 'jara'; result: CountResult }
@@ -64,21 +71,27 @@ export function CustomerPage({ slug }: { slug: string }) {
   };
   const started = useRef(false);
 
-  // Opened from the stand's QR code. The server saves this only when it first creates the customer.
-  const fromQr = new URLSearchParams(window.location.search).get('src') === 'qr';
-
+  // A plate counts only with the scan code from the stand's QR code (read in the effect below).
   const handleCount = async (body: { first_name?: string; consent: boolean }) => {
+    const scan = getScan(slug);
+    if (!scan) {
+      setView({ kind: 'scan' });
+      return;
+    }
     try {
-      const result = await api.countPlate(slug, fromQr ? { ...body, source: 'qr' } : body);
+      const result = await api.countPlate(slug, { ...body, scan: scan.code });
+      markScanCounted(slug);
       setCustomerKey(slug, result.customer.key);
       setMe(result.customer);
       setView(result.jara ? { kind: 'jara', result } : { kind: 'counted', result });
     } catch (err) {
       const e = err as ApiError;
       const detail = e.raw?.detail as
-        | { seconds_left: number; customer: CustomerState }
+        | { seconds_left: number; customer: CustomerState; code?: string }
         | undefined;
-      if (e.status === 409 && detail) {
+      if (e.status === 403 && detail?.code === 'scan_required') {
+        setView({ kind: 'scan', stale: true });
+      } else if (e.status === 409 && detail) {
         if (detail.customer?.key) setMe(detail.customer);
         setView({ kind: 'tooSoon', secondsLeft: detail.seconds_left, windowSeconds: detail.customer.window_seconds ?? stand?.window_seconds ?? 0, plate: detail.customer.plate_number, name: detail.customer.first_name });
       } else if (e.status === 404) {
@@ -109,14 +122,23 @@ export function CustomerPage({ slug }: { slug: string }) {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+    captureScan(slug);
+    rememberStand(slug);
     api
       .stand(slug)
       .then((s) => {
         setStand(s);
         if (s.customer) setMe(s.customer);
-        // A scan from a phone we already know is a new visit: count it straight away.
-        if (s.customer && getCustomerKey(slug)) handleCount({ consent: true });
-        else setView({ kind: 'welcome' });
+        const scan = getScan(slug);
+        const freshScan = scan !== null && !scan.counted;
+        if (s.customer && getCustomerKey(slug)) {
+          // A new scan from a phone we already know is a new visit: count it straight away.
+          // Without one (a bookmark, a refresh, the history) only show the card.
+          if (freshScan) handleCount({ consent: true });
+          else if ((s.customer.seconds_left ?? 0) > 0) {
+            setView({ kind: 'tooSoon', secondsLeft: s.customer.seconds_left ?? 0, windowSeconds: s.customer.window_seconds, plate: s.customer.plate_number, name: s.customer.first_name });
+          } else setView({ kind: 'scan' });
+        } else setView(freshScan ? { kind: 'welcome' } : { kind: 'scan' });
       })
       .catch((err: ApiError) =>
         setView({ kind: 'error', message: err.status === 404 ? 'This stand does not exist.' : err.message }),
@@ -152,6 +174,7 @@ export function CustomerPage({ slug }: { slug: string }) {
   const featureCards = (
     <>
       <OpenJara codes={me?.open_jara ?? []} />
+      {me && <AlertsCard slug={slug} stand={stand} />}
       <CrewCard slug={slug} stand={stand} onChange={refreshMe} refreshKey={meVersion} ownPlate={me?.own_plate_number ?? null} />
       <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
     </>
@@ -186,6 +209,42 @@ export function CustomerPage({ slug }: { slug: string }) {
     );
   }
 
+  if (view.kind === 'scan') {
+    const known = me?.first_name ? `${me.first_name}! ` : '';
+    const bubble = view.stale
+      ? 'Hmm, that QR code is old. Scan the QR code at the stand to count your plate!'
+      : me
+        ? `${known}Welcome back! Scan the QR code at the stand to count today's plate.`
+        : `${ch?.greeting ?? 'Welcome!'} Scan the QR code at the stand to count your first plate.`;
+    return (
+      <Shell stand={stand}>
+        <Hero bubble={bubble}>
+          <Character {...charProps} expression="happy" pose="wave" size={170} />
+        </Hero>
+        <div className="stack">
+          <ScanHint charName={charName} />
+          {stand.demo_scan && (
+            // Demo stand only: show the whole flow without a printed QR code.
+            <button className="btn" onClick={() => { pretendScan(slug, stand.demo_scan!); setView({ kind: 'loading' }); handleCount({ consent: true }); }}>
+              📷 Pretend I scanned the QR (demo)
+            </button>
+          )}
+          {me && (
+            <>
+              <PlateCard plate={me.plate_number} total={total} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} isDemo={stand.window_seconds < 120} />
+              {featureCards}
+              <Link to={`/s/${slug}/chat`} className="btn btn-outline">
+                <ChatIcon /> Talk to {charName.split(' ')[0]}
+              </Link>
+            </>
+          )}
+          <Menu items={ch?.menu ?? []} />
+          {me && <DeleteMine slug={slug} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />}
+        </div>
+      </Shell>
+    );
+  }
+
   if (view.kind === 'tooSoon') {
     return (
       <Shell stand={stand}>
@@ -196,6 +255,7 @@ export function CustomerPage({ slug }: { slug: string }) {
           plate={me?.plate_number ?? view.plate}
           crewName={me?.crew_name ?? null}
           name={view.name}
+          canCount={(() => { const sc = getScan(slug); return sc !== null && !sc.counted; })()}
           onReady={() => handleCount({ consent: true })}
           extras={featureCards}
         />
@@ -339,8 +399,8 @@ function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consen
 }
 
 function TooSoon({
-  stand, initialSeconds, windowSeconds, plate, crewName, name, onReady, extras,
-}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; crewName?: string | null; name: string | null; onReady: () => void; extras?: React.ReactNode }) {
+  stand, initialSeconds, windowSeconds, plate, crewName, name, canCount, onReady, extras,
+}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; crewName?: string | null; name: string | null; canCount: boolean; onReady: () => void; extras?: React.ReactNode }) {
   // Count down to a fixed end time, not by ticking: phones pause timers while the
   // screen is off or the tab is in the background, which would leave a 6-hour
   // countdown far behind. Re-read the clock on every tick and when the page is shown again.
@@ -386,9 +446,14 @@ function TooSoon({
             {stand.window_seconds < 120 ? ' On this demo stand a visit is 30 seconds. On real stands it is 6 hours.' : ''}
           </span>
         </div>
-        <button className="btn" disabled={seconds > 0} onClick={onReady}>
-          {seconds > 0 ? 'Wait for the timer' : 'Count my next plate'}
-        </button>
+        {seconds > 0 ? (
+          <button className="btn" disabled>Wait for the timer</button>
+        ) : canCount ? (
+          // Scanned at the stand while the timer was still running: count now.
+          <button className="btn" onClick={onReady}>Count my next plate</button>
+        ) : (
+          <ScanHint charName={ch?.name ?? 'your host'} done />
+        )}
         <Link to={`/s/${stand.stand.slug}/chat`} className="btn btn-outline"><ChatIcon /> Talk to {ch?.name.split(' ')[0] ?? 'us'} while you wait</Link>
       </div>
     </>
@@ -406,6 +471,28 @@ function Goodbye({ name, plate }: { name: string | null; plate: number }) {
   const line = GOODBYES[plate % GOODBYES.length];
   return <p className="goodbye">{name ? `${name}, ${line.charAt(0).toLowerCase()}${line.slice(1)}` : line}</p>;
 }
+
+// How to count a plate: scan the stand's QR code with the phone camera.
+function ScanHint({ charName, done }: { charName: string; done?: boolean }) {
+  return (
+    <div className="scan-hint" role="status">
+      <span className="scan-hint-icon" aria-hidden="true"><CameraIcon /></span>
+      <span>
+        <strong>{done ? 'Timer done! Scan the QR code at the stand' : 'Scan the QR code at the stand'}</strong>
+        <span className="note" style={{ display: 'block' }}>
+          Open your phone camera and point it at {charName.split(' ')[0]}'s QR sign. Only a scan at the stand counts a plate.
+        </span>
+      </span>
+    </div>
+  );
+}
+
+const CameraIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+    <circle cx="12" cy="13" r="3" />
+  </svg>
+);
 
 // Unredeemed jara codes at this stand (own card or a crew turn), so a code is never lost.
 function OpenJara({ codes }: { codes: { code: string }[] }) {

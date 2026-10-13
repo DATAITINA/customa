@@ -27,6 +27,10 @@ plate, closed with a cliffhanger and picked up next plate), and remembers a few 
 customer can see and clear. Vendors can also set today's special and turn on surprise jara.
 Details: [docs/character-chat-and-delights.md](docs/character-chat-and-delights.md).
 
+A plate counts only after a real scan of the stand's QR code (it carries a secret scan code),
+and customers can turn on leftover-food alerts: a push notification in the character's voice
+when the vendor taps "Tell my customers". Details: [docs/scan-and-alerts.md](docs/scan-and-alerts.md).
+
 ## The problem
 
 Vendors in Uyo told us their biggest daily problem is getting enough customers, so cooked food

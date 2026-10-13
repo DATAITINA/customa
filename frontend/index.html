@@ -8,6 +8,17 @@
     <link rel="icon" type="image/svg+xml" href="/logo-mark.svg" />
     <!-- Installable app (Home Screen), needed for alerts on iPhone. -->
     <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      // iPhone reads the manifest when the page first loads, so a stand page points at its own
+      // manifest from the start: the Home Screen app then opens this stand with this customer's card.
+      (function () {
+        var m = location.pathname.match(/^\/s\/([^/]+)/);
+        if (!m) return;
+        var href = '/m/' + m[1];
+        try { href = localStorage.getItem('customa:manifest:' + m[1]) || href; } catch (e) {}
+        document.querySelector('link[rel="manifest"]').href = href;
+      })();
+    </script>
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Customa" />

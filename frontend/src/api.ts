@@ -180,6 +180,8 @@ export function setStandManifest(slug: string, key: string | null) {
   if (!link) return;
   const href = `/m/${slug}${key ? `?k=${encodeURIComponent(key)}` : ''}`;
   if (link.getAttribute('href') !== href) link.setAttribute('href', href);
+  // Read by index.html on the next load, before the app starts (iPhone reads the manifest early).
+  try { localStorage.setItem(`customa:manifest:${slug}`, href); } catch { /* not kept */ }
 }
 
 /** Error thrown by the API client for a non-2xx response. */

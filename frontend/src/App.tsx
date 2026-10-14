@@ -9,6 +9,7 @@ const ChatPage = lazy(() => import('./pages/ChatPage').then((m) => ({ default: m
 const VendorPage = lazy(() => import('./pages/VendorPage').then((m) => ({ default: m.VendorPage })));
 const QrPage = lazy(() => import('./pages/QrPage').then((m) => ({ default: m.QrPage })));
 const PlayPage = lazy(() => import('./features/games/PlayPage').then((m) => ({ default: m.PlayPage })));
+const WheelPage = lazy(() => import('./features/prizeWheel/WheelPage').then((m) => ({ default: m.WheelPage })));
 const GoogleReturnPage = lazy(() => import('./features/googleSignIn/GoogleSignIn').then((m) => ({ default: m.GoogleReturnPage })));
 
 // A tiny router: a few kinds of page, no library needed.
@@ -74,6 +75,7 @@ function route(parts: string[]) {
   if (parts[0] === 's' && parts[1]) {
     if (parts[2] === 'chat') return <ChatPage slug={parts[1]} />;
     if (parts[2] === 'play') return <PlayPage slug={parts[1]} />;
+    if (parts[2] === 'wheel') return <WheelPage slug={parts[1]} />;
     return <CustomerPage slug={parts[1]} />;
   }
   if (parts[0] === 'qr' && parts[1]) return <QrPage slug={parts[1]} />;

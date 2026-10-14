@@ -53,6 +53,11 @@ class CustomaSettings(ModuleSettingsBase):
     # Today's special, set by the vendor. It shows only on the day it was set (Nigeria time).
     TODAYS_SPECIAL: str | None = None
     TODAYS_SPECIAL_DATE: str | None = None  # ISO date, e.g. "2026-10-13"
+    # Prize Wheel: the jara is a spin on the vendor's wheel of food prizes (up to 6). Off until
+    # the vendor publishes a wheel with at least 2 prizes. A won prize can be collected for
+    # WHEEL_PRIZE_VALID_DAYS days.
+    PRIZE_WHEEL_ENABLED: bool = False
+    WHEEL_PRIZE_VALID_DAYS: int = 14
 
 
 class AppSettings(

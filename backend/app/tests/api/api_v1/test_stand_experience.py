@@ -106,4 +106,4 @@ def test_home_screen_manifest_opens_the_stand_with_the_card(client: TestClient, 
 
 def test_stand_view_lists_features(client: TestClient, stand) -> None:
     features = client.get(BASE).json()["features"]
-    assert features == {"plate_ajo": False, "lunch_crew": False, "alerts": False}
+    assert features == {"plate_ajo": False, "lunch_crew": False, "alerts": False, "prize_wheel": False}

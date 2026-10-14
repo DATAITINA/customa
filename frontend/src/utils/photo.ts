@@ -23,18 +23,20 @@ async function decode(file: File): Promise<ImageBitmap | HTMLImageElement> {
   }
 }
 
-export async function shrinkPhoto(file: File): Promise<string> {
+export async function shrinkPhoto(file: File, opts: { maxEdge?: number; maxBytes?: number } = {}): Promise<string> {
+  const maxEdge = opts.maxEdge ?? MAX_EDGE;
+  const maxBytes = opts.maxBytes ?? MAX_BYTES;
   const img = await decode(file);
   const w = 'naturalWidth' in img ? img.naturalWidth : img.width;
   const h = 'naturalHeight' in img ? img.naturalHeight : img.height;
-  for (const [edge, quality] of [[MAX_EDGE, 0.82], [1024, 0.72], [800, 0.65]] as const) {
+  for (const [edge, quality] of [[maxEdge, 0.82], [Math.min(maxEdge, 1024), 0.72], [Math.min(maxEdge, 800), 0.65], [Math.min(maxEdge, 600), 0.6]] as const) {
     const scale = Math.min(1, edge / Math.max(w, h));
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(w * scale);
     canvas.height = Math.round(h * scale);
     canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
     const dataUrl = canvas.toDataURL('image/jpeg', quality);
-    if (dataUrl.length * 0.75 <= MAX_BYTES) return dataUrl;
+    if (dataUrl.length * 0.75 <= maxBytes) return dataUrl;
   }
   throw new Error('This photo is too big. Try another one.');
 }

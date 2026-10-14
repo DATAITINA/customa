@@ -13,6 +13,7 @@ import {
   type ApiError,
   type CountResult,
   type CustomerState,
+  type OpenJaraEntry,
   type StandPublic,
 } from '../api';
 import { Character, PRESETS } from '../components/Character';
@@ -21,6 +22,7 @@ import { LastPlatesBanner } from '../components/LastPlates';
 import { AjoCard } from '../features/plateAjo/CustomerAjo';
 import { CrewCard } from '../features/lunchCrew/CustomerCrew';
 import { AlertsCard } from '../features/alerts/CustomerAlerts';
+import { WheelCard } from '../features/prizeWheel/WheelCard';
 import { CharacterLoader } from '../components/Loading';
 import { DeleteMyData } from '../components/DeleteMyData';
 
@@ -186,7 +188,8 @@ export function CustomerPage({ slug }: { slug: string }) {
   // The return-visit features. Each card hides itself when the vendor has not turned it on.
   const featureCards = (
     <>
-      <OpenJara codes={me?.open_jara ?? []} />
+      <OpenJara slug={slug} codes={me?.open_jara ?? []} />
+      <WheelCard slug={slug} stand={stand} refreshKey={meVersion} />
       {me && <AlertsCard slug={slug} stand={stand} />}
       <CrewCard slug={slug} stand={stand} onChange={refreshMe} refreshKey={meVersion} ownPlate={me?.own_plate_number ?? null} />
       <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
@@ -199,7 +202,7 @@ export function CustomerPage({ slug }: { slug: string }) {
   };
   const charName = ch?.name ?? 'your host';
 
-  if (view.kind === 'jara') return <JaraScreen stand={stand} result={view.result} onDone={() => setView({ kind: 'counted', result: { ...view.result, jara: null } })} />;
+  if (view.kind === 'jara') return <JaraScreen slug={slug} stand={stand} result={view.result} onDone={() => setView({ kind: 'counted', result: { ...view.result, jara: null } })} />;
 
   if (view.kind === 'deleted') {
     return (
@@ -522,17 +525,35 @@ const CameraIcon = () => (
   </svg>
 );
 
-// Unredeemed jara codes at this stand (own card or a crew turn), so a code is never lost.
-function OpenJara({ codes }: { codes: { code: string }[] }) {
+// Unredeemed jara at this stand (own card or a crew turn), so a code is never lost. With the
+// Prize Wheel live, an unspun jara is a spin, and a spun one shows its prize with the code.
+function OpenJara({ slug, codes }: { slug: string; codes: OpenJaraEntry[] }) {
   if (!codes.length) return null;
+  const spins = codes.filter((j) => j.spin);
+  const ready = codes.filter((j) => j.code);
   return (
-    <div className="card-outline" role="status" style={{ background: 'var(--blush)', borderColor: 'var(--pepper)' }}>
-      <span className="eyebrow">{codes.length > 1 ? 'YOUR JARA CODES' : 'YOUR JARA'}</span>
-      {codes.map((j) => (
-        <span key={j.code} style={{ fontFamily: 'var(--display)', fontSize: 32, lineHeight: 1, letterSpacing: '0.06em' }}>{j.code}</span>
-      ))}
-      <span style={{ fontSize: 15, fontWeight: 700 }}>Show this to the vendor for a free extra portion. One use.</span>
-    </div>
+    <>
+      {spins.length > 0 && (
+        <Link to={`/s/${slug}/wheel`} className="btn wheel-spin" >
+          🎡 {spins.length > 1 ? `Spin for your ${spins.length} jara` : 'Spin for your jara'}
+        </Link>
+      )}
+      {ready.length > 0 && (
+        <div className="card-outline" role="status" style={{ background: 'var(--blush)', borderColor: 'var(--pepper)' }}>
+          <span className="eyebrow">{ready.length > 1 ? 'YOUR JARA CODES' : 'YOUR JARA'}</span>
+          {ready.map((j) => (
+            <div key={j.code} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {j.prize && <span style={{ fontSize: 15, fontWeight: 800 }}>🎁 {j.prize}</span>}
+              <span style={{ fontFamily: 'var(--display)', fontSize: j.code!.length > 11 ? 26 : 32, lineHeight: 1, letterSpacing: '0.06em' }}>{j.code}</span>
+            </div>
+          ))}
+          <span style={{ fontSize: 15, fontWeight: 700 }}>
+            {ready.some((j) => j.prize) ? 'Show this to the vendor to collect your prize. One use.' : 'Show this to the vendor for a free extra portion. One use.'}
+          </span>
+          {ready.some((j) => j.prize) && <Link to={`/s/${slug}/wheel`} className="link-btn" >Show the QR code</Link>}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -573,7 +594,7 @@ function Menu({ items }: { items: { item: string; price: number }[] }) {
   );
 }
 
-function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: CountResult; onDone: () => void }) {
+function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: StandPublic; result: CountResult; onDone: () => void }) {
   const ch = stand.character;
   const colors = Object.values(PRESETS).map((p) => p.fill);
   const confetti = Array.from({ length: 34 }, (_, i) => {
@@ -614,12 +635,21 @@ function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: Cou
         </div>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="excited" pose="jump" size={210} />
       </div>
-      <div className="code-card" role="status">
-        <span style={{ fontSize: 15, fontWeight: 800 }}>Show this screen to the vendor</span>
-        <span style={{ fontFamily: 'var(--display)', fontSize: 44, lineHeight: 1, letterSpacing: '0.06em' }}>{result.jara?.code}</span>
-        <span style={{ fontSize: 18, fontWeight: 800 }}>A free extra portion</span>
-        <span className="note">{result.customer.first_name ? `${result.customer.first_name} · ` : ''}one use</span>
-      </div>
+      {result.jara?.spin ? (
+        // Prize Wheel: the jara is a spin; the wheel picks the food and gives the code.
+        <div className="code-card" role="status">
+          <span style={{ fontSize: 15, fontWeight: 800 }}>Your jara is a spin on {ch?.name.split(' ')[0] ?? 'the'}'s prize wheel!</span>
+          <Link to={`/s/${slug}/wheel`} className="btn wheel-spin">🎡 SPIN NOW</Link>
+          <span className="note">See which food you win. You can also spin later from your card.</span>
+        </div>
+      ) : (
+        <div className="code-card" role="status">
+          <span style={{ fontSize: 15, fontWeight: 800 }}>Show this screen to the vendor</span>
+          <span style={{ fontFamily: 'var(--display)', fontSize: 44, lineHeight: 1, letterSpacing: '0.06em' }}>{result.jara?.code}</span>
+          <span style={{ fontSize: 18, fontWeight: 800 }}>A free extra portion</span>
+          <span className="note">{result.customer.first_name ? `${result.customer.first_name} · ` : ''}one use</span>
+        </div>
+      )}
       <div style={{ position: 'relative', padding: '14px 12px 24px' }}>
         <button className="btn" onClick={onDone}>{result.surprise ? 'Done, back to my card' : `Done, start my next ${result.plates_for_jara}`}</button>
       </div>

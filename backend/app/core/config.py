@@ -22,6 +22,10 @@ class CustomaSettings(ModuleSettingsBase):
     PLATE_WINDOW_SECONDS: int = 6 * 60 * 60
     # The plate that earns a jara (a free extra portion).
     PLATES_FOR_JARA: int = 6
+    # Head-start card: every new card shows this many gift stamps first ("Welcome gift: 2 stamps
+    # on us"), so it reads (real plates + 2) / (6 + 2). Display only: the jara still comes after
+    # PLATES_FOR_JARA real plates, and the 6-hour rule is unchanged. 0 turns it off.
+    HEAD_START_STAMPS: int = 2
     # "Last plates tonight": set by the vendor to sell leftover food before closing.
     LAST_PLATES_LEFT: int = 0
     LAST_PLATES_UNTIL: str | None = None  # ISO time (UTC) when the announcement ends

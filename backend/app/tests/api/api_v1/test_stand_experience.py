@@ -1,16 +1,17 @@
 """The stand's look and install: animal characters, the stand photo, and the Home Screen manifest."""
 
 import base64
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.actions import account_action, user_action
+from app.actions import account_action, customer_action, user_action, visit_action
 from app.core.config import settings
 from app.models import CharacterCreate
 from app.services.qr import scan_code
-from app.services.stands import create_stand, resolve_stand_settings
+from app.services.stands import create_stand, resolve_stand_settings, set_stand_setting
 
 SLUG = "panda-stand"
 BASE = f"{settings.API_V1_STR}/public/{SLUG}"
@@ -107,3 +108,31 @@ def test_home_screen_manifest_opens_the_stand_with_the_card(client: TestClient, 
 def test_stand_view_lists_features(client: TestClient, stand) -> None:
     features = client.get(BASE).json()["features"]
     assert features == {"plate_ajo": False, "lunch_crew": False, "alerts": False, "prize_wheel": False}
+
+
+def test_head_start_card_is_display_only(client: TestClient, session: Session, stand) -> None:
+    """The card shows 2 gift stamps by default; 0 turns it off. The jara rule is unchanged."""
+    assert client.get(BASE).json()["head_start"] == 2
+    set_stand_setting(session, stand, "HEAD_START_STAMPS", 0)
+    session.commit()
+    assert client.get(BASE).json()["head_start"] == 0
+    set_stand_setting(session, stand, "HEAD_START_STAMPS", 99)
+    session.commit()
+    assert client.get(BASE).json()["head_start"] == 10  # clamped
+
+    # The jara still comes on the 6th real plate, whatever the head start.
+    set_stand_setting(session, stand, "HEAD_START_STAMPS", 2)
+    session.commit()
+    scan = scan_code(stand, resolve_stand_settings(session, stand))
+    r = client.post(f"{BASE}/visits", json={"consent": True, "scan": scan})
+    key = r.json()["customer"]["key"]
+    assert r.json()["plate_number"] == 1 and r.json()["jara"] is None
+    for plate in range(2, 7):
+        customer = customer_action.get_by_all(session, key=key)
+        visit = visit_action.last_for_customer(session, customer_id=customer.id)
+        visit.created_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=6, seconds=5)
+        session.add(visit)
+        session.commit()
+        r = client.post(f"{BASE}/visits", json={"consent": True, "scan": scan}, headers={"X-Customer-Key": key})
+        assert r.json()["plate_number"] == plate
+        assert (r.json()["jara"] is not None) == (plate == 6)

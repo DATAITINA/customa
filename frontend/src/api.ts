@@ -48,6 +48,8 @@ export type StandPublic = {
   stand: { name: string; slug: string; description: string };
   character: Character | null;
   plates_for_jara: number;
+  // Head-start card: gift stamps shown first on every new own card (display only; 0 = off).
+  head_start?: number;
   window_seconds: number;
   last_plates: LastPlates;
   customer: CustomerState | null;
@@ -109,6 +111,10 @@ export type Dashboard = {
 export type Delights = { surprise_enabled: boolean; surprise_one_in: number; special: string | null };
 
 export type StandSummary = { name: string; slug: string; description: string; character: Character | null; photo?: string | null };
+
+/** Head-start card (display only): the gift stamps on the customer's own card. A Lunch Crew
+ * card has none. The own card reads (real plates + gift) of (plates_for_jara + gift). */
+export const giftStamps = (stand: StandPublic, crew = false) => (crew ? 0 : Math.max(0, stand.head_start ?? 0));
 
 /** Full URL of an API path such as a stand photo ("/public/x/photo?v=2"). */
 export const photoUrl = (path: string) => `${API_BASE}${path}`;

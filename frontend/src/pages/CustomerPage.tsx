@@ -6,6 +6,7 @@ import {
   clearCustomerKey,
   getCustomerKey,
   getScan,
+  giftStamps,
   markScanCounted,
   photoUrl,
   setStandManifest,
@@ -175,6 +176,7 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   const ch = stand.character;
   const total = stand.plates_for_jara;
+  const gift = giftStamps(stand); // own card only; crew cards pass 0 below
   // After joining, creating or leaving a crew: re-read which card this customer's plates go to.
   // Read only, and it keeps the current screen.
   const refreshMe = async () => {
@@ -224,7 +226,7 @@ export function CustomerPage({ slug }: { slug: string }) {
         <Hero tapLine={tapLine} bubble={`${ch?.greeting ?? 'Welcome!'} Wetin be your name?`}>
           <Character {...charProps} expression="excited" pose="wave" size={180} />
         </Hero>
-        <WelcomeForm onSubmit={handleCount} />
+        <WelcomeForm onSubmit={handleCount} gift={giftStamps(stand)} total={stand.plates_for_jara} />
       </Shell>
     );
   }
@@ -245,13 +247,13 @@ export function CustomerPage({ slug }: { slug: string }) {
           <ScanHint charName={charName} />
           {me && (
             <>
-              <PlateCard plate={me.plate_number} total={total} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} />
+              <PlateCard plate={me.plate_number} total={total} gift={giftStamps(stand, !!me.crew_name)} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} />
               {featureCards}
               <TalkAndPlay slug={slug} first={charName.split(' ')[0]} outline />
             </>
           )}
           <Menu items={ch?.menu ?? []} />
-          {me && <DeleteMyData slug={slug} standName={stand.stand.name} plates={me?.own_plate_number ?? (me?.plate_number ?? 0) % total} total={total} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />}
+          {me && <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />}
         </div>
       </Shell>
     );
@@ -272,7 +274,7 @@ export function CustomerPage({ slug }: { slug: string }) {
           extras={featureCards}
         />
         <div className="stack">
-          <DeleteMyData slug={slug} standName={stand.stand.name} plates={me?.own_plate_number ?? (me?.plate_number ?? 0) % total} total={total} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+          <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
         </div>
       </Shell>
     );
@@ -286,23 +288,25 @@ export function CustomerPage({ slug }: { slug: string }) {
   // The crew this customer is in now: it can change on this screen (create, join, leave).
   const nowCrew = me ? me.crew_name ?? null : crew?.name ?? null;
   const ownPlate = me?.own_plate_number ?? r.plate_number % total;
+  // Head-start card: the own card shows the gift stamps first (display only).
+  const shown = r.plate_number + gift;
   const hi = name ? name + '! ' : '';
   let bubble: string;
   if (crew && !nowCrew) {
-    bubble = `You left ${crew.name}. Your own card continues from plate ${ownPlate} of ${total}.`;
+    bubble = `You left ${crew.name}. Your own card continues from plate ${ownPlate + gift} of ${total + gift}.`;
   } else if (!crew && nowCrew) {
-    bubble = `${hi}Plate ${r.plate_number} is saved on your own card, paused while you're in ${nowCrew}. Your next plates go on the crew card.`;
+    bubble = `${hi}Plate ${shown} is saved on your own card, paused while you're in ${nowCrew}. Your next plates go on the crew card.`;
   } else if (crew && crew.jara_to && !crew.jara_to_me) {
     bubble = `Plate ${crew.plate_number} for ${crew.name}! This jara goes to ${crew.jara_to}. Your turn is coming.`;
   } else if (crew) {
     bubble = `${hi}Plate ${crew.plate_number} of ${crew.plates_for_jara} for ${crew.name}.`;
   } else if (left === 1) {
     // Almost there: people speed up when a reward is close, so make plate 5 feel exciting.
-    bubble = `${hi}Plate ${r.plate_number} don land! Just ONE more plate and jara na yours! 🎉`;
+    bubble = `${hi}Plate ${shown} don land! Just ONE more plate and jara na yours! 🎉`;
   } else if (r.returning) {
-    bubble = `${hi}Back again! Plate ${r.plate_number} of ${total}.`;
+    bubble = `${hi}Back again! Plate ${shown} of ${total + gift}.`;
   } else {
-    bubble = `${hi}Plate ${r.plate_number} don land. ${left} more and jara na yours.`;
+    bubble = `${hi}Plate ${shown} don land. ${left} more and jara na yours.`;
   }
   // The card shown: the latest we know (it follows a crew joined or left on this screen).
   const cardPlate = me ? me.plate_number : r.plate_number;
@@ -314,13 +318,13 @@ export function CustomerPage({ slug }: { slug: string }) {
         <Character {...charProps} expression="excited" pose={r.returning ? 'wave' : 'hop'} size={180} />
       </Hero>
       <div className="stack">
-        <PlateCard plate={cardPlate} total={total} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} />
+        <PlateCard plate={cardPlate} total={total} gift={giftStamps(stand, !!cardCrew)} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} />
         {featureCards}
         <TalkAndPlay slug={slug} first={charName.split(' ')[0]} />
         <Rate slug={slug} visitId={r.visit_id} />
         <Menu items={ch?.menu ?? []} />
         <Goodbye name={name} plate={r.plate_number} />
-        <DeleteMyData slug={slug} standName={stand.stand.name} plates={me?.own_plate_number ?? (me?.plate_number ?? 0) % total} total={total} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+        <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
       </div>
     </Shell>
   );
@@ -368,29 +372,48 @@ function Hero({ bubble, tapLine, counted, children }: { bubble: string; tapLine?
   );
 }
 
-function PlateCard({ plate, total, windowSeconds, crewName }: { plate: number; total: number; windowSeconds: number; crewName?: string | null }) {
+function PlateCard({ plate, total, gift = 0, windowSeconds, crewName }: { plate: number; total: number; gift?: number; windowSeconds: number; crewName?: string | null }) {
   const windowText = windowSeconds < 120 ? `${windowSeconds} seconds` : `${Math.round(windowSeconds / 3600)} hours`;
+  // Head-start card (own card only): `gift` stamps come first, so the card reads
+  // (plate + gift) / (total + gift). The jara still comes after `total` real plates.
+  // After the jara the card is a new card again: it starts at the gift stamps (2/8).
+  const real = gift > 0 ? plate % total : plate;
+  const shown = real + gift;
+  const of = total + gift;
   return (
     <div className="card">
       <div className="row">
         <span className="eyebrow">{crewName ? 'CREW CARD' : 'YOUR JARA'}</span>
         <span style={{ fontSize: 13, fontWeight: 700 }}>
-          {crewName ? `${crewName} · jara on plate ${total}, by turns` : `Free extra on plate ${total}`}
+          {crewName ? `${crewName} · jara on plate ${total}, by turns` : `Free extra on plate ${of}`}
         </span>
       </div>
       <div className="row" style={{ alignItems: 'center' }}>
-        <span className="plate-count">PLATE {plate}/{total}</span>
-        {plate === total - 1 && <span className="almost-pill">1 more! 🔥</span>}
+        <span className="plate-count">PLATE {shown}/{of}</span>
+        {real === total - 1 && <span className="almost-pill">1 more! 🔥</span>}
       </div>
-      <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate}>
-        <div style={{ width: `${(plate / total) * 100}%` }} />
-      </div>
+      {gift > 0 ? (
+        <>
+          <div className="stamps" role="progressbar" aria-valuemin={0} aria-valuemax={of} aria-valuenow={shown} aria-label={`${shown} of ${of} stamps, ${gift} of them a welcome gift`}>
+            {Array.from({ length: of }, (_, i) => (
+              <span key={i} className={i < gift ? 'stamp stamp-gift' : i < shown ? 'stamp stamp-on' : 'stamp'}>
+                {i < gift ? '🎁' : i === of - 1 ? 'J' : ''}
+              </span>
+            ))}
+          </div>
+          <span className="gift-note">Welcome gift: {gift} stamps on us 🎁</span>
+        </>
+      ) : (
+        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate}>
+          <div style={{ width: `${(plate / total) * 100}%` }} />
+        </div>
+      )}
       <span className="note">One plate counts per visit. Next one counts after {windowText}.</span>
     </div>
   );
 }
 
-function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consent: boolean }) => Promise<void> }) {
+function WelcomeForm({ onSubmit, gift = 0, total = 6 }: { onSubmit: (b: { first_name?: string; consent: boolean }) => Promise<void>; gift?: number; total?: number }) {
   const [name, setName] = useState('');
   const [consent, setConsent] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -406,6 +429,12 @@ function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consen
       }}
     >
       <h1 className="display" style={{ fontSize: 38 }}>YOUR FIRST PLATE!</h1>
+      {gift > 0 && (
+        <div className="gift-card" role="note">
+          <span aria-hidden="true" style={{ fontSize: 26 }}>🎁</span>
+          <span><strong>Welcome gift: {gift} stamps on us!</strong> Your card starts at {gift} of {total + gift}, and this plate makes {gift + 1}.</span>
+        </div>
+      )}
       <label className="field">
         First name
         <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Kelechi" maxLength={40} autoComplete="given-name" />
@@ -458,7 +487,7 @@ function TooSoon({
         </div>
       </Hero>
       <div className="stack">
-        <PlateCard plate={plate} total={total} crewName={crewName} windowSeconds={windowSeconds} />
+        <PlateCard plate={plate} total={total} gift={giftStamps(stand, !!crewName)} crewName={crewName} windowSeconds={windowSeconds} />
         {extras}
         <div className="card-outline">
           <span className="eyebrow">WHY THE WAIT?</span>
@@ -596,6 +625,7 @@ function Menu({ items }: { items: { item: string; price: number }[] }) {
 
 function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: StandPublic; result: CountResult; onDone: () => void }) {
   const ch = stand.character;
+  const gift = giftStamps(stand, !!result.crew);
   const colors = Object.values(PRESETS).map((p) => p.fill);
   const confetti = Array.from({ length: 34 }, (_, i) => {
     const seed = (i * 9301 + 49297) % 233280;
@@ -622,8 +652,10 @@ function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: Stan
       <div style={{ position: 'relative', paddingTop: 6 }}>
         <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em' }}>
           {result.surprise
-            ? `${(ch?.name ?? 'THE VENDOR').toUpperCase()} DON DASH YOU · PLATE ${result.plate_number}`
-            : `${result.crew ? `${result.crew.name.toUpperCase()}: YOUR TURN · ` : ''}${result.plates_for_jara} OF ${result.plates_for_jara} PLATES`}
+            ? `${(ch?.name ?? 'THE VENDOR').toUpperCase()} DON DASH YOU · PLATE ${result.plate_number + gift}`
+            : result.crew
+              ? `${result.crew.name.toUpperCase()}: YOUR TURN · ${result.plates_for_jara} OF ${result.plates_for_jara} PLATES`
+              : `${result.plates_for_jara + gift} OF ${result.plates_for_jara + gift} PLATES`}
         </span>
         <h1 className="display" style={{ fontSize: result.surprise ? 76 : 104 }}>{result.surprise ? 'SURPRISE JARA!' : 'JARA!'}</h1>
       </div>
@@ -651,7 +683,9 @@ function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: Stan
         </div>
       )}
       <div style={{ position: 'relative', padding: '14px 12px 24px' }}>
-        <button className="btn" onClick={onDone}>{result.surprise ? 'Done, back to my card' : `Done, start my next ${result.plates_for_jara}`}</button>
+        <button className="btn" onClick={onDone}>
+          {result.surprise ? 'Done, back to my card' : gift ? `Done, start my new card (${gift} stamps on us 🎁)` : `Done, start my next ${result.plates_for_jara}`}
+        </button>
       </div>
     </main>
   );

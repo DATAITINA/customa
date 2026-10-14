@@ -14,6 +14,8 @@ import { VendorCrewPanel } from '../features/lunchCrew/VendorCrew';
 import { VendorDelightsPanel } from '../features/delights/VendorDelights';
 import { LastPlatesBanner } from '../components/LastPlates';
 import { GoogleButton } from '../features/googleSignIn/GoogleSignIn';
+import { VendorWheelPanel } from '../features/prizeWheel/VendorWheel';
+import { JaraCheckPanel } from '../features/prizeWheel/JaraCheck';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -336,6 +338,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           </tbody>
         </table>
       </div>
+      <JaraCheckPanel slug={slug} onGiven={() => q.refetch()} />
       <div className="grid-2">
         <OpenJara slug={slug} items={d.open_jara} onChange={() => q.refetch()} />
         <div className="card-outline">
@@ -351,6 +354,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         </div>
       </div>
       {/* Return-visit features sit below the daily essentials (plates, jara to give out). */}
+      <VendorWheelPanel slug={slug} character={ch} />
       <CustomizeStand slug={slug} stand={d.stand} onSaved={() => q.refetch()} />
       <VendorDelightsPanel slug={slug} />
       <VendorAjoPanel slug={slug} />
@@ -366,7 +370,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
 }
 
 // Jara codes waiting to be given out. Redeeming marks the code used (works once).
-function OpenJara({ slug, items, onChange }: { slug: string; items: { code: string; name: string }[]; onChange: () => void }) {
+function OpenJara({ slug, items, onChange }: { slug: string; items: { code: string; name: string; prize?: string | null; spin_pending?: boolean }[]; onChange: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   return (
     <div className="card-outline">
@@ -374,7 +378,11 @@ function OpenJara({ slug, items, onChange }: { slug: string; items: { code: stri
       {items.length === 0 && <span className="note">No jara waiting.</span>}
       {items.map((j) => (
         <div key={j.code} className="row" style={{ alignItems: 'center' }}>
-          <span><strong style={{ fontFamily: 'var(--display)', fontSize: 20, letterSpacing: '0.04em' }}>{j.code}</strong> <span className="note">{j.name}</span></span>
+          <span>
+            <strong style={{ fontFamily: 'var(--display)', fontSize: 20, letterSpacing: '0.04em' }}>{j.code}</strong> <span className="note">{j.name}</span>
+            {j.prize && <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>🎁 {j.prize}</span>}
+            {j.spin_pending && <span className="note" style={{ display: 'block' }}>🎡 Waiting for the customer's spin</span>}
+          </span>
           <button className="btn" style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: 14 }} disabled={busy === j.code}
             onClick={async () => { setBusy(j.code); try { await api.redeemJara(slug, j.code); onChange(); } finally { setBusy(null); } }}>
             Mark as given

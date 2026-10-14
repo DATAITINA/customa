@@ -4,11 +4,12 @@ Sign-in comes from MSFLib auth (bearer token). Dashboard routes carry the
 stand's slug, and MSFLib's workspace dependencies check the vendor is a member.
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import update
 from sqlmodel import Session, func, select
 
 from app.actions import character_action, jara_action, workspace_action
@@ -23,7 +24,7 @@ from app.models import (
     Visit,
     Workspace,
 )
-from app.services import alerts, sms_alerts, stand_photo
+from app.services import alerts, prize_wheel, sms_alerts, stand_photo
 from app.services.bisi import suggest_character
 from app.services.chat_log import recent_questions
 from app.services.qr import scan_code
@@ -130,14 +131,25 @@ def dashboard(
     open_jara = session.exec(
         select(JaraReward, Customer)
         .join(Customer, Customer.id == JaraReward.customer_id)
-        .where(JaraReward.workspace_id == ws, JaraReward.redeemed == False)  # noqa: E712
+        .where(JaraReward.workspace_id == ws, JaraReward.redeemed == False)
         .order_by(JaraReward.id.desc())
         .limit(10)
     ).all()
 
+    wheel_live = prize_wheel.live_for(session, workspace.id, stand_settings)
     return {
         "stand": stand_view(session, workspace),
-        "open_jara": [{"code": j.code, "name": c.first_name or "Guest", "at": j.created_at} for j, c in open_jara],
+        "open_jara": [
+            {
+                "code": j.code,
+                "name": c.first_name or "Guest",
+                "at": j.created_at,
+                # The Prize Wheel: what the spin won, or that the customer has not spun yet.
+                "prize": (p.name if (p := prize_wheel.prize_for(session, j)) else None),
+                "spin_pending": p is None and wheel_live,
+            }
+            for j, c in open_jara
+        ],
         "recent_questions": recent_questions(session, workspace=workspace),
         "last_plates": last_plates(stand_settings),
         # Phones that get "last plates" alerts: push subscriptions plus text-message numbers.
@@ -185,14 +197,27 @@ def redeem_jara(
     _member=Depends(deps.get_current_active_member),
     session: Session = Depends(deps.get_session),
 ) -> dict[str, Any]:
-    """The vendor gives the free portion and marks the code used, so it works only once."""
-    jara = jara_action.get_by_all(session, workspace_id=workspace.id, code=code.strip().upper())
+    """The vendor gives the free portion (or the prize the wheel picked) and marks the code
+    used, so it works only once."""
+    jara = jara_action.get_by_all(session, workspace_id=workspace.id, code=prize_wheel.normalize_code(code))
     if jara is None:
         raise HTTPException(status_code=404, detail="No jara with that code at this stand")
     if jara.redeemed:
         raise HTTPException(status_code=409, detail="This jara was already used")
-    jara_action.update(session, model=jara, update={"redeemed": True})
-    return {"code": jara.code, "redeemed": True}
+    try:
+        prize_wheel.on_redeem(session, jara, datetime.now(UTC).replace(tzinfo=None))
+    except prize_wheel.WheelError as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.message)
+    # Only one of two taps at once can mark it: the row changes only while it is still unused.
+    marked = session.execute(
+        update(JaraReward).where(JaraReward.id == jara.id, JaraReward.redeemed == False).values(redeemed=True)
+    )
+    if marked.rowcount != 1:
+        session.rollback()
+        raise HTTPException(status_code=409, detail="This jara was already used")
+    session.commit()
+    prize = prize_wheel.prize_for(session, jara)
+    return {"code": jara.code, "redeemed": True, "prize": prize.name if prize else None}
 
 
 class LastPlatesRequest(BaseModel):

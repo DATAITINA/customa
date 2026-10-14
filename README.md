@@ -30,6 +30,10 @@ in the character's voice when the vendor taps "Tell my customers". Details:
 [docs/scan-and-alerts.md](docs/scan-and-alerts.md). Vendors can sign in with Google:
 [docs/google-sign-in.md](docs/google-sign-in.md).
 
+The **Prize Wheel**: vendors put up to 6 of their foods on a wheel, and every jara becomes a
+spin. The server picks the prize, the customer gets a one-time code, and the vendor checks it.
+Details: [docs/prize-wheel.md](docs/prize-wheel.md).
+
 Vendors pick a character (now with a **panda**, chick, bunny and cat), add a photo of their
 stand, and customers can install the stand on their Home Screen, play quick games with the
 character and delete their data from a clear sheet. Details:

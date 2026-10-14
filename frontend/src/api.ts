@@ -27,8 +27,12 @@ export type CustomerState = {
   crew_name?: string | null;
   // Plates on their own card toward its next jara (0..N-1); paused here while in a crew.
   own_plate_number?: number;
-  open_jara?: { code: string }[];
+  open_jara?: OpenJaraEntry[];
 };
+
+// An unredeemed jara on the customer's card. With the Prize Wheel live, an unspun jara is a
+// spin (code null, spin = the jara to spin with); a spun one carries its prize.
+export type OpenJaraEntry = { code: string | null; spin?: number; prize?: string; expires_at?: string };
 
 // The crew part of a counted plate (Lunch Crew). jara_to names the winner on the crew's jara
 // plate (null on other plates); when it is someone else, CountResult.jara is null.
@@ -50,7 +54,7 @@ export type StandPublic = {
   // The stand's photo, a path under the API (see photoUrl), or null.
   photo?: string | null;
   // Which optional cards this stand shows, so the page skips asking switched-off features.
-  features?: { plate_ajo: boolean; lunch_crew: boolean; alerts: boolean };
+  features?: { plate_ajo: boolean; lunch_crew: boolean; alerts: boolean; prize_wheel?: boolean };
 };
 
 export type CountResult = {
@@ -59,7 +63,8 @@ export type CountResult = {
   visit_id: number;
   plate_number: number;
   plates_for_jara: number;
-  jara: { code: string } | null;
+  // With the Prize Wheel live the jara is a spin: code is null until the wheel picks the prize.
+  jara: { code: string | null; spin?: number } | null;
   // True when the jara came on a plate that is not the jara plate: the vendor's surprise.
   surprise?: boolean;
   crew?: CrewCountInfo | null;
@@ -94,7 +99,8 @@ export type Dashboard = {
     average_rating: number | null;
   };
   recent_visits: { id: number; name: string; plate_number: number; stars: number | null; at: string }[];
-  open_jara: { code: string; name: string; at: string }[];
+  // prize: what the wheel picked; spin_pending: the customer has not spun yet.
+  open_jara: { code: string; name: string; at: string; prize?: string | null; spin_pending?: boolean }[];
   recent_questions: { id: number; who: string; question: string; at: string }[];
 };
 
@@ -214,7 +220,7 @@ export const api = {
   removePhoto: (slug: string) => apiClient<StandSummary>('DELETE', `/stands/${slug}/photo`),
   dashboard: (slug: string) => apiClient<Dashboard>('GET', `/stands/${slug}/dashboard`),
   redeemJara: (slug: string, code: string) =>
-    apiClient<{ code: string; redeemed: boolean }>('POST', `/stands/${slug}/jara/${encodeURIComponent(code)}/redeem`),
+    apiClient<{ code: string; redeemed: boolean; prize: string | null }>('POST', `/stands/${slug}/jara/${encodeURIComponent(code)}/redeem`),
   // alert.sent: phones alerted; alert.skipped: why none were (recently_alerted, no_subscribers, ...).
   announceLastPlates: (slug: string, plates_left: number, minutes = 90) =>
     apiClient<{ last_plates: LastPlates; alert?: { sent: number; skipped: string | null } }>(

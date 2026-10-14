@@ -27,7 +27,15 @@ from app.actions import (
 from app.api import deps
 from app.core.config import CustomaSettings
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
-from app.services import alerts, character_chat, lunch_crew, plate_ajo, sms_alerts, stand_photo
+from app.services import (
+    alerts,
+    character_chat,
+    lunch_crew,
+    plate_ajo,
+    prize_wheel,
+    sms_alerts,
+    stand_photo,
+)
 from app.services.bisi import ChatContext, chat_reply
 from app.services.chat_log import forget_customer, record_turn
 from app.services.plates import count_visit
@@ -109,7 +117,7 @@ def customer_view(
     plate_number = last.plate_number if last else 0
     own_plate_number = plate_number % stand_settings.PLATES_FOR_JARA
     crew_name = None
-    open_jara: list[dict[str, str]] = []
+    open_jara: list[dict[str, Any]] = []
     if session is not None:
         own = visit_action.last_own_card_visit(session, customer_id=customer.id)
         plate_number = own.plate_number if own else 0
@@ -122,8 +130,10 @@ def customer_view(
         )
         if card is not None:
             crew_name, plate_number = card
+        # With the Prize Wheel live, an unspun jara shows as a spin (its code comes with the prize).
+        wheel_live = prize_wheel.live_for(session, customer.workspace_id, stand_settings)
         open_jara = [
-            {"code": j.code}
+            prize_wheel.open_jara_entry(session, j, wheel_live)
             for j in jara_action.open_for_customer(
                 session, workspace_id=customer.workspace_id, customer_id=customer.id
             )
@@ -170,6 +180,7 @@ def read_stand(
             "plate_ajo": stand_settings.PLATE_AJO_ENABLED,
             "lunch_crew": stand_settings.LUNCH_CREW_ENABLED,
             "alerts": alerts.alerts_available() or sms_alerts.sms_available(),
+            "prize_wheel": prize_wheel.live_for(session, workspace.id, stand_settings),
         },
     }
 
@@ -278,13 +289,21 @@ def count_plate(
         "visit_id": visit.id,
         "plate_number": visit.plate_number,
         "plates_for_jara": stand_settings.PLATES_FOR_JARA,
-        "jara": {"code": jara.code} if mine else None,
+        "jara": _jara_result(session, jara, stand_settings) if mine else None,
         # A jara on a plate that is not the jara plate: the vendor's surprise (own card only).
         "surprise": mine and visit.plate_number != stand_settings.PLATES_FOR_JARA,
         "crew": lunch_crew.count_result(
             session, visit=visit, customer_id=customer.id, stand_settings=stand_settings
         ),
     }
+
+
+def _jara_result(session: Session, jara: JaraReward, stand_settings: CustomaSettings) -> dict[str, Any]:
+    """The jara just earned: its code, or, with the Prize Wheel live, a spin (the code comes with
+    the prize the wheel picks)."""
+    if prize_wheel.live_for(session, jara.workspace_id, stand_settings):
+        return {"code": None, "spin": jara.id}
+    return {"code": jara.code}
 
 
 @router.post("/ratings")
@@ -319,7 +338,7 @@ def delete_my_data(
 ) -> dict[str, Any]:
     """Forget this customer at this stand: chats, ratings, jara, plates, then the customer."""
     # Plate Ajo refuses (409) while prepaid plates remain, before anything is deleted.
-    for feature in (plate_ajo, lunch_crew):
+    for feature in (plate_ajo, lunch_crew, prize_wheel):
         feature.forget_customer(session, workspace=workspace, customer=customer)
     forget_customer(session, workspace=workspace, customer=customer)
     character_chat.delete_memory(session, customer=customer)

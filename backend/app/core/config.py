@@ -29,6 +29,9 @@ class CustomaSettings(ModuleSettingsBase):
     # "Who's here now" on the vendor dashboard: customers whose plate was counted in the last
     # ARRIVAL_WINDOW_MINUTES, so staff can greet regulars by name.
     ARRIVAL_WINDOW_MINUTES: int = 90
+    # Plan the next visit: reminders go by web push to customers who turned alerts on. Texts cost
+    # money, so SMS reminders (only to customers who already agreed to texts) are off by default.
+    PLAN_SMS_REMINDERS: bool = False
     # "Last plates tonight": set by the vendor to sell leftover food before closing.
     LAST_PLATES_LEFT: int = 0
     LAST_PLATES_UNTIL: str | None = None  # ISO time (UTC) when the announcement ends
@@ -90,6 +93,10 @@ class AppSettings(
     VAPID_PUBLIC_KEY: str | None = None
     VAPID_PRIVATE_KEY: str | None = None
     VAPID_SUBJECT: str = "mailto:alerts@customa.app"
+
+    # The scheduler's secret: GET /cron/plan-reminders needs "Authorization: Bearer <CRON_SECRET>".
+    # Without it the endpoint refuses every call.
+    CRON_SECRET: str | None = None
 
     # Text-message (SMS) leftover-food alerts through Termii: they reach every phone, iPhone and
     # Android, with no app. Without an API key and an approved sender ID, texts are not offered.

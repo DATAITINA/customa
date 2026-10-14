@@ -2,7 +2,8 @@
 
 Lunch Crew hooks in here, so every counted plate follows the same rules (6-hour window per
 customer, crew card when the customer is in a crew). After a plate is counted, the regular-arrived
-alert records the arrival (services/regulars.py).
+alert records the arrival (services/regulars.py) and a visit plan is kept or noted as missed
+(services/visit_plans.py).
 """
 
 from datetime import UTC, datetime
@@ -12,7 +13,7 @@ from sqlmodel import Session
 from ..actions import visit_action
 from ..core.config import CustomaSettings
 from ..models import Customer, Visit, Workspace
-from . import lunch_crew, regulars
+from . import lunch_crew, regulars, visit_plans
 
 
 def count_visit(
@@ -41,6 +42,8 @@ def count_visit(
 
 
 def after_count(session: Session, *, workspace: Workspace, customer: Customer, visit: Visit) -> None:
-    """Every counted plate, after it is committed: "Who's here now" for the staff."""
+    """Every counted plate, after it is committed: "Who's here now" for the staff, and the
+    customer's plan for this visit (kept or missed)."""
     now = datetime.now(UTC).replace(tzinfo=None)
+    visit_plans.on_plate_counted(session, customer=customer, visit=visit, now=now)
     regulars.record_arrival(session, workspace=workspace, customer=customer, visit=visit, now=now)

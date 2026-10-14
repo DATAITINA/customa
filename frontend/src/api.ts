@@ -70,6 +70,8 @@ export type CountResult = {
   // True when the jara came on a plate that is not the jara plate: the vendor's surprise.
   surprise?: boolean;
   crew?: CrewCountInfo | null;
+  // Plan the next visit: this plate kept the customer's plan, or they missed the last one.
+  plan_outcome?: 'kept' | 'missed' | null;
 };
 
 // What the stand character remembers about this customer (only they see it, and can clear it).
@@ -103,6 +105,10 @@ export type Dashboard = {
   recent_visits: { id: number; name: string; plate_number: number; stars: number | null; at: string }[];
   // "Who's here now": customers counted in the last ARRIVAL_WINDOW_MINUTES (regular-arrived alert).
   here_now?: import('./features/regulars/regularsApi').HereNow[];
+  // Plan the next visit: who is coming today and plans kept this week.
+  plans?: import('./features/visitPlans/plansApi').VendorPlans;
+  // "% of customers who came back within 14 days" (null until anyone's first plate is 14 days old).
+  return_14d?: { percent: number | null; returned: number; customers: number; weeks: { week: string; customers: number; returned: number }[] };
   // prize: what the wheel picked; spin_pending: the customer has not spun yet.
   open_jara: { code: string; name: string; at: string; prize?: string | null; spin_pending?: boolean }[];
   recent_questions: { id: number; who: string; question: string; at: string }[];

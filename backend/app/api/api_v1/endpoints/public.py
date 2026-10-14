@@ -36,6 +36,7 @@ from app.services import (
     regulars,
     sms_alerts,
     stand_photo,
+    visit_plans,
 )
 from app.services.bisi import ChatContext, chat_reply
 from app.services.chat_log import forget_customer, record_turn
@@ -303,6 +304,8 @@ def count_plate(
         "crew": lunch_crew.count_result(
             session, visit=visit, customer_id=customer.id, stand_settings=stand_settings
         ),
+        # Plan the next visit: "kept" (this plate was in the planned slot) or "missed" (said once).
+        "plan_outcome": visit_plans.outcome_for_visit(session, visit),
     }
 
 
@@ -346,7 +349,7 @@ def delete_my_data(
 ) -> dict[str, Any]:
     """Forget this customer at this stand: chats, ratings, jara, plates, then the customer."""
     # Plate Ajo refuses (409) while prepaid plates remain, before anything is deleted.
-    for feature in (plate_ajo, lunch_crew, prize_wheel, regulars):
+    for feature in (plate_ajo, lunch_crew, prize_wheel, regulars, visit_plans):
         feature.forget_customer(session, workspace=workspace, customer=customer)
     forget_customer(session, workspace=workspace, customer=customer)
     character_chat.delete_memory(session, customer=customer)

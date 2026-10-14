@@ -15,6 +15,7 @@ from app.api.api_v1.endpoints import (
     regulars,
     session,
     stands,
+    visit_plans,
 )
 from app.core.config import settings
 
@@ -77,6 +78,9 @@ api_router.include_router(prize_wheel.vendor_router)
 # Regular-arrived alert: "Greeted", the vendor's phone pings, the customer's own "my usual".
 api_router.include_router(regulars.vendor_router)
 api_router.include_router(regulars.public_router)
+# Plan the next visit: the customer's plan and calendar file; the scheduler's reminder run.
+api_router.include_router(visit_plans.public_router)
+api_router.include_router(visit_plans.cron_router)
 # Customer delights (surprise jara, today's special): vendor settings only.
 api_router.include_router(delights.vendor_router)
 # Leftover-food alerts (web push): customers turn them on; the vendor's last-plates sends them.

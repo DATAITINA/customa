@@ -24,7 +24,7 @@ from app.models import (
     Visit,
     Workspace,
 )
-from app.services import alerts, prize_wheel, regulars, sms_alerts, stand_photo
+from app.services import alerts, insights, prize_wheel, regulars, sms_alerts, stand_photo, visit_plans
 from app.services.bisi import suggest_character
 from app.services.chat_log import recent_questions
 from app.services.qr import scan_code
@@ -139,6 +139,10 @@ def dashboard(
     wheel_live = prize_wheel.live_for(session, workspace.id, stand_settings)
     return {
         "stand": stand_view(session, workspace),
+        # Plan the next visit: who is coming today (by time slot) and plans kept this week.
+        "plans": visit_plans.vendor_summary(session, workspace=workspace, now=datetime.now(UTC).replace(tzinfo=None)),
+        # "% of customers who came back within 14 days", from real visits (with weekly cohorts).
+        "return_14d": insights.return_rate(session, workspace=workspace, now=datetime.now(UTC).replace(tzinfo=None)),
         # "Who's here now": customers counted in the last ARRIVAL_WINDOW_MINUTES, for staff to greet.
         "here_now": regulars.here_now(
             session, workspace=workspace, stand_settings=stand_settings, now=datetime.now(UTC).replace(tzinfo=None)

@@ -25,6 +25,7 @@ import { CrewCard } from '../features/lunchCrew/CustomerCrew';
 import { AlertsCard } from '../features/alerts/CustomerAlerts';
 import { WheelCard } from '../features/prizeWheel/WheelCard';
 import { UsualCard } from '../features/regulars/UsualCard';
+import { PlanCard } from '../features/visitPlans/PlanCard';
 import { CharacterLoader } from '../components/Loading';
 import { DeleteMyData } from '../components/DeleteMyData';
 
@@ -195,6 +196,8 @@ export function CustomerPage({ slug }: { slug: string }) {
       <WheelCard slug={slug} stand={stand} refreshKey={meVersion} />
       {me && <AlertsCard slug={slug} stand={stand} />}
       {me && <UsualCard slug={slug} standName={stand.stand.name} />}
+      {/* An existing plan (the question itself comes right after a counted plate, below). */}
+      {me && view.kind !== 'counted' && <PlanCard slug={slug} character={ch} />}
       <CrewCard slug={slug} stand={stand} onChange={refreshMe} refreshKey={meVersion} ownPlate={me?.own_plate_number ?? null} />
       <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
     </>
@@ -310,6 +313,9 @@ export function CustomerPage({ slug }: { slug: string }) {
   } else {
     bubble = `${hi}Plate ${shown} don land. ${left} more and jara na yours.`;
   }
+  // Plan the next visit: came as planned, or missed the last plan (no guilt).
+  if (r.plan_outcome === 'kept') bubble = `You keep your word! 🙌 ${bubble}`;
+  else if (r.plan_outcome === 'missed') bubble = `No wahala, life happen 😄 ${bubble}`;
   // The card shown: the latest we know (it follows a crew joined or left on this screen).
   const cardPlate = me ? me.plate_number : r.plate_number;
   const cardCrew = me ? me.crew_name ?? null : crew?.name ?? null;
@@ -321,6 +327,8 @@ export function CustomerPage({ slug }: { slug: string }) {
       </Hero>
       <div className="stack">
         <PlateCard plate={cardPlate} total={total} gift={giftStamps(stand, !!cardCrew)} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} />
+        {/* "When you go come back?": plan the next visit (a day and a time). */}
+        <PlanCard slug={slug} character={ch} ask missed={r.plan_outcome === 'missed'} />
         {featureCards}
         <TalkAndPlay slug={slug} first={charName.split(' ')[0]} />
         <Rate slug={slug} visitId={r.visit_id} />

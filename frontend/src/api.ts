@@ -101,6 +101,8 @@ export type Dashboard = {
     average_rating: number | null;
   };
   recent_visits: { id: number; name: string; plate_number: number; stars: number | null; at: string }[];
+  // "Who's here now": customers counted in the last ARRIVAL_WINDOW_MINUTES (regular-arrived alert).
+  here_now?: import('./features/regulars/regularsApi').HereNow[];
   // prize: what the wheel picked; spin_pending: the customer has not spun yet.
   open_jara: { code: string; name: string; at: string; prize?: string | null; spin_pending?: boolean }[];
   recent_questions: { id: number; who: string; question: string; at: string }[];

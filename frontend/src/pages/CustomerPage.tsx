@@ -24,6 +24,7 @@ import { AjoCard } from '../features/plateAjo/CustomerAjo';
 import { CrewCard } from '../features/lunchCrew/CustomerCrew';
 import { AlertsCard } from '../features/alerts/CustomerAlerts';
 import { WheelCard } from '../features/prizeWheel/WheelCard';
+import { UsualCard } from '../features/regulars/UsualCard';
 import { CharacterLoader } from '../components/Loading';
 import { DeleteMyData } from '../components/DeleteMyData';
 
@@ -193,6 +194,7 @@ export function CustomerPage({ slug }: { slug: string }) {
       <OpenJara slug={slug} codes={me?.open_jara ?? []} />
       <WheelCard slug={slug} stand={stand} refreshKey={meVersion} />
       {me && <AlertsCard slug={slug} stand={stand} />}
+      {me && <UsualCard slug={slug} standName={stand.stand.name} />}
       <CrewCard slug={slug} stand={stand} onChange={refreshMe} refreshKey={meVersion} ownPlate={me?.own_plate_number ?? null} />
       <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
     </>

@@ -26,6 +26,9 @@ class CustomaSettings(ModuleSettingsBase):
     # on us"), so it reads (real plates + 2) / (6 + 2). Display only: the jara still comes after
     # PLATES_FOR_JARA real plates, and the 6-hour rule is unchanged. 0 turns it off.
     HEAD_START_STAMPS: int = 2
+    # "Who's here now" on the vendor dashboard: customers whose plate was counted in the last
+    # ARRIVAL_WINDOW_MINUTES, so staff can greet regulars by name.
+    ARRIVAL_WINDOW_MINUTES: int = 90
     # "Last plates tonight": set by the vendor to sell leftover food before closing.
     LAST_PLATES_LEFT: int = 0
     LAST_PLATES_UNTIL: str | None = None  # ISO time (UTC) when the announcement ends

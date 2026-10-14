@@ -24,7 +24,7 @@ from app.models import (
     Visit,
     Workspace,
 )
-from app.services import alerts, prize_wheel, sms_alerts, stand_photo
+from app.services import alerts, prize_wheel, regulars, sms_alerts, stand_photo
 from app.services.bisi import suggest_character
 from app.services.chat_log import recent_questions
 from app.services.qr import scan_code
@@ -139,6 +139,10 @@ def dashboard(
     wheel_live = prize_wheel.live_for(session, workspace.id, stand_settings)
     return {
         "stand": stand_view(session, workspace),
+        # "Who's here now": customers counted in the last ARRIVAL_WINDOW_MINUTES, for staff to greet.
+        "here_now": regulars.here_now(
+            session, workspace=workspace, stand_settings=stand_settings, now=datetime.now(UTC).replace(tzinfo=None)
+        ),
         "open_jara": [
             {
                 "code": j.code,

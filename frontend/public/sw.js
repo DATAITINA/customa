@@ -1,4 +1,4 @@
-/* Customa service worker: leftover-food alerts (web push).
+/* Customa service worker: leftover-food alerts and other web pushes (regular arrived, visit plans).
  *
  * The server sends {title, body, slug, url, tag, character, ...} (backend services/alerts.py).
  * The stand character's picture is drawn on the phone when the customer turns alerts on and
@@ -104,7 +104,8 @@ self.addEventListener('push', (event) => {
         vibrate: [120, 60, 120, 60, 240],
         timestamp: Date.now(),
         data: { url: data.url || '/' },
-        actions: [
+        // "I'm coming" fits the customer's alerts; a vendor's "regular arrived" ping just opens.
+        actions: data.type === 'regular_arrived' ? [] : [
           { action: 'come', title: "I'm coming 🏃🏾" },
           { action: 'later', title: 'Not today' },
         ],

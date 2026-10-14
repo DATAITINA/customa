@@ -12,6 +12,7 @@ from app.api.api_v1.endpoints import (
     plate_ajo,
     prize_wheel,
     public,
+    regulars,
     session,
     stands,
 )
@@ -73,6 +74,9 @@ for feature in (plate_ajo, lunch_crew):
 # The Prize Wheel: the vendor's wheel of food prizes, the customer's spin, the jara code check.
 api_router.include_router(prize_wheel.public_router)
 api_router.include_router(prize_wheel.vendor_router)
+# Regular-arrived alert: "Greeted", the vendor's phone pings, the customer's own "my usual".
+api_router.include_router(regulars.vendor_router)
+api_router.include_router(regulars.public_router)
 # Customer delights (surprise jara, today's special): vendor settings only.
 api_router.include_router(delights.vendor_router)
 # Leftover-food alerts (web push): customers turn them on; the vendor's last-plates sends them.

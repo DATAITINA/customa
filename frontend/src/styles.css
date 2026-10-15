@@ -21,7 +21,7 @@ body {
   font-family: var(--body);
   -webkit-font-smoothing: antialiased;
 }
-a { color: var(--ink); }
+a { color: var(--ink); text-decoration: none; }
 a:hover { color: var(--muted); }
 button { font-family: inherit; cursor: pointer; }
 button:disabled { opacity: 0.55; cursor: default; }
@@ -93,7 +93,14 @@ button:disabled { opacity: 0.55; cursor: default; }
 .auth-or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 .auth-or::before, .auth-or::after { content: ''; flex: 1; height: 2px; background: var(--stone); }
 .links { display: flex; justify-content: center; gap: 16px; padding-top: 2px; }
-.link-btn { background: none; border: none; padding: 8px 4px; font-size: 13px; font-weight: 700; text-decoration: underline; color: var(--ink); }
+.link-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 16px;
+  border: none; border-radius: 999px; background: var(--stone); color: var(--ink);
+  font-size: 14px; font-weight: 800; text-decoration: none; cursor: pointer; transition: transform 0.1s, filter 0.15s;
+}
+.link-btn:hover { filter: brightness(0.95); color: var(--ink); }
+.link-btn:active { transform: scale(0.97); }
+.link-btn:disabled { opacity: 0.5; cursor: default; }
 
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 700; }
 .input {

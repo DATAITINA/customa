@@ -2,6 +2,7 @@
 // or skeleton blocks shaped like the content that is coming. Pure CSS animation.
 import { useEffect, useState } from 'react';
 import { Character } from './Character';
+import { lookForThisPage } from '../lookCache';
 
 const LINES: Record<string, string[]> = {
   stand: ['Warming up the pot…', 'Setting the table…', 'Calling your host…'],
@@ -21,6 +22,9 @@ type LoaderProps = {
 
 export function CharacterLoader({ kind = 'stand', character, size = 96 }: LoaderProps) {
   const lines = LINES[kind];
+  // The stand's own character: given, or remembered on this phone; the pepper only on a first visit.
+  const [look] = useState(() => character ?? lookForThisPage());
+  character = character ?? look;
   const [i, setI] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setI((n) => (n + 1) % lines.length), 1600);

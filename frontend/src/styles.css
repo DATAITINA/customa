@@ -450,3 +450,10 @@ tr.fresh td { background: var(--blush); }
 .customize-body { display: flex; flex-direction: column; gap: 12px; }
 .customize-preview { display: flex; justify-content: center; background: var(--blush); border-radius: 24px; padding: 12px 0 4px; }
 .photo-busy img { filter: saturate(0.6) brightness(0.9); transition: filter 0.2s; }
+
+/* Menu: a food box and a price box per dish */
+.menu-rows { display: flex; flex-direction: column; gap: 8px; }
+.menu-row { display: grid; grid-template-columns: minmax(0, 1fr) 112px 36px; gap: 8px; align-items: center; }
+.menu-row-head { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.menu-row-x { width: 36px; height: 36px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); font-size: 20px; font-weight: 800; line-height: 1; }
+.menu-row-x:disabled { opacity: 0.3; }

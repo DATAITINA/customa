@@ -20,6 +20,7 @@ import { HereNowCard } from '../features/regulars/HereNow';
 import { VendorPlansCard } from '../features/visitPlans/VendorPlans';
 import { VendorPaymentsCard } from '../features/payments/VendorPayments';
 import { MenuEditor } from '../features/payments/MenuEditor';
+import { MenuRows, fromRows, menuProblem, type MenuRow } from '../components/MenuRows';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -153,22 +154,10 @@ function VendorHome() {
 // --- Stand setup: the vendor describes their stand, picks the character ----
 
 
-function parseMenu(text: string) {
-  // One item per line: "Jollof rice 1500"
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const m = line.match(/^(.*?)[\s,:-]+₦?\s*([\d,]+)\s*$/);
-      return m ? { item: m[1].trim(), price: Number(m[2].replace(/,/g, '')) } : { item: line, price: 0 };
-    });
-}
-
 function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [menuText, setMenuText] = useState('');
+  const [menuRows, setMenuRows] = useState<MenuRow[]>([{ item: '', price: '' }]);
   const [char, setChar] = useState<Partial<CharacterT>>({ name: '', body: 'pepper', color: 'pepper', accessory: 'headwrap', greeting: '' });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -195,6 +184,8 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
         style={{ padding: 0, gap: 14 }}
         onSubmit={async (e) => {
           e.preventDefault();
+          const problem = menuProblem(menuRows);
+          if (problem) { setError(problem); return; }
           setBusy(true);
           setError(null);
           try {
@@ -206,7 +197,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
                 body: char.body, color: char.color, accessory: char.accessory,
                 greeting: char.greeting || `Welcome to ${name}!`,
                 ...(char.personality ? { personality: char.personality } : {}),
-                menu: parseMenu(menuText),
+                menu: fromRows(menuRows),
               },
             });
             // The photo goes up after the stand exists. If it fails, the stand is still made and
@@ -245,9 +236,9 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
         <button type="button" className="btn btn-outline" onClick={suggest} disabled={suggesting || !description.trim()}>
           {suggesting ? 'Thinking…' : 'Suggest a character from my words'}
         </button>
-        <label className="field">Menu, one item per line with the price
-          <textarea className="input" value={menuText} onChange={(e) => setMenuText(e.target.value)} placeholder={'Afang soup and fufu 2000\nPepper soup 1500'} />
-        </label>
+        <div className="field">Your menu: each food and its price
+          <MenuRows rows={menuRows} onChange={setMenuRows} />
+        </div>
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create my stand'}</button>
       </form>

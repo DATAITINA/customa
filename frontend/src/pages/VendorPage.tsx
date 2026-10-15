@@ -18,6 +18,7 @@ import { VendorWheelPanel } from '../features/prizeWheel/VendorWheel';
 import { JaraCheckPanel } from '../features/prizeWheel/JaraCheck';
 import { HereNowCard } from '../features/regulars/HereNow';
 import { VendorPlansCard } from '../features/visitPlans/VendorPlans';
+import { VendorPaymentsCard } from '../features/payments/VendorPayments';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -314,6 +315,8 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
       <HereNowCard slug={slug} entries={d.here_now ?? []} onChange={() => q.refetch()} />
       {/* Plans for today, plans kept this week, and % back within 14 days. */}
       <VendorPlansCard d={d} />
+      {/* Today's payments: Paystack (test mode) and cash you confirm. */}
+      <VendorPaymentsCard slug={slug} onChange={() => q.refetch()} />
       <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
       <div className="stats">
         {stats.map((s) => (

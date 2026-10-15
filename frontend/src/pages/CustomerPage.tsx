@@ -26,6 +26,7 @@ import { AlertsCard } from '../features/alerts/CustomerAlerts';
 import { WheelCard } from '../features/prizeWheel/WheelCard';
 import { UsualCard } from '../features/regulars/UsualCard';
 import { PlanCard } from '../features/visitPlans/PlanCard';
+import { PayCard } from '../features/payments/PayCard';
 import { CharacterLoader } from '../components/Loading';
 import { DeleteMyData } from '../components/DeleteMyData';
 
@@ -192,6 +193,7 @@ export function CustomerPage({ slug }: { slug: string }) {
   // The return-visit features. Each card hides itself when the vendor has not turned it on.
   const featureCards = (
     <>
+      {me && <PayCard slug={slug} onPaid={refreshMe} />}
       <OpenJara slug={slug} codes={me?.open_jara ?? []} />
       <WheelCard slug={slug} stand={stand} refreshKey={meVersion} />
       {me && <AlertsCard slug={slug} stand={stand} />}

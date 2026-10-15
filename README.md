@@ -65,9 +65,10 @@ coming back.
 | Chat with the character | `msflib-ai-core` (`get_ai_dependencies().get_llm()`, `TokenUsageCallback` for tokens, logged with latency) | | persona + guardrails prompt, menu-based fallback (`services/bisi.py`) |
 | Food questions the vendor can read (chats stay private) | `msflib-conversation` (`ChannelService`, `AccessService`, `MembershipService.add_agent`, `MessagingService`) | | `services/chat_log.py` |
 | Character from the vendor's own words | `msflib-ai-core` model, output validated by a Pydantic schema, one retry, safe default | | `suggest_character` |
+| Pay for a plate (Paystack test mode, or cash the vendor confirms); a paid plate is a stamp | core `ModelBase` table `Payment` + `ModelAction` (`PaymentAction`); `msflib-workspace-config` per-stand `PAYMENTS_ENABLED`; app settings for the Paystack test key (never committed) | `@msflib/core` `configuredApiClient` | `services/paystack.py` (client), `services/payments.py` (rules), `endpoints/payments.py` (routes + signed webhook), `features/payments/`; see `docs/payments.md` |
 | App shell | the official **MSFLib FastAPI template** (settings, session, keystore, auth/account routers, workspace hooks) | `@msflib/core` `configureApplication` | |
 
-Installed but not yet in a user flow: `msflib-ai-api`, `msflib-drivelink` (planned: stand photo storage).
+MSFLib has no payments module, so payments are built from MSFLib's own pieces above. Installed but not yet in a user flow: `msflib-ai-api` (planned: streamed chat replies) and `msflib-drivelink` (planned: stand photos; it needs cloud file storage such as Cloudinary or S3, because Vercel can't keep files; photos are stored in the database until then).
 
 ## Data and privacy
 

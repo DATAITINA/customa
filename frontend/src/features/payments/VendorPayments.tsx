@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ApiError } from '../../api';
+import { NairaBig } from './NairaBig';
 import { naira, payApi, type Today } from './payApi';
 import '../visitPlans/plans.css';
 import './pay.css';
@@ -44,17 +45,17 @@ export function VendorPaymentsCard({ slug, onChange }: { slug: string; onChange?
       <div className="vp-row">
         <div className="vp-block">
           <span className="eyebrow">TODAY'S PAYMENTS</span>
-          <span className="vp-big">{naira(t.total)}</span>
+          <span className="vp-big"><NairaBig amount={t.total} /></span>
           <span className="vp-sub">{t.count} paid plate{t.count === 1 ? '' : 's'}</span>
         </div>
         <div className="vp-block">
           <span className="eyebrow">CARD / TRANSFER</span>
-          <span className="vp-big">{naira(t.by_method.paystack)}</span>
+          <span className="vp-big"><NairaBig amount={t.by_method.paystack} /></span>
           <span className="vp-sub">{t.card_ready ? 'Paystack test mode' : 'Not set up'}</span>
         </div>
         <div className="vp-block">
           <span className="eyebrow">CASH</span>
-          <span className="vp-big">{naira(t.by_method.cash)}</span>
+          <span className="vp-big"><NairaBig amount={t.by_method.cash} /></span>
           <span className="vp-sub">confirmed by you</span>
         </div>
       </div>

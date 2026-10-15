@@ -51,3 +51,12 @@ from .customa import (
     VisitCreate,
     VisitUpdate,
 )
+from .alerts import PushSubscription, SmsSubscription  # noqa: E402
+from .character_chat import ChatMemory  # noqa: E402
+from .lunch_crew import Crew, CrewMember, CrewPlate  # noqa: E402
+from .plate_ajo import PlateBundle, PlateUse  # noqa: E402
+from .prize_wheel import JaraPrize, WheelItem  # noqa: E402
+from .regulars import Arrival, CustomerUsual, VendorPushSubscription  # noqa: E402
+from .visit_plans import VisitPlan  # noqa: E402
+from .stand_photo import StandPhoto  # noqa: E402
+from .payments import Payment, PaymentCreate, PaymentUpdate  # noqa: E402

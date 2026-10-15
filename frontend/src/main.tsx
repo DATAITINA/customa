@@ -8,6 +8,13 @@ import './styles.css';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } });
 
+// The service worker shows leftover-food alerts (public/sw.js).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>

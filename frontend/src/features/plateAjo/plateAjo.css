@@ -1,0 +1,55 @@
+/* Plate Ajo. Builds on .card, .card-outline, .seg, .btn, .field and .input from styles.css. */
+.ajo-big { font-family: var(--display); font-size: 34px; line-height: 0.95; }
+.ajo-total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-weight: 800; }
+.ajo-total strong { font-family: var(--display); font-weight: 400; font-size: 28px; }
+.ajo-seg button { min-height: 40px; height: auto; padding: 6px 14px; text-align: left; }
+.ajo-bank { background: var(--paper); border: 2px solid var(--ink); border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.ajo-bank-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ajo-number { font-family: var(--display); font-size: 30px; letter-spacing: 0.06em; line-height: 1; word-break: break-all; }
+.btn.ajo-small-btn { width: auto; height: 40px; padding: 0 16px; font-size: 14px; }
+.ajo-actions { display: flex; gap: 8px; }
+.ajo-actions > .btn { flex: 1; min-width: 0; white-space: nowrap; font-size: 15px; padding: 0 10px; }
+.ajo-wait { display: flex; align-items: flex-start; gap: 10px; font-weight: 700; line-height: 1.4; }
+.ajo-wait-dot {
+  width: 12px; height: 12px; margin-top: 5px; border-radius: 999px; background: var(--pepper); flex-shrink: 0;
+  animation: lp-pulse 1.2s ease-in-out infinite;
+}
+
+/* Full-screen "PAID PLATE" confirmation the vendor looks at. */
+.ajo-overlay {
+  position: fixed; inset: 0; z-index: 1000; overflow-y: auto; background: #DDF5E3; color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: 24px 16px; text-align: center;
+}
+.ajo-overlay-tick {
+  width: 84px; height: 84px; border-radius: 999px; background: #1E7B34; color: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+}
+.ajo-overlay-title { font-family: var(--display); font-size: clamp(44px, 15vw, 88px); line-height: 0.9; margin: 0; color: #145A25; }
+.ajo-overlay-card {
+  width: 100%; max-width: 380px; background: var(--paper); border: 3px solid var(--ink); border-radius: var(--radius-hero);
+  padding: 18px; display: flex; flex-direction: column; gap: 8px; align-items: center;
+}
+.ajo-overlay-item { font-size: 26px; font-weight: 800; line-height: 1.15; word-break: break-word; }
+.ajo-overlay-plate { font-family: var(--display); font-size: 38px; line-height: 1; }
+.ajo-overlay-time { font-size: 18px; font-weight: 800; }
+.ajo-overlay-stamp { font-size: 15px; font-weight: 700; color: var(--muted); }
+.ajo-overlay-jara { font-size: 18px; font-weight: 800; background: var(--blush); border-radius: 999px; padding: 8px 16px; }
+.ajo-overlay-jara strong { font-family: var(--display); font-weight: 400; font-size: 24px; letter-spacing: 0.06em; }
+.ajo-overlay .btn.btn { max-width: 380px; }
+
+/* Vendor panel */
+.ajo-panel { gap: 12px; }
+.ajo-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.btn.ajo-setup-btn { width: auto; align-self: flex-start; height: 48px; padding: 0 22px; font-size: 15px; }
+.ajo-setup-hint { font-size: 14px; font-weight: 700; }
+.ajo-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.ajo-section { display: flex; flex-direction: column; gap: 0; }
+.ajo-line {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 10px 0; border-top: 1px solid var(--line);
+}
+.ajo-line:first-of-type { border-top: none; }
+.ajo-line-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-weight: 800; }
+.btn.ajo-ok { background: #1E7B34; }
+.btn.ajo-ok:hover { color: var(--paper); }

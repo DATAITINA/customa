@@ -4,7 +4,6 @@ from sqlmodel import Session, SQLModel
 from app import models
 from app.actions import account_action, tenant_action, user_action, workspace_action
 from app.core.config import settings
-from app.seed.demo import seed_demo_stand
 
 # make sure all SQL Alchemy models are imported (app.models) before initializing DB
 # otherwise, SQL Alchemy might fail to initialize relationships properly
@@ -61,6 +60,3 @@ def init_db(engine: Engine, create_tables: bool = False) -> None:
             session.add(account)
 
         session.commit()
-
-    with Session(engine) as session:
-        seed_demo_stand(session)

@@ -19,7 +19,7 @@ def resolve_stand_settings(session: Session, workspace: Workspace) -> CustomaSet
     """Customa settings for one stand: code defaults, then that stand's overrides.
 
     MSFLib's tiered config merges default -> tenant -> workspace, so a single
-    stored workspace value (like the demo stand's 30-second window) wins.
+    stored workspace value (like a shorter plate window) wins.
     """
     return config_service.resolve_module_settings(
         session,

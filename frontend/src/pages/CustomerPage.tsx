@@ -2,21 +2,40 @@ import { useEffect, useRef, useState } from 'react';
 import { Logo } from '../components/Logo';
 import {
   api,
+  captureScan,
   clearCustomerKey,
   getCustomerKey,
+  getScan,
+  giftStamps,
+  markScanCounted,
+  photoUrl,
+  setStandManifest,
   setCustomerKey,
   type ApiError,
   type CountResult,
+  type CustomerState,
+  type OpenJaraEntry,
   type StandPublic,
 } from '../api';
 import { Character, PRESETS } from '../components/Character';
-import { Link } from '../App';
+import { Link, rememberStand } from '../App';
 import { LastPlatesBanner } from '../components/LastPlates';
+import { AjoCard } from '../features/plateAjo/CustomerAjo';
+import { CrewCard } from '../features/lunchCrew/CustomerCrew';
+import { AlertsCard } from '../features/alerts/CustomerAlerts';
+import { WheelCard } from '../features/prizeWheel/WheelCard';
+import { UsualCard } from '../features/regulars/UsualCard';
+import { PlanCard } from '../features/visitPlans/PlanCard';
+import { PayCard } from '../features/payments/PayCard';
+import { CharacterLoader } from '../components/Loading';
+import { DeleteMyData } from '../components/DeleteMyData';
 
 type View =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'welcome' }
+  // Not counted: no fresh scan of the stand's QR code (stale = the code was old or wrong).
+  | { kind: 'scan'; stale?: boolean }
   | { kind: 'counted'; result: CountResult }
   | { kind: 'tooSoon'; secondsLeft: number; windowSeconds: number; plate: number; name: string | null }
   | { kind: 'jara'; result: CountResult }
@@ -50,22 +69,49 @@ const naira = (n: number) => `₦${n.toLocaleString('en-NG')}`;
 export function CustomerPage({ slug }: { slug: string }) {
   const [stand, setStand] = useState<StandPublic | null>(null);
   const [view, setView] = useState<View>({ kind: 'loading' });
+  // The latest we know about this customer (card, crew, unredeemed jara codes), from any response.
+  const [me, setMeState] = useState<CustomerState | null>(null);
+  // Bumped on every update of `me` (a plate counted here, a prepaid plate, a crew change), so
+  // feature cards that show plate-related state (the crew card) re-read it.
+  const [meVersion, setMeVersion] = useState(0);
+  const setMe = (c: CustomerState | null) => {
+    setMeState(c);
+    setMeVersion((v) => v + 1);
+  };
   const started = useRef(false);
+  // A playful line after the customer taps the character; it fades back to the real message.
+  const [tapLine, setTapLine] = useState<string | null>(null);
+  useEffect(() => {
+    if (!tapLine) return;
+    const t = setTimeout(() => setTapLine(null), 2600);
+    return () => clearTimeout(t);
+  }, [tapLine]);
+  // "Add to Home Screen" installs this stand with this customer's card (iPhone keeps a
+  // Home Screen app's storage apart from Safari's).
+  useEffect(() => { setStandManifest(slug, me?.key ?? getCustomerKey(slug)); }, [slug, me?.key]);
 
-  // Opened from the stand's QR code. The server saves this only when it first creates the customer.
-  const fromQr = new URLSearchParams(window.location.search).get('src') === 'qr';
-
+  // A plate counts only with the scan code from the stand's QR code (read in the effect below).
   const handleCount = async (body: { first_name?: string; consent: boolean }) => {
+    const scan = getScan(slug);
+    if (!scan) {
+      setView({ kind: 'scan' });
+      return;
+    }
     try {
-      const result = await api.countPlate(slug, fromQr ? { ...body, source: 'qr' } : body);
+      const result = await api.countPlate(slug, { ...body, scan: scan.code });
+      markScanCounted(slug);
       setCustomerKey(slug, result.customer.key);
+      setMe(result.customer);
       setView(result.jara ? { kind: 'jara', result } : { kind: 'counted', result });
     } catch (err) {
       const e = err as ApiError;
       const detail = e.raw?.detail as
-        | { seconds_left: number; customer: { first_name: string | null; plate_number: number; window_seconds: number } }
+        | { seconds_left: number; customer: CustomerState; code?: string }
         | undefined;
-      if (e.status === 409 && detail) {
+      if (e.status === 403 && detail?.code === 'scan_required') {
+        setView({ kind: 'scan', stale: true });
+      } else if (e.status === 409 && detail) {
+        if (detail.customer?.key) setMe(detail.customer);
         setView({ kind: 'tooSoon', secondsLeft: detail.seconds_left, windowSeconds: detail.customer.window_seconds ?? stand?.window_seconds ?? 0, plate: detail.customer.plate_number, name: detail.customer.first_name });
       } else if (e.status === 404) {
         // We had a key but the stand forgot us (data deleted): start fresh.
@@ -77,16 +123,41 @@ export function CustomerPage({ slug }: { slug: string }) {
     }
   };
 
+  // After a plate is counted somewhere else (a prepaid Plate Ajo plate), re-read the stand
+  // and show the card with the real time left. Read only: it never counts a plate itself.
+  const refreshPlates = async () => {
+    try {
+      const s = await api.stand(slug);
+      setStand(s);
+      if (s.customer) setMe(s.customer);
+      if (s.customer && (s.customer.seconds_left ?? 0) > 0) {
+        setView({ kind: 'tooSoon', secondsLeft: s.customer.seconds_left ?? 0, windowSeconds: s.customer.window_seconds, plate: s.customer.plate_number, name: s.customer.first_name });
+      }
+    } catch {
+      // Keep the current screen; the next scan shows the right state.
+    }
+  };
+
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+    captureScan(slug);
+    rememberStand(slug);
     api
       .stand(slug)
       .then((s) => {
         setStand(s);
-        // A scan from a phone we already know is a new visit: count it straight away.
-        if (s.customer && getCustomerKey(slug)) handleCount({ consent: true });
-        else setView({ kind: 'welcome' });
+        if (s.customer) setMe(s.customer);
+        const scan = getScan(slug);
+        const freshScan = scan !== null && !scan.counted;
+        if (s.customer && getCustomerKey(slug)) {
+          // A new scan from a phone we already know is a new visit: count it straight away.
+          // Without one (a bookmark, a refresh, the history) only show the card.
+          if (freshScan) handleCount({ consent: true });
+          else if ((s.customer.seconds_left ?? 0) > 0) {
+            setView({ kind: 'tooSoon', secondsLeft: s.customer.seconds_left ?? 0, windowSeconds: s.customer.window_seconds, plate: s.customer.plate_number, name: s.customer.first_name });
+          } else setView({ kind: 'scan' });
+        } else setView(freshScan ? { kind: 'welcome' } : { kind: 'scan' });
       })
       .catch((err: ApiError) =>
         setView({ kind: 'error', message: err.status === 404 ? 'This stand does not exist.' : err.message }),
@@ -94,7 +165,7 @@ export function CustomerPage({ slug }: { slug: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
-  if (view.kind === 'loading') return <Shell stand={stand}><p className="note" style={{ padding: 20 }}>Loading…</p></Shell>;
+  if (view.kind === 'loading') return <Shell stand={stand}><CharacterLoader kind="card" character={stand?.character} /></Shell>;
   if (view.kind === 'error' || !stand) {
     return (
       <Shell stand={stand}>
@@ -108,15 +179,44 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   const ch = stand.character;
   const total = stand.plates_for_jara;
-  const charProps = { body: ch?.body, color: ch?.color, accessory: ch?.accessory };
+  const gift = giftStamps(stand); // own card only; crew cards pass 0 below
+  // After joining, creating or leaving a crew: re-read which card this customer's plates go to.
+  // Read only, and it keeps the current screen.
+  const refreshMe = async () => {
+    try {
+      const s = await api.stand(slug);
+      if (s.customer) setMe(s.customer);
+    } catch {
+      // The next scan shows the right card.
+    }
+  };
+  // The return-visit features. Each card hides itself when the vendor has not turned it on.
+  const featureCards = (
+    <>
+      {me && <PayCard slug={slug} onPaid={refreshMe} />}
+      <OpenJara slug={slug} codes={me?.open_jara ?? []} />
+      <WheelCard slug={slug} stand={stand} refreshKey={meVersion} />
+      {me && <AlertsCard slug={slug} stand={stand} />}
+      {me && <UsualCard slug={slug} standName={stand.stand.name} />}
+      {/* An existing plan (the question itself comes right after a counted plate, below). */}
+      {me && view.kind !== 'counted' && <PlanCard slug={slug} character={ch} />}
+      <CrewCard slug={slug} stand={stand} onChange={refreshMe} refreshKey={meVersion} ownPlate={me?.own_plate_number ?? null} />
+      <AjoCard slug={slug} stand={stand} onPlateCounted={refreshPlates} />
+    </>
+  );
+  // The hero character reacts to a tap with a jump and a line, and its eyes follow the finger.
+  const charProps = {
+    body: ch?.body, color: ch?.color, accessory: ch?.accessory, react: true, follow: true,
+    onTap: () => setTapLine(TAP_LINES[Math.floor(Math.random() * TAP_LINES.length)]),
+  };
   const charName = ch?.name ?? 'your host';
 
-  if (view.kind === 'jara') return <JaraScreen stand={stand} result={view.result} onDone={() => setView({ kind: 'counted', result: { ...view.result, jara: null } })} />;
+  if (view.kind === 'jara') return <JaraScreen slug={slug} stand={stand} result={view.result} onDone={() => setView({ kind: 'counted', result: { ...view.result, jara: null } })} />;
 
   if (view.kind === 'deleted') {
     return (
       <Shell stand={stand}>
-        <Hero bubble={`Done. I don forget you. Come back anytime!`}>
+        <Hero tapLine={tapLine} bubble={`Done. I don forget you. Come back anytime!`}>
           <Character {...charProps} expression="happy" pose="idle" size={170} />
         </Hero>
         <div className="stack">
@@ -130,10 +230,38 @@ export function CustomerPage({ slug }: { slug: string }) {
   if (view.kind === 'welcome') {
     return (
       <Shell stand={stand}>
-        <Hero bubble={`${ch?.greeting ?? 'Welcome!'} Wetin be your name?`}>
+        <Hero tapLine={tapLine} bubble={`${ch?.greeting ?? 'Welcome!'} Wetin be your name?`}>
           <Character {...charProps} expression="excited" pose="wave" size={180} />
         </Hero>
-        <WelcomeForm onSubmit={handleCount} />
+        <WelcomeForm onSubmit={handleCount} gift={giftStamps(stand)} total={stand.plates_for_jara} />
+      </Shell>
+    );
+  }
+
+  if (view.kind === 'scan') {
+    const known = me?.first_name ? `${me.first_name}! ` : '';
+    const bubble = view.stale
+      ? 'Hmm, that QR code is old. Scan the QR code at the stand to count your plate!'
+      : me
+        ? `${known}Welcome back! Scan the QR code at the stand to count today's plate.`
+        : `${ch?.greeting ?? 'Welcome!'} Scan the QR code at the stand to count your first plate.`;
+    return (
+      <Shell stand={stand}>
+        <Hero tapLine={tapLine} bubble={bubble}>
+          <Character {...charProps} expression="happy" pose="wave" size={170} />
+        </Hero>
+        <div className="stack">
+          <ScanHint charName={charName} />
+          {me && (
+            <>
+              <PlateCard plate={me.plate_number} total={total} gift={giftStamps(stand, !!me.crew_name)} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} />
+              {featureCards}
+              <TalkAndPlay slug={slug} first={charName.split(' ')[0]} outline />
+            </>
+          )}
+          <Menu items={ch?.menu ?? []} />
+          {me && <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />}
+        </div>
       </Shell>
     );
   }
@@ -145,10 +273,16 @@ export function CustomerPage({ slug }: { slug: string }) {
           stand={stand}
           initialSeconds={view.secondsLeft}
           windowSeconds={view.windowSeconds}
-          plate={view.plate}
+          plate={me?.plate_number ?? view.plate}
+          crewName={me?.crew_name ?? null}
           name={view.name}
+          canCount={(() => { const sc = getScan(slug); return sc !== null && !sc.counted; })()}
           onReady={() => handleCount({ consent: true })}
+          extras={featureCards}
         />
+        <div className="stack">
+          <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+        </div>
       </Shell>
     );
   }
@@ -157,46 +291,86 @@ export function CustomerPage({ slug }: { slug: string }) {
   const r = view.result;
   const name = r.customer.first_name;
   const left = total - r.plate_number;
-  const bubble = r.returning
-    ? `${name ? name + '! ' : ''}Back again! Plate ${r.plate_number} of ${total}.`
-    : `${name ? name + '! ' : ''}Plate ${r.plate_number} don land. ${left} more and jara na yours.`;
+  const crew = r.crew;
+  // The crew this customer is in now: it can change on this screen (create, join, leave).
+  const nowCrew = me ? me.crew_name ?? null : crew?.name ?? null;
+  const ownPlate = me?.own_plate_number ?? r.plate_number % total;
+  // Head-start card: the own card shows the gift stamps first (display only).
+  const shown = r.plate_number + gift;
+  const hi = name ? name + '! ' : '';
+  let bubble: string;
+  if (crew && !nowCrew) {
+    bubble = `You left ${crew.name}. Your own card continues from plate ${ownPlate + gift} of ${total + gift}.`;
+  } else if (!crew && nowCrew) {
+    bubble = `${hi}Plate ${shown} is saved on your own card, paused while you're in ${nowCrew}. Your next plates go on the crew card.`;
+  } else if (crew && crew.jara_to && !crew.jara_to_me) {
+    bubble = `Plate ${crew.plate_number} for ${crew.name}! This jara goes to ${crew.jara_to}. Your turn is coming.`;
+  } else if (crew) {
+    bubble = `${hi}Plate ${crew.plate_number} of ${crew.plates_for_jara} for ${crew.name}.`;
+  } else if (left === 1) {
+    // Almost there: people speed up when a reward is close, so make plate 5 feel exciting.
+    bubble = `${hi}Plate ${shown} don land! Just ONE more plate and jara na yours! 🎉`;
+  } else if (r.returning) {
+    bubble = `${hi}Back again! Plate ${shown} of ${total + gift}.`;
+  } else {
+    bubble = `${hi}Plate ${shown} don land. ${left} more and jara na yours.`;
+  }
+  // Plan the next visit: came as planned, or missed the last plan (no guilt).
+  if (r.plan_outcome === 'kept') bubble = `You keep your word! 🙌 ${bubble}`;
+  else if (r.plan_outcome === 'missed') bubble = `No wahala, life happen 😄 ${bubble}`;
+  // The card shown: the latest we know (it follows a crew joined or left on this screen).
+  const cardPlate = me ? me.plate_number : r.plate_number;
+  const cardCrew = me ? me.crew_name ?? null : crew?.name ?? null;
 
   return (
     <Shell stand={stand}>
-      <Hero bubble={bubble} counted>
+      <Hero tapLine={tapLine} bubble={bubble} counted>
         <Character {...charProps} expression="excited" pose={r.returning ? 'wave' : 'hop'} size={180} />
       </Hero>
       <div className="stack">
-        <PlateCard plate={r.plate_number} total={total} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} isDemo={stand.window_seconds < 120} />
-        <Link to={`/s/${slug}/chat`} className="btn">
-          <ChatIcon /> Talk to {charName.split(' ')[0]}
-        </Link>
+        <PlateCard plate={cardPlate} total={total} gift={giftStamps(stand, !!cardCrew)} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} />
+        {/* "When you go come back?": plan the next visit (a day and a time). */}
+        <PlanCard slug={slug} character={ch} ask missed={r.plan_outcome === 'missed'} />
+        {featureCards}
+        <TalkAndPlay slug={slug} first={charName.split(' ')[0]} />
         <Rate slug={slug} visitId={r.visit_id} />
         <Menu items={ch?.menu ?? []} />
-        <DeleteMine slug={slug} onDeleted={() => { clearCustomerKey(slug); setView({ kind: 'deleted' }); }} />
+        <Goodbye name={name} plate={r.plate_number} />
+        <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
       </div>
     </Shell>
   );
 }
 
 function Shell({ stand, children }: { stand: StandPublic | null; children: React.ReactNode }) {
-  const isDemo = stand?.stand.name.includes('(Demo)');
   return (
     <main className="phone">
       <header className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <span className="stand-name">{stand?.stand.name.replace(' (Demo)', '') ?? ''}</span>
-          {isDemo && <span className="badge">DEMO</span>}
+          <span className="stand-name">{stand?.stand.name ?? ''}</span>
         </div>
         <Logo size={22} />
       </header>
+      {stand?.photo && (
+        <div className="stand-cover">
+          <img src={photoUrl(stand.photo)} alt={`${stand.stand.name}, the food stand`} loading="lazy" decoding="async" />
+        </div>
+      )}
       {stand?.last_plates && <div style={{ padding: '0 12px 10px' }}><LastPlatesBanner lp={stand.last_plates} /></div>}
       {children}
     </main>
   );
 }
 
-function Hero({ bubble, counted, children }: { bubble: string; counted?: boolean; children: React.ReactNode }) {
+const TAP_LINES = [
+  'Hehe, that tickles! 😆',
+  'I dey here o! 👋🏾',
+  'Abeg no press me too much 😂',
+  'You don chop today? 🍲',
+  'Hi again! You fine die 😄',
+];
+
+function Hero({ bubble, tapLine, counted, children }: { bubble: string; tapLine?: string | null; counted?: boolean; children: React.ReactNode }) {
   return (
     <section className="hero">
       {counted && (
@@ -204,30 +378,54 @@ function Hero({ bubble, counted, children }: { bubble: string; counted?: boolean
           <Check /> Visit counted
         </div>
       )}
-      <div className="bubble" style={counted ? { marginTop: 18 } : undefined} aria-live="polite">{bubble}</div>
+      <div className="bubble" key={tapLine ?? 'main'} style={counted ? { marginTop: 18 } : undefined} aria-live="polite">{tapLine ?? bubble}</div>
       <div className="hero-row">{children}</div>
     </section>
   );
 }
 
-function PlateCard({ plate, total, windowSeconds, isDemo }: { plate: number; total: number; windowSeconds: number; isDemo: boolean }) {
-  const windowText = windowSeconds < 120 ? `${windowSeconds} seconds${isDemo ? ' (demo stand)' : ''}` : `${Math.round(windowSeconds / 3600)} hours`;
+function PlateCard({ plate, total, gift = 0, windowSeconds, crewName }: { plate: number; total: number; gift?: number; windowSeconds: number; crewName?: string | null }) {
+  const windowText = windowSeconds < 120 ? `${windowSeconds} seconds` : `${Math.round(windowSeconds / 3600)} hours`;
+  // Head-start card (own card only): `gift` stamps come first, so the card reads
+  // (plate + gift) / (total + gift). The jara still comes after `total` real plates.
+  // After the jara the card is a new card again: it starts at the gift stamps (2/8).
+  const real = gift > 0 ? plate % total : plate;
+  const shown = real + gift;
+  const of = total + gift;
   return (
     <div className="card">
       <div className="row">
-        <span className="eyebrow">YOUR JARA</span>
-        <span style={{ fontSize: 13, fontWeight: 700 }}>Free extra on plate {total}</span>
+        <span className="eyebrow">{crewName ? 'CREW CARD' : 'YOUR JARA'}</span>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>
+          {crewName ? `${crewName} · jara on plate ${total}, by turns` : `Free extra on plate ${of}`}
+        </span>
       </div>
-      <span className="plate-count">PLATE {plate}/{total}</span>
-      <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate}>
-        <div style={{ width: `${(plate / total) * 100}%` }} />
+      <div className="row" style={{ alignItems: 'center' }}>
+        <span className="plate-count">PLATE {shown}/{of}</span>
+        {real === total - 1 && <span className="almost-pill">1 more! 🔥</span>}
       </div>
+      {gift > 0 ? (
+        <>
+          <div className="stamps" role="progressbar" aria-valuemin={0} aria-valuemax={of} aria-valuenow={shown} aria-label={`${shown} of ${of} stamps, ${gift} of them a welcome gift`}>
+            {Array.from({ length: of }, (_, i) => (
+              <span key={i} className={i < gift ? 'stamp stamp-gift' : i < shown ? 'stamp stamp-on' : 'stamp'}>
+                {i < gift ? '🎁' : i === of - 1 ? 'J' : ''}
+              </span>
+            ))}
+          </div>
+          <span className="gift-note">Welcome gift: {gift} stamps on us 🎁</span>
+        </>
+      ) : (
+        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate}>
+          <div style={{ width: `${(plate / total) * 100}%` }} />
+        </div>
+      )}
       <span className="note">One plate counts per visit. Next one counts after {windowText}.</span>
     </div>
   );
 }
 
-function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consent: boolean }) => Promise<void> }) {
+function WelcomeForm({ onSubmit, gift = 0, total = 6 }: { onSubmit: (b: { first_name?: string; consent: boolean }) => Promise<void>; gift?: number; total?: number }) {
   const [name, setName] = useState('');
   const [consent, setConsent] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -243,6 +441,12 @@ function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consen
       }}
     >
       <h1 className="display" style={{ fontSize: 38 }}>YOUR FIRST PLATE!</h1>
+      {gift > 0 && (
+        <div className="gift-card" role="note">
+          <span aria-hidden="true" style={{ fontSize: 26 }}>🎁</span>
+          <span><strong>Welcome gift: {gift} stamps on us!</strong> Your card starts at {gift} of {total + gift}, and this plate makes {gift + 1}.</span>
+        </div>
+      )}
       <label className="field">
         First name
         <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Kelechi" maxLength={40} autoComplete="given-name" />
@@ -257,13 +461,24 @@ function WelcomeForm({ onSubmit }: { onSubmit: (b: { first_name?: string; consen
 }
 
 function TooSoon({
-  stand, initialSeconds, windowSeconds, plate, name, onReady,
-}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; name: string | null; onReady: () => void }) {
-  const [seconds, setSeconds] = useState(initialSeconds);
+  stand, initialSeconds, windowSeconds, plate, crewName, name, canCount, onReady, extras,
+}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; crewName?: string | null; name: string | null; canCount: boolean; onReady: () => void; extras?: React.ReactNode }) {
+  // Count down to a fixed end time, not by ticking: phones pause timers while the
+  // screen is off or the tab is in the background, which would leave a 6-hour
+  // countdown far behind. Re-read the clock on every tick and when the page is shown again.
+  const [endsAt] = useState(() => Date.now() + initialSeconds * 1000);
+  const secondsLeft = () => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+  const [seconds, setSeconds] = useState(secondsLeft);
   useEffect(() => {
-    const t = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, []);
+    const sync = () => setSeconds(secondsLeft());
+    const t = setInterval(sync, 1000);
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', sync);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endsAt]);
   const ch = stand.character;
   const total = stand.plates_for_jara;
   const mm = Math.floor(seconds / 60);
@@ -274,28 +489,111 @@ function TooSoon({
   return (
     <>
       <Hero bubble={`You don collect this plate already${name ? ', ' + name : ''}! I dey count the next one.`}>
-        <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={170} />
+        <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={170} react follow />
         <div className="timer" style={{ background: `conic-gradient(#141414 0 ${pct}%, #FFFFFF ${pct}% 100%)` }} aria-label={`Next plate in ${label}`}>
           <div className="timer-inner">
-            <span style={{ fontFamily: 'var(--display)', fontSize: 30, lineHeight: 1 }}>{label}</span>
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em' }}>NEXT PLATE</span>
+            {/* One line always: hours ("5h 59m") get a smaller size so they fit the ring. */}
+            <span style={{ fontFamily: 'var(--display)', fontSize: label.length > 5 ? 21 : 28, lineHeight: 1, whiteSpace: 'nowrap' }}>{label}</span>
+            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>NEXT PLATE</span>
           </div>
         </div>
       </Hero>
       <div className="stack">
-        <PlateCard plate={plate} total={total} windowSeconds={windowSeconds} isDemo={stand.window_seconds < 120} />
+        <PlateCard plate={plate} total={total} gift={giftStamps(stand, !!crewName)} crewName={crewName} windowSeconds={windowSeconds} />
+        {extras}
         <div className="card-outline">
           <span className="eyebrow">WHY THE WAIT?</span>
           <span style={{ fontSize: 15, lineHeight: 1.45, fontWeight: 600 }}>
             One plate per visit keeps the jara fair for everyone.
-            {stand.window_seconds < 120 ? ' On this demo stand a visit is 30 seconds. On real stands it is 6 hours.' : ''}
           </span>
         </div>
-        <button className="btn" disabled={seconds > 0} onClick={onReady}>
-          {seconds > 0 ? 'Wait for the timer' : 'Count my next plate'}
-        </button>
-        <Link to={`/s/${stand.stand.slug}/chat`} className="btn btn-outline"><ChatIcon /> Talk to {ch?.name.split(' ')[0] ?? 'us'} while you wait</Link>
+        {seconds > 0 ? (
+          <button className="btn" disabled>Wait for the timer</button>
+        ) : canCount ? (
+          // Scanned at the stand while the timer was still running: count now.
+          <button className="btn" onClick={onReady}>Count my next plate</button>
+        ) : (
+          <ScanHint charName={ch?.name ?? 'your host'} done />
+        )}
+        <TalkAndPlay slug={stand.stand.slug} first={ch?.name.split(' ')[0] ?? 'us'} outline />
       </div>
+    </>
+  );
+}
+
+// The two ways to spend time with the character: chat (AI, limited per plate) and play
+// (games run on the phone, no AI).
+function TalkAndPlay({ slug, first, outline }: { slug: string; first: string; outline?: boolean }) {
+  return (
+    <div className="duo">
+      <Link to={`/s/${slug}/chat`} className={outline ? 'btn btn-outline' : 'btn'}><ChatIcon /> Talk to {first}</Link>
+      <Link to={`/s/${slug}/play`} className="btn btn-outline"><span aria-hidden="true">🎮</span> Play</Link>
+    </div>
+  );
+}
+
+// A warm goodbye at the end of every visit (people remember how an experience ends).
+const GOODBYES = [
+  'Enjoy your food, see you next time! 👋',
+  'Thanks for coming, e go sweet you! 😋',
+  'Go well, come back soon o! 🙌',
+  'Chop well, we dey wait for you! 🍲',
+];
+function Goodbye({ name, plate }: { name: string | null; plate: number }) {
+  const line = GOODBYES[plate % GOODBYES.length];
+  return <p className="goodbye">{name ? `${name}, ${line.charAt(0).toLowerCase()}${line.slice(1)}` : line}</p>;
+}
+
+// How to count a plate: scan the stand's QR code with the phone camera.
+function ScanHint({ charName, done }: { charName: string; done?: boolean }) {
+  return (
+    <div className="scan-hint" role="status">
+      <span className="scan-hint-icon" aria-hidden="true"><CameraIcon /></span>
+      <span>
+        <strong>{done ? 'Timer done! Scan the QR code at the stand' : 'Scan the QR code at the stand'}</strong>
+        <span className="note" style={{ display: 'block' }}>
+          Open your phone camera and point it at {charName.split(' ')[0]}'s QR sign. Only a scan at the stand counts a plate.
+        </span>
+      </span>
+    </div>
+  );
+}
+
+const CameraIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+    <circle cx="12" cy="13" r="3" />
+  </svg>
+);
+
+// Unredeemed jara at this stand (own card or a crew turn), so a code is never lost. With the
+// Prize Wheel live, an unspun jara is a spin, and a spun one shows its prize with the code.
+function OpenJara({ slug, codes }: { slug: string; codes: OpenJaraEntry[] }) {
+  if (!codes.length) return null;
+  const spins = codes.filter((j) => j.spin);
+  const ready = codes.filter((j) => j.code);
+  return (
+    <>
+      {spins.length > 0 && (
+        <Link to={`/s/${slug}/wheel`} className="btn wheel-spin" >
+          🎡 {spins.length > 1 ? `Spin for your ${spins.length} jara` : 'Spin for your jara'}
+        </Link>
+      )}
+      {ready.length > 0 && (
+        <div className="card-outline" role="status" style={{ background: 'var(--blush)', borderColor: 'var(--pepper)' }}>
+          <span className="eyebrow">{ready.length > 1 ? 'YOUR JARA CODES' : 'YOUR JARA'}</span>
+          {ready.map((j) => (
+            <div key={j.code} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {j.prize && <span style={{ fontSize: 15, fontWeight: 800 }}>🎁 {j.prize}</span>}
+              <span style={{ fontFamily: 'var(--display)', fontSize: j.code!.length > 11 ? 26 : 32, lineHeight: 1, letterSpacing: '0.06em' }}>{j.code}</span>
+            </div>
+          ))}
+          <span style={{ fontSize: 15, fontWeight: 700 }}>
+            {ready.some((j) => j.prize) ? 'Show this to the vendor to collect your prize. One use.' : 'Show this to the vendor for a free extra portion. One use.'}
+          </span>
+          {ready.some((j) => j.prize) && <Link to={`/s/${slug}/wheel`} className="link-btn" >Show the QR code</Link>}
+        </div>
+      )}
     </>
   );
 }
@@ -337,28 +635,9 @@ function Menu({ items }: { items: { item: string; price: number }[] }) {
   );
 }
 
-function DeleteMine({ slug, onDeleted }: { slug: string; onDeleted: () => void }) {
-  const [confirm, setConfirm] = useState(false);
-  if (!confirm) {
-    return (
-      <div className="links">
-        <button className="link-btn" onClick={() => setConfirm(true)}>Delete my data</button>
-      </div>
-    );
-  }
-  return (
-    <div className="card-outline">
-      <span style={{ fontWeight: 800 }}>Delete your name, plates, jara and ratings at this stand?</span>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn" onClick={async () => { await api.deleteMe(slug); onDeleted(); }}>Yes, delete</button>
-        <button className="btn btn-outline" onClick={() => setConfirm(false)}>Keep it</button>
-      </div>
-    </div>
-  );
-}
-
-function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: CountResult; onDone: () => void }) {
+function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: StandPublic; result: CountResult; onDone: () => void }) {
   const ch = stand.character;
+  const gift = giftStamps(stand, !!result.crew);
   const colors = Object.values(PRESETS).map((p) => p.fill);
   const confetti = Array.from({ length: 34 }, (_, i) => {
     const seed = (i * 9301 + 49297) % 233280;
@@ -379,24 +658,46 @@ function JaraScreen({ stand, result, onDone }: { stand: StandPublic; result: Cou
         }} />
       ))}
       <header className="topbar" style={{ position: 'relative' }}>
-        <span className="stand-name">{stand.stand.name.replace(' (Demo)', '')}</span>
+        <span className="stand-name">{stand.stand.name}</span>
         <Logo size={22} />
       </header>
       <div style={{ position: 'relative', paddingTop: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em' }}>{result.plates_for_jara} OF {result.plates_for_jara} PLATES</span>
-        <h1 className="display" style={{ fontSize: 104 }}>JARA!</h1>
+        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em' }}>
+          {result.surprise
+            ? `${(ch?.name ?? 'THE VENDOR').toUpperCase()} DON DASH YOU · PLATE ${result.plate_number + gift}`
+            : result.crew
+              ? `${result.crew.name.toUpperCase()}: YOUR TURN · ${result.plates_for_jara} OF ${result.plates_for_jara} PLATES`
+              : `${result.plates_for_jara + gift} OF ${result.plates_for_jara + gift} PLATES`}
+        </span>
+        <h1 className="display" style={{ fontSize: result.surprise ? 76 : 104 }}>{result.surprise ? 'SURPRISE JARA!' : 'JARA!'}</h1>
       </div>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+        <div className="bubble" style={{ alignSelf: 'center', textAlign: 'center' }}>
+          {result.surprise
+            ? `Today na your lucky day${result.customer.first_name ? ', ' + result.customer.first_name : ''}! 🎁`
+            : `You don try${result.customer.first_name ? ', ' + result.customer.first_name : ''}! Enjoy am, see you soon 👋`}
+        </div>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="excited" pose="jump" size={210} />
       </div>
-      <div className="code-card" role="status">
-        <span style={{ fontSize: 15, fontWeight: 800 }}>Show this screen to the vendor</span>
-        <span style={{ fontFamily: 'var(--display)', fontSize: 44, lineHeight: 1, letterSpacing: '0.06em' }}>{result.jara?.code}</span>
-        <span style={{ fontSize: 18, fontWeight: 800 }}>A free extra portion</span>
-        <span className="note">{result.customer.first_name ? `${result.customer.first_name} · ` : ''}one use</span>
-      </div>
+      {result.jara?.spin ? (
+        // Prize Wheel: the jara is a spin; the wheel picks the food and gives the code.
+        <div className="code-card" role="status">
+          <span style={{ fontSize: 15, fontWeight: 800 }}>Your jara is a spin on {ch?.name.split(' ')[0] ?? 'the'}'s prize wheel!</span>
+          <Link to={`/s/${slug}/wheel`} className="btn wheel-spin">🎡 SPIN NOW</Link>
+          <span className="note">See which food you win. You can also spin later from your card.</span>
+        </div>
+      ) : (
+        <div className="code-card" role="status">
+          <span style={{ fontSize: 15, fontWeight: 800 }}>Show this screen to the vendor</span>
+          <span style={{ fontFamily: 'var(--display)', fontSize: 44, lineHeight: 1, letterSpacing: '0.06em' }}>{result.jara?.code}</span>
+          <span style={{ fontSize: 18, fontWeight: 800 }}>A free extra portion</span>
+          <span className="note">{result.customer.first_name ? `${result.customer.first_name} · ` : ''}one use</span>
+        </div>
+      )}
       <div style={{ position: 'relative', padding: '14px 12px 24px' }}>
-        <button className="btn" onClick={onDone}>Done, start my next {result.plates_for_jara}</button>
+        <button className="btn" onClick={onDone}>
+          {result.surprise ? 'Done, back to my card' : gift ? `Done, start my new card (${gift} stamps on us 🎁)` : `Done, start my next ${result.plates_for_jara}`}
+        </button>
       </div>
     </main>
   );

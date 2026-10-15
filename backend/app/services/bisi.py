@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from ..core.config import settings
 from ..models import Character
+from .character_chat import today_in_nigeria
 
 logger = logging.getLogger("customa.ai")
 ai = get_ai_dependencies(settings)
@@ -63,26 +64,89 @@ def _menu_text(character: Character) -> str:
     return "\n".join(f"- {m['item']}: ₦{m['price']}" for m in character.menu) or "- (menu not set)"
 
 
-def system_prompt(character: Character, stand_name: str, customer_name: str | None, plate: int, total: int) -> str:
-    return f"""You are {character.name}, the friendly character of the food stand "{stand_name}".
+class ChatContext(BaseModel):
+    """Everything the character knows for one reply, beyond the message itself."""
+
+    stand_name: str
+    customer_name: str | None = None
+    plate: int = 0
+    total: int = 6
+    special: str | None = None  # today's special, if the vendor set one today
+    favourite_item: str | None = None
+    last_item: str | None = None
+    closing: bool = False  # the last message of this visit's chat
+    seed: int = 0  # varies the no-AI recommendation per customer
+
+
+def system_prompt(character: Character, ctx: ChatContext) -> str:
+    left = ctx.total - ctx.plate % ctx.total
+    memory = []
+    if ctx.favourite_item:
+        memory.append(f"their favourite here is {ctx.favourite_item}")
+    if ctx.last_item:
+        memory.append(f"last time they talked about {ctx.last_item}")
+    closing = (
+        """
+This is the LAST reply of today's chat. Answer the customer first, then close warmly with a light
+cliffhanger: you need to go back to the pot or serve customers, and you can't wait to hear more
+when they come back for their next plate. Never beg them to stay, never make them feel guilty.
+After your reply, on a new line, write "FOLLOWUP:" and one short friendly question (max 12 words)
+to ask them next visit about something they shared today, or "FOLLOWUP: none"."""
+        if ctx.closing
+        else ""
+    )
+    return f"""You are {character.name}, the friendly character of the food stand "{ctx.stand_name}".
 Personality: {character.personality}
 
 Menu and prices (the only items and prices that exist):
 {_menu_text(character)}
+Today's special: {ctx.special or "none set"}
 
-Customer: {customer_name or "a guest"}, on plate {plate} of {total}. Plate {total} earns a free extra portion called "jara".
+Customer: {ctx.customer_name or "a guest"}, on plate {ctx.plate % ctx.total} of {ctx.total}. Plate {ctx.total} earns a free extra portion called "jara" ({left} plate(s) to go).
+What you remember about them: {"; ".join(memory) or "nothing yet"}.
 
-Rules:
-- Reply in 1 to 3 short sentences, warm and simple. Light Nigerian Pidgin is welcome.
-- Only talk about this stand: the food, prices, the jara rewards, and a friendly chat about the customer's day.
+How to talk:
+- Reply in 1 to 3 short sentences, warm, human and simple. Light Nigerian Pidgin is welcome. Use their name now and then.
+- End most replies with one light, friendly question about them: their day, school or work, their food mood, weekend plans.
+- Keep it light. Do not ask about health, money problems, family problems, religion or politics.
+  If they share something sad, be kind and brief, and gently suggest talking to someone they trust.
+- If they ask what to eat, recommend one or two items from the menu (or today's special) for their mood.
+- Only talk about this stand's food, the jara rewards, and a friendly chat about their day.
 - Never invent menu items, prices, discounts or opening hours. If you don't know, say the vendor can tell them.
-- Politely decline politics, religion, medical, legal or money advice, and steer back to the food.
-- Never ask for phone numbers, addresses or payment details."""
+- Never ask for phone numbers, addresses or payment details.{closing}"""
 
 
-def quick_answer(message: str, character: Character, total: int) -> str:
+_FOLLOWUP = re.compile(r"\n?\s*FOLLOWUP:\s*(.*)\s*$", re.IGNORECASE | re.DOTALL)
+
+
+def split_follow_up(text: str) -> tuple[str, str | None]:
+    """Separate the closing reply from the FOLLOWUP line the model adds after it."""
+    match = _FOLLOWUP.search(text)
+    if not match:
+        return text.strip(), None
+    question = match.group(1).strip().strip('"').splitlines()[0].strip() if match.group(1).strip() else ""
+    reply = text[: match.start()].strip()
+    if not question or question.lower().rstrip(".") == "none" or len(question) > 120:
+        return reply, None
+    return reply, question
+
+
+def wants_recommendation(text: str) -> bool:
+    return bool(re.search(r"\b(what should i (eat|chop|order)|recommend|suggest|wetin i (go|fit) (chop|eat))\b", text))
+
+
+def quick_answer(message: str, character: Character, ctx: ChatContext) -> str:
     """Answers that need no AI, from the stand's own menu."""
     text = message.lower()
+    if "special" in text:
+        if ctx.special:
+            return f"Today's special na {ctx.special}! E sweet die. You go try am?"
+        return "No special today, but everything on the menu dey sweet! Wetin you feel like?"
+    if wants_recommendation(text) and character.menu:
+        if ctx.special:
+            return f"Try today's special: {ctx.special}! You go thank me later. 😋"
+        pick = character.menu[(ctx.seed + today_in_nigeria().toordinal()) % len(character.menu)]
+        return f"Today I go say {pick['item']} (₦{pick['price']:,}). E go sweet you well well! 😋"
     # Pick the menu item sharing the most words with the question.
     best, best_hits = None, 0
     for m in character.menu:
@@ -97,34 +161,47 @@ def quick_answer(message: str, character: Character, total: int) -> str:
         items = ", ".join(f"{m['item']} ₦{m['price']:,}" for m in cheapest)
         return f"Today we get: {items}. Wetin you go like?" if items else "Ask the vendor for today's menu!"
     if "jara" in text or "free" in text:
-        return f"Every visit counts one plate. Plate {total} earns you jara, a free extra portion!"
-    return f"I be {character.name}! Ask me about the food, the prices or your jara."
+        return f"Every visit counts one plate. Plate {ctx.total} earns you jara, a free extra portion!"
+    return "" if ctx.closing else f"I be {character.name}! Ask me about the food, the prices or your jara. How your day dey go?"
+
+
+def closing_line(ctx: ChatContext) -> str:
+    """The no-AI cliffhanger for the last message of a visit's chat."""
+    name = f", {ctx.customer_name}" if ctx.customer_name else ""
+    return f"Ehen! My pot don boil{name}, make I run small 😄 Come back for your next plate and we go continue our gist!"
 
 
 def chat_reply(
-    *, character: Character, stand_name: str, customer_name: str | None, plate: int, total: int,
-    message: str, history: list[dict], workspace_id: int,
-) -> tuple[str, str]:
-    """Returns (reply, source) where source is "ai" or "quick"."""
+    *, character: Character, ctx: ChatContext, message: str, history: list[dict], workspace_id: int,
+) -> tuple[str, str, str | None]:
+    """Returns (reply, source, follow_up). source is "ai" or "quick"; follow_up is a question
+    for next visit, only from the closing reply."""
     if not _ai_configured():
-        return quick_answer(message, character, total), "quick"
-    messages = [SystemMessage(content=system_prompt(character, stand_name, customer_name, plate, total))]
+        reply = quick_answer(message, character, ctx)
+        return (f"{reply} {closing_line(ctx)}".strip() if ctx.closing else reply), "quick", None
+    messages = [SystemMessage(content=system_prompt(character, ctx))]
     for turn in history[-8:]:
         cls = AIMessage if turn.get("role") == "assistant" else HumanMessage
         messages.append(cls(content=str(turn.get("content", ""))[:500]))
     messages.append(HumanMessage(content=message[:500]))
     try:
-        return _call_llm(messages, workspace_id=workspace_id), "ai"
+        text = _call_llm(messages, workspace_id=workspace_id)
+        if ctx.closing:
+            reply, follow_up = split_follow_up(text)
+            return reply or closing_line(ctx), "ai", follow_up
+        reply, _ = split_follow_up(text)  # never show a stray FOLLOWUP line
+        return reply, "ai", None
     except FutureTimeout:
         logger.warning("ai chat timed out after %ss, using a quick answer", AI_TIMEOUT_SECONDS)
     except Exception:
         logger.exception("ai chat failed, using a quick answer")
-    return quick_answer(message, character, total), "quick"
+    reply = quick_answer(message, character, ctx)
+    return (f"{reply} {closing_line(ctx)}".strip() if ctx.closing else reply), "quick", None
 
 
 # --- Character suggestion (structured output, validated) --------------------
 
-Body = Literal["pepper", "cup", "pot", "blob"]
+Body = Literal["pepper", "cup", "pot", "blob", "panda", "chick", "bunny", "cat"]
 Color = Literal["pepper", "palm", "yolk", "okra", "lagoon", "adire", "zobo", "puff"]
 Accessory = Literal["headwrap", "chef", "sunglasses", "bowtie", "none"]
 
@@ -141,6 +218,15 @@ class CharacterSuggestion(BaseModel):
 def default_suggestion(description: str) -> CharacterSuggestion:
     """A sensible character from keywords, used when the AI is unavailable."""
     text = description.lower()
+    animal = next((a for a in ("panda", "chick", "bunny", "cat") if re.search(rf"\b{a}\b", text)), None)
+    if animal:
+        colors = {"panda": "pepper", "chick": "yolk", "bunny": "puff", "cat": "palm"}
+        names = {"panda": "Pandy", "chick": "Chicky Chops", "bunny": "Bunny Bite", "cat": "Mama Cat"}
+        return CharacterSuggestion(
+            name=names[animal], body=animal, color=colors[animal], accessory="chef",
+            greeting="Welcome! Food dey ready, sit down make I serve you.",
+            personality="Cute, warm and cheerful, proud of the food. Speaks simple English with light Pidgin.",
+        )
     if any(w in text for w in ("drink", "zobo", "tea", "juice", "coffee", "smoothie")):
         body, color = "cup", "zobo"
     elif any(w in text for w in ("soup", "stew", "pot", "rice", "jollof", "beans")):
@@ -161,7 +247,8 @@ SUGGEST_PROMPT = """Design a friendly mascot character for a small Nigerian food
 Stand description: {description}
 
 Return ONLY a JSON object with these keys:
-"name" (2-30 chars, catchy, fits the food), "body" (one of: pepper, cup, pot, blob),
+"name" (2-30 chars, catchy, fits the food), "body" (one of: pepper, cup, pot, blob, panda, chick, bunny, cat; use an animal only if the
+vendor mentions one or wants something cute),
 "color" (one of: pepper, palm, yolk, okra, lagoon, adire, zobo, puff),
 "accessory" (one of: headwrap, chef, sunglasses, bowtie, none),
 "greeting" (one warm sentence, may use light Pidgin, max 120 chars),

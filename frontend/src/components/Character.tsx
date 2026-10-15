@@ -1,7 +1,15 @@
 // The animated stand character, ported from the Customa design canvas kit.
 // Pure SVG: bodies, colour presets, accessories, expressions and poses.
+// Food friends (pepper, cup, pot, blob) and animal friends (panda, chick, bunny, cat) share one
+// drawing style: flat colour, thick ink lines, dot eyes and rosy cheeks.
+//
+// Life without cost: the idle float, blink and wave are SVG animations (no JavaScript per
+// frame). `react` lets a tap make the character jump with a little burst of hearts, and
+// `follow` makes the eyes follow the finger or mouse (one transform, at most once per frame).
 
-export type Body = 'pepper' | 'cup' | 'pot' | 'blob';
+import { useEffect, useRef, useState } from 'react';
+
+export type Body = 'pepper' | 'cup' | 'pot' | 'blob' | 'panda' | 'chick' | 'bunny' | 'cat';
 export type Pose = 'idle' | 'wave' | 'hop' | 'jump';
 export type Expression = 'happy' | 'excited' | 'wink' | 'proud';
 
@@ -16,6 +24,21 @@ export const PRESETS: Record<string, { fill: string; acc: string }> = {
   puff: { fill: '#FF7BAC', acc: '#6C7BFF' },
 };
 
+// The characters a vendor can pick, in picker order, with a friendly label.
+export const BODY_CHOICES: { body: Body; label: string; color: string }[] = [
+  { body: 'panda', label: 'Panda', color: 'pepper' },
+  { body: 'pepper', label: 'Pepper', color: 'pepper' },
+  { body: 'pot', label: 'Pot', color: 'palm' },
+  { body: 'cup', label: 'Cup', color: 'zobo' },
+  { body: 'chick', label: 'Chick', color: 'yolk' },
+  { body: 'bunny', label: 'Bunny', color: 'puff' },
+  { body: 'cat', label: 'Cat', color: 'palm' },
+  { body: 'blob', label: 'Blob', color: 'okra' },
+];
+
+const INK = '#141414';
+const PINK = '#FF9DB8';
+
 type BodySpec = {
   d: string;
   lines: string;
@@ -25,7 +48,13 @@ type BodySpec = {
   ar: [number, number];
   legs: [number, number, number];
   hat: [number, number, number];
+  outline?: boolean; // light bodies get an ink outline so they read on light backgrounds
+  fill?: string; // a fixed body colour (the panda is always black and white)
+  mouthDy?: number; // room for a nose or beak above the mouth
 };
+
+// A round, friendly bean shape shared by the animal friends.
+const BEAN = 'M100 56 C138 52 158 80 156 112 C154 148 138 176 100 176 C60 176 44 150 46 114 C48 80 64 58 100 56 Z';
 
 const BODIES: Record<Body, BodySpec> = {
   pepper: {
@@ -52,14 +81,31 @@ const BODIES: Record<Body, BodySpec> = {
     top: '',
     face: [100, 106], al: [50, 126], ar: [154, 126], legs: [84, 116, 170], hat: [100, 52, 1],
   },
+  panda: {
+    d: BEAN, lines: '', top: '', outline: true, fill: '#FFFFFF', mouthDy: 10,
+    face: [100, 108], al: [50, 128], ar: [154, 128], legs: [84, 116, 168], hat: [100, 58, 1],
+  },
+  chick: {
+    d: BEAN, lines: '', top: 'M100 56 C96 42 104 36 100 28 M100 56 C106 44 116 44 118 36', mouthDy: 6,
+    face: [100, 108], al: [50, 128], ar: [154, 128], legs: [84, 116, 168], hat: [100, 58, 1],
+  },
+  bunny: {
+    d: BEAN, lines: '', top: '', mouthDy: 6,
+    face: [100, 110], al: [50, 130], ar: [154, 130], legs: [84, 116, 168], hat: [100, 58, 1],
+  },
+  cat: {
+    d: BEAN, lines: '', top: '', mouthDy: 6,
+    face: [100, 110], al: [50, 130], ar: [154, 130], legs: [84, 116, 168], hat: [100, 58, 1],
+  },
 };
 
-function face(kind: Expression, x: number, y: number) {
+function face(kind: Expression, x: number, y: number, mouthDy = 0) {
+  const my = y + mouthDy;
   if (kind === 'excited')
     return {
       eyes: [[x - 12, y, 5.5], [x + 12, y, 5.5]],
       eyesLine: `M${x - 18} ${y - 11} Q${x - 12} ${y - 16} ${x - 6} ${y - 11} M${x + 6} ${y - 11} Q${x + 12} ${y - 16} ${x + 18} ${y - 11}`,
-      mouthFill: `M${x - 9} ${y + 10} Q${x} ${y + 28} ${x + 9} ${y + 10} Z`,
+      mouthFill: `M${x - 9} ${my + 10} Q${x} ${my + 28} ${x + 9} ${my + 10} Z`,
       mouthLine: '',
     };
   if (kind === 'wink')
@@ -67,21 +113,84 @@ function face(kind: Expression, x: number, y: number) {
       eyes: [[x - 12, y, 5], [x + 12, y, 0]],
       eyesLine: `M${x + 6} ${y + 1} Q${x + 12} ${y - 6} ${x + 18} ${y + 1}`,
       mouthFill: '',
-      mouthLine: `M${x - 9} ${y + 11} Q${x + 1} ${y + 20} ${x + 10} ${y + 9}`,
+      mouthLine: `M${x - 9} ${my + 11} Q${x + 1} ${my + 20} ${x + 10} ${my + 9}`,
     };
   if (kind === 'proud')
     return {
       eyes: [[x - 12, y, 0], [x + 12, y, 0]],
       eyesLine: `M${x - 18} ${y + 2} Q${x - 12} ${y - 6} ${x - 6} ${y + 2} M${x + 6} ${y + 2} Q${x + 12} ${y - 6} ${x + 18} ${y + 2}`,
       mouthFill: '',
-      mouthLine: `M${x - 7} ${y + 12} Q${x + 2} ${y + 18} ${x + 10} ${y + 10}`,
+      mouthLine: `M${x - 7} ${my + 12} Q${x + 2} ${my + 18} ${x + 10} ${my + 10}`,
     };
   return {
     eyes: [[x - 12, y, 5], [x + 12, y, 5]],
     eyesLine: '',
     mouthFill: '',
-    mouthLine: `M${x - 8} ${y + 11} Q${x} ${y + 18} ${x + 8} ${y + 11}`,
+    mouthLine: `M${x - 8} ${my + 11} Q${x} ${my + 18} ${x + 8} ${my + 11}`,
   };
+}
+
+// Ears and other parts drawn behind the body (back) and on the face (front).
+function animalParts(body: Body, fill: string, x: number, y: number) {
+  const stroke = { stroke: INK, strokeWidth: 5, strokeLinejoin: 'round' as const };
+  switch (body) {
+    case 'panda':
+      return {
+        back: (
+          <>
+            <circle cx={62} cy={70} r={19} fill={INK} />
+            <circle cx={138} cy={70} r={19} fill={INK} />
+          </>
+        ),
+        front: (
+          <>
+            <ellipse cx={x - 14} cy={y + 1} rx={12} ry={15} fill={INK} transform={`rotate(25 ${x - 14} ${y + 1})`} />
+            <ellipse cx={x + 14} cy={y + 1} rx={12} ry={15} fill={INK} transform={`rotate(-25 ${x + 14} ${y + 1})`} />
+            <ellipse cx={x} cy={y + 16} rx={6} ry={4.5} fill={INK} />
+          </>
+        ),
+        eyeColor: '#FFFFFF',
+      };
+    case 'chick':
+      return {
+        back: null,
+        front: <path d={`M${x - 12} ${y + 10} Q${x} ${y + 4} ${x + 12} ${y + 10} L${x} ${y + 24} Z`} fill="#FF8A1F" stroke={INK} strokeWidth={4} strokeLinejoin="round" />,
+        eyeColor: INK,
+      };
+    case 'bunny':
+      return {
+        back: (
+          <>
+            <path d="M74 66 C60 30 66 4 80 6 C94 8 96 36 90 62 Z" fill={fill} {...stroke} />
+            <path d="M126 66 C140 30 134 4 120 6 C106 8 104 36 110 62 Z" fill={fill} {...stroke} />
+            <path d="M79 54 C72 34 74 18 80 18 C86 20 88 36 85 52 Z" fill={PINK} />
+            <path d="M121 54 C128 34 126 18 120 18 C114 20 112 36 115 52 Z" fill={PINK} />
+          </>
+        ),
+        front: <path d={`M${x - 5} ${y + 9} L${x + 5} ${y + 9} L${x} ${y + 14} Z`} fill={PINK} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />,
+        eyeColor: INK,
+      };
+    case 'cat':
+      return {
+        back: (
+          <>
+            <path d="M58 82 L62 38 L96 60 Z" fill={fill} {...stroke} />
+            <path d="M142 82 L138 38 L104 60 Z" fill={fill} {...stroke} />
+            <path d="M66 70 L68 50 L84 61 Z" fill={PINK} />
+            <path d="M134 70 L132 50 L116 61 Z" fill={PINK} />
+          </>
+        ),
+        front: (
+          <>
+            <path d={`M${x - 5} ${y + 9} L${x + 5} ${y + 9} L${x} ${y + 14} Z`} fill={PINK} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
+            <path d={`M${x - 24} ${y + 12} H${x - 40} M${x - 24} ${y + 18} L${x - 38} ${y + 22} M${x + 24} ${y + 12} H${x + 40} M${x + 24} ${y + 18} L${x + 38} ${y + 22}`} stroke={INK} strokeWidth={2.5} strokeLinecap="round" />
+          </>
+        ),
+        eyeColor: INK,
+      };
+    default:
+      return { back: null, front: null, eyeColor: INK };
+  }
 }
 
 const EASE = '0.45 0 0.55 1';
@@ -103,6 +212,12 @@ type Props = {
   expression?: Expression;
   pose?: Pose;
   size?: number;
+  /** A tap makes the character jump and smile, with a little burst of hearts. */
+  react?: boolean;
+  /** The eyes follow the finger or mouse. */
+  follow?: boolean;
+  /** Called after a tap reaction (e.g. to say something). */
+  onTap?: () => void;
 };
 
 export function Character({
@@ -112,11 +227,57 @@ export function Character({
   expression = 'happy',
   pose = 'idle',
   size = 180,
+  react = false,
+  follow = false,
+  onTap,
 }: Props) {
   const bodyKey = (body in BODIES ? body : 'pepper') as Body;
   const b = BODIES[bodyKey];
   const c = PRESETS[color] ?? PRESETS.pepper;
+  const fill = b.fill ?? c.fill;
   const animate = !reduceMotion;
+  const [tapped, setTapped] = useState(0);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const eyesRef = useRef<SVGGElement>(null);
+
+  // Eyes follow the pointer: one transform per frame at most, no React re-render.
+  useEffect(() => {
+    if (!follow || reduceMotion) return;
+    let frame = 0;
+    let last: PointerEvent | null = null;
+    const update = () => {
+      frame = 0;
+      const svg = svgRef.current;
+      const eyes = eyesRef.current;
+      if (!svg || !eyes || !last) return;
+      const r = svg.getBoundingClientRect();
+      const dx = last.clientX - (r.left + r.width / 2);
+      const dy = last.clientY - (r.top + r.height * 0.45);
+      const len = Math.hypot(dx, dy) || 1;
+      const k = Math.min(1, len / 160);
+      eyes.setAttribute('transform', `translate(${((dx / len) * 4 * k).toFixed(2)} ${((dy / len) * 3 * k).toFixed(2)})`);
+    };
+    const onMove = (e: PointerEvent) => {
+      last = e;
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerdown', onMove, { passive: true });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerdown', onMove);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [follow]);
+
+  useEffect(() => {
+    if (!tapped) return;
+    const t = setTimeout(() => setTapped(0), 1100);
+    return () => clearTimeout(t);
+  }, [tapped]);
+
+  const reacting = tapped > 0;
+  const shownExpression = reacting ? 'excited' : expression;
   const [fx, fy] = b.face;
   const [alx, aly] = b.al;
   const [arx, ary] = b.ar;
@@ -143,10 +304,13 @@ export function Character({
   const lift = pose === 'jump' ? -26 : pose === 'hop' ? -10 : 0;
   const shadowRx = pose === 'jump' ? 28 : pose === 'hop' ? 38 : 46;
 
-  const f = face(expression, fx, fy);
+  const f = face(shownExpression, fx, fy, b.mouthDy);
+  const parts = animalParts(bodyKey, fill, fx, fy);
   const glasses = accessory === 'sunglasses';
   const hat = accessory === 'headwrap' || accessory === 'chef';
   const bob = bobFor(pose);
+  const panda = bodyKey === 'panda';
+  const limbWidth = panda ? 9 : 5;
 
   let accT = '';
   let accFill = '';
@@ -166,7 +330,7 @@ export function Character({
     accBlack = 'M-27 -8 H-3 V-2 C-3 6 -8 10 -15 10 C-22 10 -27 6 -27 -2 Z M3 -8 H27 V-2 C27 6 22 10 15 10 C8 10 3 6 3 -2 Z';
     accLine = 'M-3 -6 H3 M-27 -6 L-33 -10 M27 -6 L33 -10';
   } else if (accessory === 'bowtie') {
-    accT = `translate(${fx} ${fy + 32})`;
+    accT = `translate(${fx} ${fy + 32 + (b.mouthDy ?? 0)})`;
     accFill = 'M0 0 L-18 -11 C-21 -12 -23 -10 -23 -7 V7 C-23 10 -21 12 -18 11 Z M0 0 L18 -11 C21 -12 23 -10 23 -7 V7 C23 10 21 12 18 11 Z';
     accBlack = 'M-5 -5 H5 V5 H-5 Z';
   }
@@ -178,48 +342,86 @@ export function Character({
   };
   const eyes = f.eyes.map(eye);
   const blush = `M${fx - 27} ${fy + 10} a6 3.5 0 1 0 12 0 a6 3.5 0 1 0 -12 0 Z M${fx + 15} ${fy + 10} a6 3.5 0 1 0 12 0 a6 3.5 0 1 0 -12 0 Z`;
-  const stroke = { stroke: '#141414', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const stroke = { stroke: INK, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  // On the panda the eyes sit in black patches, so the eye lines are white too.
+  const eyeLineStroke = panda ? '#FFFFFF' : INK;
 
-  return (
-    <svg width={size} height={Math.round(size * 1.2)} viewBox="0 0 200 240" role="img" aria-label={`${bodyKey} character`}>
-      <ellipse cx="100" cy="226" rx={shadowRx} ry="6" fill="#141414" opacity="0.08" />
+  const svg = (
+    // overflow visible: when the character bobs or jumps, its hat may rise above the frame.
+    <svg
+      ref={svgRef}
+      width={size}
+      height={Math.round(size * 1.2)}
+      viewBox="0 0 200 240"
+      role="img"
+      aria-label={`${bodyKey} character`}
+      className={reacting ? 'char-react' : undefined}
+      style={{ overflow: 'visible' }}
+    >
+      <ellipse cx="100" cy="226" rx={shadowRx} ry="6" fill={INK} opacity="0.08" />
       <g transform={`translate(0 ${lift})`}>
         <g>
           {animate && (
             <animateTransform attributeName="transform" type="translate" values={bob.values} keyTimes={bob.times}
               keySplines={bob.splines} calcMode="spline" dur={bob.dur} repeatCount="indefinite" additive="sum" />
           )}
-          <path d={legs} fill="none" strokeWidth={5} {...stroke} />
-          <path d={armL} fill="none" strokeWidth={5} {...stroke} />
+          <path d={legs} fill="none" strokeWidth={limbWidth} {...stroke} />
+          <path d={armL} fill="none" strokeWidth={limbWidth} {...stroke} />
           <g>
             {animate && pose === 'wave' && (
               <animateTransform attributeName="transform" type="rotate" values={waveValues}
                 keyTimes="0;0.1;0.2;0.3;0.4;0.5;1" dur="2.4s" repeatCount="indefinite" additive="sum" />
             )}
-            <path d={armR} fill="none" strokeWidth={5} {...stroke} />
+            <path d={armR} fill="none" strokeWidth={limbWidth} {...stroke} />
           </g>
-          <path d={b.d} fill={c.fill} />
+          {parts.back}
+          <path d={b.d} fill={fill} {...(b.outline ? { stroke: INK, strokeWidth: 5, strokeLinejoin: 'round' as const } : {})} />
           <path d={b.lines + (hat ? '' : ' ' + b.top)} fill="none" strokeWidth={5} {...stroke} />
           <path d={blush} fill="#FF5C8A" opacity="0.45" />
-          {eyes.map((e, i) => (
-            <ellipse key={i} cx={e.x} cy={e.y} rx={e.rad} ry={e.rad} fill="#141414">
-              {animate && (
-                <animate attributeName="ry" values={e.blink} keyTimes="0;0.92;0.95;0.98;1" dur="3.6s" repeatCount="indefinite" />
-              )}
-            </ellipse>
-          ))}
-          {f.mouthFill && <path d={f.mouthFill} fill="#141414" />}
-          <path d={(glasses ? '' : f.eyesLine) + ' ' + f.mouthLine} fill="none" strokeWidth={4.5} {...stroke} />
+          {parts.front}
+          <g ref={eyesRef} style={{ transition: 'transform 120ms ease-out' }}>
+            {eyes.map((e, i) => (
+              <ellipse key={i} cx={e.x} cy={e.y} rx={e.rad} ry={e.rad} fill={parts.eyeColor}>
+                {animate && (
+                  <animate attributeName="ry" values={e.blink} keyTimes="0;0.92;0.95;0.98;1" dur="3.6s" repeatCount="indefinite" />
+                )}
+              </ellipse>
+            ))}
+            {!glasses && f.eyesLine && <path d={f.eyesLine} fill="none" strokeWidth={4.5} {...stroke} stroke={eyeLineStroke} />}
+          </g>
+          {f.mouthFill && bodyKey !== 'chick' && <path d={f.mouthFill} fill={INK} />}
+          {bodyKey !== 'chick' && <path d={f.mouthLine} fill="none" strokeWidth={4.5} {...stroke} />}
           {accT && (
             <g transform={accT}>
               {accFill && <path d={accFill} fill={c.acc} />}
-              {accWhite && <path d={accWhite} fill="#FFFFFF" stroke="#141414" strokeWidth={4} strokeLinejoin="round" />}
-              {accBlack && <path d={accBlack} fill="#141414" />}
+              {accWhite && <path d={accWhite} fill="#FFFFFF" stroke={INK} strokeWidth={4} strokeLinejoin="round" />}
+              {accBlack && <path d={accBlack} fill={INK} />}
               {accLine && <path d={accLine} fill="none" strokeWidth={4} {...stroke} />}
             </g>
           )}
         </g>
       </g>
     </svg>
+  );
+
+  if (!react) return svg;
+  return (
+    <button
+      type="button"
+      className="char-tap"
+      aria-label={`Say hi to the ${bodyKey}`}
+      onClick={() => {
+        setTapped((n) => n + 1);
+        if (navigator.vibrate) navigator.vibrate(12);
+        onTap?.();
+      }}
+    >
+      {svg}
+      {reacting && (
+        <span className="char-hearts" aria-hidden="true" key={tapped}>
+          <span>💛</span><span>❤️</span><span>✨</span>
+        </span>
+      )}
+    </button>
   );
 }

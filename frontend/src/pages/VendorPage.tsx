@@ -2,11 +2,23 @@ import { useEffect, useRef, useState } from 'react';
 import { Logo } from '../components/Logo';
 import { useAuth } from '@msflib/react-auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, type ApiError, type Character as CharacterT, type StandSummary } from '../api';
-import { Character, PRESETS } from '../components/Character';
+import { api, photoUrl, type ApiError, type Character as CharacterT, type StandSummary } from '../api';
+import { Character } from '../components/Character';
+import { CharacterPicker } from '../components/CharacterPicker';
+import { CharacterLoader, DashboardSkeleton } from '../components/Loading';
+import { shrinkPhoto } from '../utils/photo';
 import { FoodStamp } from '../components/FoodStamp';
 import { StandPhoto } from '../components/StandPhoto';
+import { VendorAjoPanel } from '../features/plateAjo/VendorAjo';
+import { VendorCrewPanel } from '../features/lunchCrew/VendorCrew';
+import { VendorDelightsPanel } from '../features/delights/VendorDelights';
 import { LastPlatesBanner } from '../components/LastPlates';
+import { GoogleButton } from '../features/googleSignIn/GoogleSignIn';
+import { VendorWheelPanel } from '../features/prizeWheel/VendorWheel';
+import { JaraCheckPanel } from '../features/prizeWheel/JaraCheck';
+import { HereNowCard } from '../features/regulars/HereNow';
+import { VendorPlansCard } from '../features/visitPlans/VendorPlans';
+import { VendorPaymentsCard } from '../features/payments/VendorPayments';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -14,31 +26,49 @@ export function VendorPage() {
   return (
     <main className="vendor">
       <VendorTop />
-      {status === 'loading' && <p className="note">Loading…</p>}
+      {status === 'loading' && <CharacterLoader kind="vendor" />}
       {status === 'unauthenticated' && <SignIn />}
       {status === 'authenticated' && <VendorHome />}
     </main>
   );
 }
 
+const SignOutIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" />
+  </svg>
+);
+const QrIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" />
+    <path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3" />
+  </svg>
+);
+const PhoneIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="6" y="2" width="12" height="20" rx="2.5" /><path d="M11 18h2" />
+  </svg>
+);
+
 function VendorTop() {
-  const { status, me, logout } = useAuth();
+  const { status, logout } = useAuth();
   const qc = useQueryClient();
   return (
     <header className="vendor-top">
       <Link to="/" className="logo-link"><Logo size={26} /></Link>
       {status !== 'authenticated' && <FoodStamp />}
       {status === 'authenticated' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontWeight: 700, fontSize: 14 }}>{me?.email}</span>
-          <button className="link-btn" onClick={async () => { try { await logout(); } finally { qc.clear(); } }}>Sign out</button>
-        </div>
+        // The vendor's email is not shown: the header stays clean and private on a shared screen.
+        <button type="button" className="signout" onClick={async () => { try { await logout(); } finally { qc.clear(); } }}>
+          <SignOutIcon />
+          Sign out
+        </button>
       )}
     </header>
   );
 }
 
-// --- Sign in / register (MSFLib auth: POST /login, POST /open) -------------
+// --- Sign in / register (MSFLib auth: POST /login, POST /open, or Google) ---
 
 function SignIn() {
   const { login, register, loading } = useAuth();
@@ -50,6 +80,14 @@ function SignIn() {
   return (
     <div style={{ maxWidth: 420, margin: '24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Character body="pepper" color="pepper" accessory="chef" expression="happy" pose="wave" size={150} />
+      <div className="auth-tabs" role="tablist" aria-label="Sign in or create an account">
+        {(['login', 'register'] as const).map((m) => (
+          <button key={m} type="button" role="tab" aria-selected={mode === m}
+            onClick={() => { setMode(m); setError(null); }}>
+            {m === 'login' ? 'Sign in' : 'Create account'}
+          </button>
+        ))}
+      </div>
       <h1 className="display" style={{ fontSize: 40 }}>{mode === 'login' ? 'VENDOR SIGN IN' : 'START YOUR STAND'}</h1>
       <form
         className="stack"
@@ -76,10 +114,9 @@ function SignIn() {
         <button className="btn" type="submit" disabled={loading.login || loading.register}>
           {mode === 'login' ? 'Sign in' : 'Create account'}
         </button>
+        {mode === 'register' && <span className="note" style={{ textAlign: 'center' }}>Free to start. You set up your stand in about 5 minutes.</span>}
       </form>
-      <button className="link-btn" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
-        {mode === 'login' ? 'New vendor? Create an account' : 'Have an account? Sign in'}
-      </button>
+      <GoogleButton />
     </div>
   );
 }
@@ -91,7 +128,7 @@ function VendorHome() {
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  if (stands.isLoading) return <p className="note">Loading your stands…</p>;
+  if (stands.isLoading) return <CharacterLoader kind="vendor" />;
   if (stands.isError) return <p className="error">Could not load your stands.</p>;
   const list = stands.data ?? [];
   if (creating || list.length === 0) {
@@ -114,8 +151,6 @@ function VendorHome() {
 
 // --- Stand setup: the vendor describes their stand, picks the character ----
 
-const BODIES = ['pepper', 'cup', 'pot', 'blob'];
-const ACCESSORIES = ['headwrap', 'chef', 'sunglasses', 'bowtie', 'none'];
 
 function parseMenu(text: string) {
   // One item per line: "Jollof rice 1500"
@@ -137,6 +172,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
 
   const suggest = async () => {
     if (!description.trim()) return;
@@ -172,6 +208,11 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
                 menu: parseMenu(menuText),
               },
             });
+            // The photo goes up after the stand exists. If it fails, the stand is still made and
+            // the vendor can add the photo from "Customize your stand".
+            if (photo) {
+              try { await api.setPhoto(stand.slug, await shrinkPhoto(photo)); } catch { /* added later */ }
+            }
             onCreated(stand);
           } catch (err) {
             setError((err as ApiError).message ?? 'Could not create the stand');
@@ -199,7 +240,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
             <span className="note">English or Nigerian Pidgin. We turn it into your stand's words.</span>
           </div>
         </div>
-        <StandPhoto />
+        <StandPhoto onChange={setPhoto} />
         <button type="button" className="btn btn-outline" onClick={suggest} disabled={suggesting || !description.trim()}>
           {suggesting ? 'Thinking…' : 'Suggest a character from my words'}
         </button>
@@ -213,7 +254,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
       <section className="hero" style={{ margin: 0, padding: 20, gap: 14 }} aria-label="Your character">
         <div className="bubble">{char.greeting || (name ? `Welcome to ${name}!` : 'Hello! I go welcome your customers.')}</div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <Character body={char.body} color={char.color} accessory={char.accessory} expression="excited" pose="wave" size={200} />
+          <Character body={char.body} color={char.color} accessory={char.accessory} expression="excited" pose="wave" size={200} react follow />
         </div>
         <label className="field">Character name
           <input className="input" value={char.name ?? ''} onChange={(e) => setChar({ ...char, name: e.target.value })} placeholder="e.g. Ekaette Pot" />
@@ -221,29 +262,16 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
         <label className="field">Greeting
           <input className="input" value={char.greeting ?? ''} onChange={(e) => setChar({ ...char, greeting: e.target.value })} placeholder="Welcome! Soup dey hot." />
         </label>
-        <span className="eyebrow">BODY</span>
-        <div className="seg">
-          {BODIES.map((b) => <button type="button" key={b} aria-pressed={char.body === b} onClick={() => setChar({ ...char, body: b })}>{b}</button>)}
-        </div>
-        <span className="eyebrow">COLOUR</span>
-        <div className="swatches">
-          {Object.entries(PRESETS).map(([k, v]) => (
-            <button type="button" key={k} className="swatch" aria-label={k} aria-pressed={char.color === k} style={{ background: v.fill }} onClick={() => setChar({ ...char, color: k })} />
-          ))}
-        </div>
-        <span className="eyebrow">ACCESSORY</span>
-        <div className="seg">
-          {ACCESSORIES.map((a) => <button type="button" key={a} aria-pressed={char.accessory === a} onClick={() => setChar({ ...char, accessory: a })}>{a}</button>)}
-        </div>
+        <CharacterPicker value={char} onChange={(look) => setChar({ ...char, ...look })} />
       </section>
     </div>
   );
 }
 
-// --- Live dashboard (refreshes every 5 seconds) -----------------------------
+// --- Live dashboard (refreshes every 10 seconds while open) -------------------
 
 function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void }) {
-  const q = useQuery({ queryKey: ['dashboard', slug], queryFn: () => api.dashboard(slug), refetchInterval: 5000 });
+  const q = useQuery({ queryKey: ['dashboard', slug], queryFn: () => api.dashboard(slug), refetchInterval: 10000 });
   const seen = useRef<Set<number> | null>(null);
   const [fresh, setFresh] = useState<Set<number>>(new Set());
 
@@ -257,7 +285,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
     seen.current = new Set(ids);
   }, [q.data]);
 
-  if (q.isLoading) return <p className="note">Loading dashboard…</p>;
+  if (q.isLoading) return <DashboardSkeleton />;
   if (q.isError || !q.data) return <p className="error">Could not load the dashboard.</p>;
   const d = q.data;
   const ch = d.stand.character;
@@ -270,20 +298,26 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className="row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {ch && <Character body={ch.body} color={ch.color} accessory={ch.accessory} pose="idle" size={64} />}
-          <div>
+      <div className="dash-head">
+        <div className="dash-title">
+          {ch && <Character body={ch.body} color={ch.color} accessory={ch.accessory} pose="idle" size={64} react />}
+          <div style={{ minWidth: 0 }}>
             <h1 className="display" style={{ fontSize: 34 }}>{d.stand.name}</h1>
-            <span className="live">Live, updates every 5 seconds</span>
+            <span className="live">Live, updates every 10 seconds</span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Link to={`/qr/${slug}`} className="btn" >Show QR code</Link>
-          <Link to={`/s/${slug}`} className="btn btn-outline">Customer page</Link>
+        <div className="dash-actions">
+          <Link to={`/qr/${slug}`} className="btn dash-action"><QrIcon />Show QR code</Link>
+          <Link to={`/s/${slug}`} className="btn btn-outline dash-action"><PhoneIcon />Customer page</Link>
         </div>
       </div>
-      <LastPlatesControl slug={slug} current={d.last_plates} onChange={() => q.refetch()} />
+      {/* "Ime don land!": who is here now, so staff greet regulars by name. */}
+      <HereNowCard slug={slug} entries={d.here_now ?? []} onChange={() => q.refetch()} />
+      {/* Plans for today, plans kept this week, and % back within 14 days. */}
+      <VendorPlansCard d={d} />
+      {/* Today's payments: Paystack (test mode) and cash you confirm. */}
+      <VendorPaymentsCard slug={slug} onChange={() => q.refetch()} />
+      <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
       <div className="stats">
         {stats.map((s) => (
           <div key={s.label} className="stat">
@@ -313,11 +347,13 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           </tbody>
         </table>
       </div>
+      <JaraCheckPanel slug={slug} onGiven={() => q.refetch()} />
       <div className="grid-2">
         <OpenJara slug={slug} items={d.open_jara} onChange={() => q.refetch()} />
         <div className="card-outline">
-          <span className="eyebrow">WHAT CUSTOMERS ASKED {ch?.name.split(' ')[0].toUpperCase() ?? ''}</span>
-          {d.recent_questions.length === 0 && <span className="note">No questions yet.</span>}
+          <span className="eyebrow">FOOD QUESTIONS FOR {ch?.name.split(' ')[0].toUpperCase() ?? ''}</span>
+          <span className="note" style={{ fontSize: 13 }}>Customers' chats are private. You only see their questions about the food.</span>
+          {d.recent_questions.length === 0 && <span className="note">No food questions yet.</span>}
           {d.recent_questions.map((m) => (
             <div key={m.id} className="row" style={{ fontSize: 15 }}>
               <span style={{ fontWeight: 600 }}>"{m.question}"</span>
@@ -326,13 +362,24 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           ))}
         </div>
       </div>
-      <button className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={onNewStand}>Add another stand</button>
+      {/* Return-visit features sit below the daily essentials (plates, jara to give out). */}
+      <VendorWheelPanel slug={slug} character={ch} />
+      <CustomizeStand slug={slug} stand={d.stand} onSaved={() => q.refetch()} />
+      <VendorDelightsPanel slug={slug} />
+      <VendorAjoPanel slug={slug} />
+      <VendorCrewPanel slug={slug} />
+      <button type="button" className="add-stand" onClick={onNewStand}>
+        <span className="add-stand-plus" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+        </span>
+        Add another stand
+      </button>
     </div>
   );
 }
 
 // Jara codes waiting to be given out. Redeeming marks the code used (works once).
-function OpenJara({ slug, items, onChange }: { slug: string; items: { code: string; name: string }[]; onChange: () => void }) {
+function OpenJara({ slug, items, onChange }: { slug: string; items: { code: string; name: string; prize?: string | null; spin_pending?: boolean }[]; onChange: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   return (
     <div className="card-outline">
@@ -340,7 +387,11 @@ function OpenJara({ slug, items, onChange }: { slug: string; items: { code: stri
       {items.length === 0 && <span className="note">No jara waiting.</span>}
       {items.map((j) => (
         <div key={j.code} className="row" style={{ alignItems: 'center' }}>
-          <span><strong style={{ fontFamily: 'var(--display)', fontSize: 20, letterSpacing: '0.04em' }}>{j.code}</strong> <span className="note">{j.name}</span></span>
+          <span>
+            <strong style={{ fontFamily: 'var(--display)', fontSize: 20, letterSpacing: '0.04em' }}>{j.code}</strong> <span className="note">{j.name}</span>
+            {j.prize && <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>🎁 {j.prize}</span>}
+            {j.spin_pending && <span className="note" style={{ display: 'block' }}>🎡 Waiting for the customer's spin</span>}
+          </span>
           <button className="btn" style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: 14 }} disabled={busy === j.code}
             onClick={async () => { setBusy(j.code); try { await api.redeemJara(slug, j.code); onChange(); } finally { setBusy(null); } }}>
             Mark as given
@@ -352,30 +403,138 @@ function OpenJara({ slug, items, onChange }: { slug: string; items: { code: stri
 }
 
 // Food left over near closing time? One tap tells every customer who opens the stand page.
-function LastPlatesControl({ slug, current, onChange }: { slug: string; current: import('../api').LastPlates; onChange: () => void }) {
+function LastPlatesControl({ slug, current, subscribers, onChange }: { slug: string; current: import('../api').LastPlates; subscribers: number; onChange: () => void }) {
   const [n, setN] = useState(10);
   const [busy, setBusy] = useState(false);
+  const [sentNote, setSentNote] = useState<string | null>(null);
   const send = async (plates: number) => {
     setBusy(true);
-    try { await api.announceLastPlates(slug, plates); onChange(); } finally { setBusy(false); }
+    setSentNote(null);
+    try {
+      const r = await api.announceLastPlates(slug, plates);
+      const a = r.alert;
+      if (plates && a) {
+        setSentNote(
+          a.sent > 0
+            ? `🔔 Alert sent to ${a.sent} phone${a.sent === 1 ? '' : 's'}.`
+            : a.skipped === 'recently_alerted'
+              ? 'Your banner is updated. Phones already got an alert in the last hour, so no new alert (no spam).'
+              : a.skipped === null
+                ? 'Your banner is updated, but no phone could be reached right now.'
+                : null,
+        );
+      }
+      onChange();
+    } finally {
+      setBusy(false);
+    }
   };
+  const step = (by: number) => setN((v) => Math.min(500, Math.max(1, (Number.isFinite(v) ? v : 1) + by)));
+  // Layout lives in styles.css (.lp-*): desktop keeps one compact line; phones get a
+  // thumb-friendly stepper row and a full-width button (the -/+ buttons show on phones only).
   return (
-    <div className="hero" style={{ margin: 0, padding: 16, gap: 10 }}>
-      <span className="eyebrow">FOOD LEFT OVER? SELL IT BEFORE CLOSING</span>
+    <div className="hero lp-control">
+      <span className="eyebrow">FOOD LEFT OVER?<span className="lp-sub"> SELL IT BEFORE CLOSING</span></span>
       {current ? (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        <div className="lp-row lp-live">
           <LastPlatesBanner lp={current} />
-          <button className="btn btn-outline" style={{ width: 'auto', height: 44, padding: '0 18px' }} disabled={busy} onClick={() => send(0)}>Sold out, end it</button>
+          <button className="btn btn-outline lp-btn" disabled={busy} onClick={() => send(0)}>Sold out, end it</button>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            Plates left
-            <input className="input" type="number" min={1} max={500} value={n} onChange={(e) => setN(Number(e.target.value))} style={{ width: 90, height: 44 }} />
-          </label>
-          <button className="btn" style={{ width: 'auto', height: 44, padding: '0 18px' }} disabled={busy || n < 1} onClick={() => send(n)}>
-            Tell my customers
+        <div className="lp-row">
+          <div className="lp-count">
+            <label className="lp-label" htmlFor={`lp-n-${slug}`}>Plates left</label>
+            <div className="lp-stepper">
+              <button type="button" className="lp-step" aria-label="One plate less" disabled={n <= 1} onClick={() => step(-1)}>−</button>
+              <input id={`lp-n-${slug}`} className="input lp-input" type="number" inputMode="numeric" min={1} max={500} value={n} onChange={(e) => setN(Number(e.target.value))} />
+              <button type="button" className="lp-step" aria-label="One plate more" disabled={n >= 500} onClick={() => step(1)}>+</button>
+            </div>
+          </div>
+          <button className="btn lp-btn" disabled={busy || n < 1} onClick={() => send(n)}>
+            {busy ? 'Telling…' : 'Tell my customers'}
           </button>
+        </div>
+      )}
+      {sentNote ? (
+        <span className="lp-alert-note" role="status">{sentNote}</span>
+      ) : (
+        <span className="lp-alert-note">
+          {subscribers > 0
+            ? `🔔 ${subscribers === 1 ? '1 customer phone gets' : `${subscribers} customer phones get`} an alert from your character when you tell them.`
+            : 'Customers can turn on alerts on their stand page, then they get a ping when you tell them.'}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// --- Customize: the character and the stand photo, after the stand is made -------
+
+function CustomizeStand({ slug, stand, onSaved }: { slug: string; stand: StandSummary; onSaved: () => void }) {
+  const ch = stand.character;
+  const [open, setOpen] = useState(false);
+  const [look, setLook] = useState<Partial<CharacterT>>({});
+  const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const current = { ...ch, ...look };
+  const changed = Object.keys(look).some((k) => (look as Record<string, unknown>)[k] !== (ch as Record<string, unknown> | null)?.[k]);
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.updateCharacter(slug, look);
+      setLook({});
+      setNote('Saved. Your customers see the new look now.');
+      onSaved();
+    } catch {
+      setError('Could not save. Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changePhoto = async (file: File | null) => {
+    setPhotoBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      if (file) await api.setPhoto(slug, await shrinkPhoto(file));
+      else await api.removePhoto(slug);
+      setNote(file ? 'Photo saved. Customers see it on your page.' : 'Photo removed.');
+      onSaved();
+    } catch (err) {
+      setError((err as Error).message || 'Could not save the photo. Try again.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  return (
+    <div className="card-outline customize" style={{ gap: 12 }}>
+      <button type="button" className="customize-head" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="eyebrow">CUSTOMIZE YOUR STAND</span>
+        <span className="note" style={{ fontSize: 14 }}>Character, colours and a photo of your stand</span>
+        <span className="customize-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div className="customize-body">
+          <div className="customize-preview">
+            <Character body={current.body} color={current.color} accessory={current.accessory} expression="excited" pose="wave" size={130} react follow />
+          </div>
+          <label className="field">Character name
+            <input className="input" value={current.name ?? ''} maxLength={30} onChange={(e) => setLook({ ...look, name: e.target.value })} />
+          </label>
+          <label className="field">Greeting
+            <input className="input" value={current.greeting ?? ''} maxLength={120} onChange={(e) => setLook({ ...look, greeting: e.target.value })} />
+          </label>
+          <CharacterPicker value={current} onChange={(next) => setLook({ ...look, ...next })} />
+          <button type="button" className="btn" disabled={!changed || busy} onClick={save}>{busy ? 'Saving…' : 'Save character'}</button>
+          <StandPhoto key={stand.photo ?? 'none'} initialUrl={stand.photo ? photoUrl(stand.photo) : null} busy={photoBusy} onChange={changePhoto} />
+          {note && <span style={{ fontSize: 14, fontWeight: 700 }} role="status">{note}</span>}
+          {error && <span className="error" role="alert">{error}</span>}
         </div>
       )}
     </div>

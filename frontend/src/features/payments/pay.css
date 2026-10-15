@@ -1,0 +1,14 @@
+/* ---- Pay for a plate ---- */
+.pay-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 2px solid var(--ink); border-radius: var(--radius-card); background: var(--paper); }
+.pay-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.pay-items button { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); font-weight: 800; font-size: 14px; }
+.pay-items button.on { background: var(--ink); color: var(--paper); }
+.pay-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.pay-code { font-family: var(--display); font-size: 56px; letter-spacing: 0.15em; text-align: center; line-height: 1; }
+.pay-test { align-self: flex-start; padding: 2px 8px; border-radius: 999px; background: #FFF3C4; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }
+.pay-done { background: #E3F6E8; border-color: #1F8A4C; }
+.vpay-list { display: flex; flex-direction: column; gap: 8px; }
+.vpay-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 16px; background: var(--stone); }
+.vpay-row strong.code { font-family: var(--display); font-size: 24px; letter-spacing: 0.1em; }
+.vpay-row .grow { flex: 1 1 140px; min-width: 0; }
+.vpay-row .btn { min-height: 40px; padding: 0 14px; }

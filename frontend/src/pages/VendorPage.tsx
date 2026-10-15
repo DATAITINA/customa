@@ -19,6 +19,7 @@ import { JaraCheckPanel } from '../features/prizeWheel/JaraCheck';
 import { HereNowCard } from '../features/regulars/HereNow';
 import { VendorPlansCard } from '../features/visitPlans/VendorPlans';
 import { VendorPaymentsCard } from '../features/payments/VendorPayments';
+import { MenuEditor } from '../features/payments/MenuEditor';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -317,6 +318,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
       <VendorPlansCard d={d} />
       {/* Today's payments: Paystack (test mode) and cash you confirm. */}
       <VendorPaymentsCard slug={slug} onChange={() => q.refetch()} />
+      {ch && <MenuEditor slug={slug} character={ch} onSaved={() => q.refetch()} />}
       <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
       <div className="stats">
         {stats.map((s) => (

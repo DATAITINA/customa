@@ -9,6 +9,7 @@ from app.api.api_v1.endpoints import (
     alerts,
     delights,
     lunch_crew,
+    payments,
     plate_ajo,
     prize_wheel,
     public,
@@ -85,3 +86,7 @@ api_router.include_router(visit_plans.cron_router)
 api_router.include_router(delights.vendor_router)
 # Leftover-food alerts (web push): customers turn them on; the vendor's last-plates sends them.
 api_router.include_router(alerts.public_router)
+# Pay for a plate (Paystack test mode, or cash the vendor confirms): a paid plate is a stamp.
+api_router.include_router(payments.public_router)
+api_router.include_router(payments.vendor_router)
+api_router.include_router(payments.webhook_router)

@@ -31,6 +31,7 @@ from app.services import (
     alerts,
     character_chat,
     lunch_crew,
+    payments,
     plate_ajo,
     prize_wheel,
     regulars,
@@ -349,7 +350,7 @@ def delete_my_data(
 ) -> dict[str, Any]:
     """Forget this customer at this stand: chats, ratings, jara, plates, then the customer."""
     # Plate Ajo refuses (409) while prepaid plates remain, before anything is deleted.
-    for feature in (plate_ajo, lunch_crew, prize_wheel, regulars, visit_plans):
+    for feature in (plate_ajo, lunch_crew, prize_wheel, regulars, visit_plans, payments):
         feature.forget_customer(session, workspace=workspace, customer=customer)
     forget_customer(session, workspace=workspace, customer=customer)
     character_chat.delete_memory(session, customer=customer)

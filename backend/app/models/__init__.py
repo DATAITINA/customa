@@ -59,3 +59,4 @@ from .prize_wheel import JaraPrize, WheelItem  # noqa: E402
 from .regulars import Arrival, CustomerUsual, VendorPushSubscription  # noqa: E402
 from .visit_plans import VisitPlan  # noqa: E402
 from .stand_photo import StandPhoto  # noqa: E402
+from .payments import Payment, PaymentCreate, PaymentUpdate  # noqa: E402

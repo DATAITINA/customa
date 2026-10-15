@@ -58,6 +58,9 @@ class CustomaSettings(ModuleSettingsBase):
     # Off until the vendor turns it on; about one plate in SURPRISE_JARA_ONE_IN.
     SURPRISE_JARA_ENABLED: bool = False
     SURPRISE_JARA_ONE_IN: int = 15
+    # Pay for a plate (Paystack test mode, or cash the vendor confirms): a paid plate counts as a
+    # stamp. Off until the vendor turns it on; prices come from the stand's menu.
+    PAYMENTS_ENABLED: bool = False
     # The QR code's scan code changes when the vendor makes a new QR code (old prints stop counting).
     QR_VERSION: int = 1
     # Today's special, set by the vendor. It shows only on the day it was set (Nigeria time).
@@ -105,6 +108,13 @@ class AppSettings(
     TERMII_BASE_URL: str = "https://api.ng.termii.com"  # your account's base URL (Termii dashboard)
     TERMII_CHANNEL: str = "dnd"  # "dnd" reaches numbers on Do-Not-Disturb; "generic" does not
     # The customer website, for the link in a text.
+    # Paystack, TEST MODE ONLY: a secret key that starts with sk_test_. A live key (sk_live_) is
+    # refused, so no real money can move. Never commit keys: set them on Vercel (docs/payments.md).
+    PAYSTACK_SECRET_KEY: str | None = None
+    PAYSTACK_BASE_URL: str = "https://api.paystack.co"
+    # Paystack needs an email per payment; customers give none, so each payment gets an address
+    # on this domain (nothing is sent to it).
+    PAYSTACK_EMAIL_DOMAIN: str = "customers.customa.app"
     PUBLIC_WEB_URL: str = "https://customa-web.vercel.app"
 
     REDIS_HOST: str | None = None

@@ -32,7 +32,7 @@ import { DeleteMyData } from '../components/DeleteMyData';
 
 type View =
   | { kind: 'loading' }
-  | { kind: 'error'; message: string }
+  | { kind: 'error'; message: string; reason?: ErrorReason }
   | { kind: 'welcome' }
   // Not counted: no fresh scan of the stand's QR code (stale = the code was old or wrong).
   | { kind: 'scan'; stale?: boolean }
@@ -65,6 +65,9 @@ const Check = () => (
 );
 
 const naira = (n: number) => `₦${n.toLocaleString('en-NG')}`;
+
+type ErrorReason = 'notFound' | 'offline' | 'server';
+const errorReason = (e: ApiError): ErrorReason => (e.status === 404 ? 'notFound' : !e.status ? 'offline' : 'server');
 
 export function CustomerPage({ slug }: { slug: string }) {
   const [stand, setStand] = useState<StandPublic | null>(null);
@@ -118,7 +121,7 @@ export function CustomerPage({ slug }: { slug: string }) {
         clearCustomerKey(slug);
         setView({ kind: 'welcome' });
       } else {
-        setView({ kind: 'error', message: e.message ?? 'Something went wrong' });
+        setView({ kind: 'error', message: e.message ?? 'Something went wrong', reason: errorReason(e) });
       }
     }
   };
@@ -159,22 +162,13 @@ export function CustomerPage({ slug }: { slug: string }) {
           } else setView({ kind: 'scan' });
         } else setView(freshScan ? { kind: 'welcome' } : { kind: 'scan' });
       })
-      .catch((err: ApiError) =>
-        setView({ kind: 'error', message: err.status === 404 ? 'This stand does not exist.' : err.message }),
-      );
+      .catch((err: ApiError) => setView({ kind: 'error', message: err.message, reason: errorReason(err) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   if (view.kind === 'loading') return <Shell stand={stand}><CharacterLoader kind="card" character={stand?.character} /></Shell>;
   if (view.kind === 'error' || !stand) {
-    return (
-      <Shell stand={stand}>
-        <div className="stack">
-          <p className="error">{view.kind === 'error' ? view.message : 'Could not load this stand.'}</p>
-          <button className="btn" onClick={() => window.location.reload()}>Try again</button>
-        </div>
-      </Shell>
-    );
+    return <ErrorScreen stand={stand} reason={view.kind === 'error' ? view.reason ?? 'server' : 'server'} />;
   }
 
   const ch = stand.character;
@@ -191,11 +185,16 @@ export function CustomerPage({ slug }: { slug: string }) {
     }
   };
   // The return-visit features. Each card hides itself when the vendor has not turned it on.
-  const featureCards = (
+  // Rewards and paying come first, right under the card; the rest sits under "More from …".
+  const rewardCards = (
     <>
       {me && <PayCard slug={slug} onPaid={refreshMe} />}
       <OpenJara slug={slug} codes={me?.open_jara ?? []} />
       <WheelCard slug={slug} stand={stand} refreshKey={meVersion} />
+    </>
+  );
+  const featureCards = (
+    <>
       {me && <AlertsCard slug={slug} stand={stand} />}
       {me && <UsualCard slug={slug} standName={stand.stand.name} />}
       {/* An existing plan (the question itself comes right after a counted plate, below). */}
@@ -210,6 +209,10 @@ export function CustomerPage({ slug }: { slug: string }) {
     onTap: () => setTapLine(TAP_LINES[Math.floor(Math.random() * TAP_LINES.length)]),
   };
   const charName = ch?.name ?? 'your host';
+  const firstName = charName.split(' ')[0];
+  const deleteMyData = (
+    <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+  );
 
   if (view.kind === 'jara') return <JaraScreen slug={slug} stand={stand} result={view.result} onDone={() => setView({ kind: 'counted', result: { ...view.result, jara: null } })} />;
 
@@ -252,15 +255,19 @@ export function CustomerPage({ slug }: { slug: string }) {
         </Hero>
         <div className="stack">
           <ScanHint charName={charName} />
-          {me && (
+          {me ? (
             <>
               <PlateCard plate={me.plate_number} total={total} gift={giftStamps(stand, !!me.crew_name)} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} />
+              {rewardCards}
+              <TalkAndPlay slug={slug} first={firstName} outline />
+              <MoreFrom name={firstName} />
               {featureCards}
-              <TalkAndPlay slug={slug} first={charName.split(' ')[0]} outline />
             </>
+          ) : (
+            <HowItWorks total={total} gift={gift} />
           )}
           <Menu items={ch?.menu ?? []} />
-          {me && <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />}
+          {me && deleteMyData}
         </div>
       </Shell>
     );
@@ -278,11 +285,10 @@ export function CustomerPage({ slug }: { slug: string }) {
           name={view.name}
           canCount={(() => { const sc = getScan(slug); return sc !== null && !sc.counted; })()}
           onReady={() => handleCount({ consent: true })}
+          rewards={rewardCards}
           extras={featureCards}
         />
-        <div className="stack">
-          <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
-        </div>
+        <div className="stack">{deleteMyData}</div>
       </Shell>
     );
   }
@@ -329,22 +335,39 @@ export function CustomerPage({ slug }: { slug: string }) {
       </Hero>
       <div className="stack">
         <PlateCard plate={cardPlate} total={total} gift={giftStamps(stand, !!cardCrew)} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} />
+        {rewardCards}
         {/* "When you go come back?": plan the next visit (a day and a time). */}
         <PlanCard slug={slug} character={ch} ask missed={r.plan_outcome === 'missed'} />
-        {featureCards}
-        <TalkAndPlay slug={slug} first={charName.split(' ')[0]} />
         <Rate slug={slug} visitId={r.visit_id} />
+        <TalkAndPlay slug={slug} first={firstName} />
+        <MoreFrom name={firstName} />
+        {featureCards}
         <Menu items={ch?.menu ?? []} />
         <Goodbye name={name} plate={r.plate_number} />
-        <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+        {deleteMyData}
       </div>
     </Shell>
   );
 }
 
+// Offline right now? (A plate can only count online, so say so before the customer tries.)
+function useOnline() {
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false));
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+  return online;
+}
+
 function Shell({ stand, children }: { stand: StandPublic | null; children: React.ReactNode }) {
+  const online = useOnline();
   return (
-    <main className="phone">
+    <main className="phone page-in">
+      {!online && <div className="offline-bar" role="status">📶 You're offline. Your card is safe. Plates count again once you're back online.</div>}
       <header className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span className="stand-name">{stand?.stand.name ?? ''}</span>
@@ -461,8 +484,8 @@ function WelcomeForm({ onSubmit, gift = 0, total = 6 }: { onSubmit: (b: { first_
 }
 
 function TooSoon({
-  stand, initialSeconds, windowSeconds, plate, crewName, name, canCount, onReady, extras,
-}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; crewName?: string | null; name: string | null; canCount: boolean; onReady: () => void; extras?: React.ReactNode }) {
+  stand, initialSeconds, windowSeconds, plate, crewName, name, canCount, onReady, rewards, extras,
+}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; crewName?: string | null; name: string | null; canCount: boolean; onReady: () => void; rewards?: React.ReactNode; extras?: React.ReactNode }) {
   // Count down to a fixed end time, not by ticking: phones pause timers while the
   // screen is off or the tab is in the background, which would leave a 6-hour
   // countdown far behind. Re-read the clock on every tick and when the page is shown again.
@@ -499,23 +522,26 @@ function TooSoon({
         </div>
       </Hero>
       <div className="stack">
-        <PlateCard plate={plate} total={total} gift={giftStamps(stand, !!crewName)} crewName={crewName} windowSeconds={windowSeconds} />
-        {extras}
-        <div className="card-outline">
-          <span className="eyebrow">WHY THE WAIT?</span>
-          <span style={{ fontSize: '0.9375rem', lineHeight: 1.45, fontWeight: 600 }}>
-            One plate per visit keeps the jara fair for everyone.
-          </span>
-        </div>
         {seconds > 0 ? (
-          <button className="btn" disabled>Wait for the timer</button>
+          // Nothing to do yet, so no dead button: just when, and why.
+          <div className="next-visit" role="status">
+            <span className="next-visit-icon" aria-hidden="true">👋🏾</span>
+            <span>
+              <strong>See you after {label}!</strong>
+              <span className="note" style={{ display: 'block' }}>One plate per visit keeps the jara fair for everyone. Your card is saved on this phone.</span>
+            </span>
+          </div>
         ) : canCount ? (
           // Scanned at the stand while the timer was still running: count now.
-          <button className="btn" onClick={onReady}>Count my next plate</button>
+          <button className="btn btn-pop" onClick={onReady}>Count my next plate</button>
         ) : (
           <ScanHint charName={ch?.name ?? 'your host'} done />
         )}
+        <PlateCard plate={plate} total={total} gift={giftStamps(stand, !!crewName)} crewName={crewName} windowSeconds={windowSeconds} />
+        {rewards}
         <TalkAndPlay slug={stand.stand.slug} first={ch?.name.split(' ')[0] ?? 'us'} outline />
+        <MoreFrom name={ch?.name.split(' ')[0] ?? 'us'} />
+        {extras}
       </div>
     </>
   );
@@ -694,11 +720,80 @@ function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: Stan
           <span className="note">{result.customer.first_name ? `${result.customer.first_name} · ` : ''}one use</span>
         </div>
       )}
-      <div style={{ position: 'relative', padding: '14px 12px 24px' }}>
+      <div className="jara-done">
+        {!result.surprise && gift > 0 && <span className="note">Your new card starts with {gift} gift stamps 🎁</span>}
         <button className="btn" onClick={onDone}>
-          {result.surprise ? 'Done, back to my card' : gift ? `Done, start my new card (${gift} stamps on us 🎁)` : `Done, start my next ${result.plates_for_jara}`}
+          {result.surprise ? 'Back to my card' : gift ? 'Start my new card' : `Start my next ${result.plates_for_jara}`}
         </button>
       </div>
     </main>
+  );
+}
+
+// When the page can't load: the character explains, and there is always a next step.
+function ErrorScreen({ stand, reason }: { stand: StandPublic | null; reason: ErrorReason }) {
+  const ch = stand?.character;
+  const copy = {
+    notFound: {
+      bubble: 'Hmm, I no know this stand 🤔',
+      lead: 'This link does not match any food stand. Scan the QR code at the stand again, it opens the right page.',
+    },
+    offline: {
+      bubble: 'Network no gree 📶',
+      lead: 'We could not reach Customa. Check your data or Wi-Fi, then try again. Your card is safe.',
+    },
+    server: {
+      bubble: 'Wahala small, abeg 🙏🏾',
+      lead: 'Something went wrong on our side. Try again in a moment. Your plates are safe.',
+    },
+  }[reason];
+  return (
+    <Shell stand={stand}>
+      <Hero bubble={copy.bubble}>
+        <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={150} react />
+      </Hero>
+      <div className="stack">
+        <p className="lead" role="alert">{copy.lead}</p>
+        {reason === 'notFound' ? (
+          <Link to="/" className="btn">Go to Customa home</Link>
+        ) : (
+          <button className="btn" onClick={() => window.location.reload()}>Try again</button>
+        )}
+      </div>
+    </Shell>
+  );
+}
+
+// A quiet divider between "this visit" and everything else the stand offers.
+function MoreFrom({ name }: { name: string }) {
+  return (
+    <h2 className="more-from">
+      <span>More from {name}</span>
+    </h2>
+  );
+}
+
+// First look at a stand without a card yet: the whole idea in three steps.
+function HowItWorks({ total, gift }: { total: number; gift: number }) {
+  const steps = [
+    { icon: '📷', title: 'Scan at the stand', text: 'Each visit, scan the QR code. That counts your plate.' },
+    { icon: '🍛', title: 'Eat and collect', text: gift > 0 ? `Your card starts with ${gift} gift stamps.` : 'One stamp per visit.' },
+    { icon: '🎁', title: `Plate ${total + gift} is jara`, text: 'A free extra, on the house.' },
+  ];
+  return (
+    <section className="how" aria-labelledby="how-title">
+      <h2 id="how-title" className="eyebrow">HOW IT WORKS</h2>
+      <ol className="how-steps">
+        {steps.map((st, i) => (
+          <li key={st.title}>
+            <span className="how-icon" aria-hidden="true">{st.icon}</span>
+            <span>
+              <strong>{i + 1}. {st.title}</strong>
+              <span className="note" style={{ display: 'block' }}>{st.text}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

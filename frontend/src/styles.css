@@ -555,3 +555,17 @@ tr.fresh td { background: var(--blush); }
 .customize-preview { display: flex; justify-content: center; background: var(--blush); border-radius: 24px; padding: 12px 0 4px; }
 .photo-busy img { filter: saturate(0.6) brightness(0.9); transition: filter 0.2s; }
 .char-svg .char-face[stroke] { stroke: #141414; }
+
+/* ---- Customer card: one clear next step, then the rest ---- */
+.lead { margin: 0; font-size: var(--fs-base); line-height: 1.5; font-weight: 600; }
+.next-visit { display: flex; gap: var(--sp-3); align-items: center; padding: 14px 16px; border-radius: var(--radius-card); background: var(--stone); font-size: var(--fs-base); line-height: 1.4; }
+.next-visit-icon { flex-shrink: 0; width: 44px; height: 44px; border-radius: var(--radius-pill); background: var(--paper); display: flex; align-items: center; justify-content: center; font-size: 1.375rem; }
+.more-from { display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-3) 0 0; font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.more-from::before, .more-from::after { content: ''; flex: 1; height: 2px; border-radius: 2px; background: var(--line); }
+.how { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-4) var(--sp-4) var(--sp-2); border-radius: var(--radius-card); background: var(--stone); }
+.how h2 { margin: 0; }
+.how-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.how-steps li { display: flex; gap: var(--sp-3); align-items: center; font-size: var(--fs-md); line-height: 1.35; }
+.how-icon { flex-shrink: 0; width: 44px; height: 44px; border-radius: var(--radius-pill); background: var(--paper); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+.jara-done { position: relative; display: flex; flex-direction: column; gap: var(--sp-2); align-items: center; padding: 14px 12px 24px; }
+.offline-bar { margin: 0 12px 10px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--warn-bg); color: var(--ink); border: 2px solid var(--warn); font-size: var(--fs-sm); font-weight: 700; line-height: 1.4; }

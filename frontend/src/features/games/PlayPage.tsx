@@ -33,7 +33,7 @@ export function PlayPage({ slug }: { slug: string }) {
   return (
     <main className="phone page-in">
       <header className="topbar">
-        <Link to={`/s/${slug}`} className="link-btn">Back</Link>
+        <Link to={`/s/${slug}`} className="back-btn" aria-label="Back to my card"><span aria-hidden="true">←</span> My card</Link>
         <span className="games-title">{first ? `Play with ${first}` : 'Play'}</span>
         <Logo size={22} />
       </header>

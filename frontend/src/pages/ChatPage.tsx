@@ -114,7 +114,7 @@ export function ChatPage({ slug }: { slug: string }) {
   return (
     <main className="phone page-in" style={{ display: 'flex', flexDirection: 'column' }}>
       <header className="topbar">
-        <Link to={`/s/${slug}`} className="link-btn">Back</Link>
+        <Link to={`/s/${slug}`} className="back-btn" aria-label="Back to my card"><span aria-hidden="true">←</span> My card</Link>
         <span style={{ fontWeight: 800 }}>Talk to {first}</span>
         <Logo size={22} />
       </header>
@@ -138,7 +138,13 @@ export function ChatPage({ slug }: { slug: string }) {
           <Link to={`/s/${slug}`} className="btn">Go to my card</Link>
         </div>
       ) : loadError ? (
-        <div className="stack"><p className="error">Could not load the chat. Check your network and try again.</p></div>
+        <div className="stack">
+          <div className="card-outline" role="alert">
+            <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>{first} no fit hear you right now 📶</span>
+            <span className="note" style={{ fontSize: 'var(--fs-md)' }}>The chat could not load. Check your data or Wi-Fi, then try again.</span>
+          </div>
+          <button type="button" className="btn" onClick={() => window.location.reload()}>Try again</button>
+        </div>
       ) : (
         <>
           <div className="chat-log" aria-live="polite" style={{ flexGrow: 1 }}>
@@ -150,7 +156,7 @@ export function ChatPage({ slug }: { slug: string }) {
                 <i /><i /><i />
               </div>
             )}
-            {slow && <p className="note" style={{ margin: 0 }}>{first} is a bit slow right now. Tap a quick question:</p>}
+            {slow && <p className="note" style={{ margin: 0 }}>{first} is a bit slow right now. Hold on small, the answer is coming 🍲</p>}
             <div ref={end} />
           </div>
 
@@ -187,9 +193,9 @@ export function ChatPage({ slug }: { slug: string }) {
                 {quick.map((q) => <button key={q} onClick={() => send(q)} disabled={thinking || !chat}>{q}</button>)}
               </div>
               <form className="chat-form" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-                <label htmlFor="chat-input" style={{ position: 'absolute', left: -9999 }}>Message</label>
+                <label htmlFor="chat-input" className="sr-only">Message {first}</label>
                 <input id="chat-input" className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder={`Message ${first}`} maxLength={500} />
-                <button className="btn" style={{ width: 100 }} type="submit" disabled={thinking || !text.trim() || !chat}>Send</button>
+                <button className="btn chat-send" type="submit" disabled={thinking || !text.trim() || !chat}>Send</button>
               </form>
             </>
           )}

@@ -610,3 +610,9 @@ tr.fresh td { background: var(--blush); }
 
 /* A friendly empty state: what will appear here, and how it gets there. */
 .empty-line { display: block; font-size: var(--fs-md); line-height: 1.45; font-weight: 600; color: var(--muted); }
+.btn.chat-send { width: auto; padding: 0 20px; flex-shrink: 0; }
+/* An input with a small action inside it (Show / Hide password). */
+.input-wrap { position: relative; display: block; }
+.input-wrap .input { padding-right: 84px; }
+.input-action { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); min-width: var(--tap); min-height: var(--tap); padding: 0 14px; border: none; border-radius: var(--radius-pill); background: var(--stone); color: var(--ink); font-size: var(--fs-sm); font-weight: 800; }
+.input-action:not(:disabled):active { transform: translateY(-50%) scale(0.96); }

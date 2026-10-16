@@ -76,6 +76,7 @@ function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div style={{ maxWidth: 420, margin: '24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -89,6 +90,11 @@ function SignIn() {
         ))}
       </div>
       <h1 className="display" style={{ fontSize: '2.5rem' }}>{mode === 'login' ? 'VENDOR SIGN IN' : 'START YOUR STAND'}</h1>
+      <p className="lead" style={{ marginTop: -8 }}>
+        {mode === 'login'
+          ? 'See today’s plates, greet your regulars by name and give out jara.'
+          : 'A friendly character and a loyalty card for your food stand. Free to start.'}
+      </p>
       <form
         className="stack"
         style={{ padding: 0, gap: 14 }}
@@ -99,7 +105,7 @@ function SignIn() {
             if (mode === 'register') await register({ email, password });
             await login({ email, password });
           } catch (err) {
-            setError((err as ApiError).message ?? 'Could not sign in');
+            setError(authError(err as ApiError, mode));
           }
         }}
       >
@@ -107,18 +113,34 @@ function SignIn() {
           <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
         </label>
         <label className="field">Password
-          <input className="input" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+          <span className="input-wrap">
+            <input className="input" type={showPassword ? 'text' : 'password'} required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'} aria-describedby={mode === 'register' ? 'pw-hint' : undefined} />
+            <button type="button" className="input-action" aria-pressed={showPassword} aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </span>
+          {mode === 'register' && <span id="pw-hint" className="note" style={{ fontWeight: 500 }}>At least 6 characters.</span>}
         </label>
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn" type="submit" disabled={loading.login || loading.register}>
-          {mode === 'login' ? 'Sign in' : 'Create account'}
+          {loading.login || loading.register ? (mode === 'login' ? 'Signing in…' : 'Creating your account…') : mode === 'login' ? 'Sign in' : 'Create account'}
         </button>
         {mode === 'register' && <span className="note" style={{ textAlign: 'center' }}>Free to start. You set up your stand in about 5 minutes.</span>}
       </form>
       <GoogleButton />
     </div>
   );
+}
+
+// Sign-in errors in plain words, with what to do next.
+function authError(e: ApiError, mode: 'login' | 'register'): string {
+  if (!e?.status) return 'We could not reach Customa. Check your data or Wi-Fi and try again.';
+  if (mode === 'login' && (e.status === 400 || e.status === 401)) {
+    return 'That email and password don’t match. Check them, or tap “Create account” if you are new.';
+  }
+  if (e.status === 422) return 'Check your email address, and use a password of at least 6 characters.';
+  return e.message || (mode === 'login' ? 'Could not sign in. Try again.' : 'Could not create your account. Try again.');
 }
 
 // --- Home: create a stand, or show its dashboard ---------------------------

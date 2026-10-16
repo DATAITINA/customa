@@ -129,10 +129,10 @@ function VendorHome() {
   const [creating, setCreating] = useState(false);
 
   if (stands.isLoading) return <CharacterLoader kind="vendor" />;
-  if (stands.isError) return <p className="error">Could not load your stands.</p>;
+  if (stands.isError) return <LoadFailed what="your stands" onRetry={() => stands.refetch()} />;
   const list = stands.data ?? [];
   if (creating || list.length === 0) {
-    return <StandSetup onCreated={(s) => { setCreating(false); setSelected(s.slug); stands.refetch(); }} />;
+    return <StandSetup first={list.length === 0} onCancel={list.length ? () => setCreating(false) : undefined} onCreated={(s) => { setCreating(false); setSelected(s.slug); stands.refetch(); }} />;
   }
   const slug = selected ?? list[0].slug;
   return (
@@ -164,7 +164,7 @@ function parseMenu(text: string) {
     });
 }
 
-function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
+function StandSetup({ onCreated, first = true, onCancel }: { onCreated: (s: StandSummary) => void; first?: boolean; onCancel?: () => void }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [menuText, setMenuText] = useState('');
@@ -221,7 +221,11 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
           }
         }}
       >
-        <h1 className="display" style={{ fontSize: '2.5rem' }}>SET UP YOUR STAND</h1>
+        <h1 className="display" style={{ fontSize: '2.5rem' }}>{first ? 'SET UP YOUR STAND' : 'ADD A STAND'}</h1>
+        <p className="lead" style={{ marginTop: -4 }}>
+          {first ? 'Welcome! ' : ''}Tell us about your food, pick a character, and you get a QR code for customers to scan. About 5 minutes.
+        </p>
+        {onCancel && <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={onCancel}>← Back to my dashboard</button>}
         <label className="field">Stand name
           <input className="input" required minLength={2} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mama Ekaette's Kitchen" />
         </label>
@@ -286,7 +290,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
   }, [q.data]);
 
   if (q.isLoading) return <DashboardSkeleton />;
-  if (q.isError || !q.data) return <p className="error">Could not load the dashboard.</p>;
+  if (q.isError || !q.data) return <LoadFailed what="the dashboard" onRetry={() => q.refetch()} />;
   const d = q.data;
   const ch = d.stand.character;
   const stats = [
@@ -311,21 +315,22 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           <Link to={`/s/${slug}`} className="btn btn-outline dash-action"><PhoneIcon />Customer page</Link>
         </div>
       </div>
-      {/* "Ime don land!": who is here now, so staff greet regulars by name. */}
-      <HereNowCard slug={slug} entries={d.here_now ?? []} onChange={() => q.refetch()} />
-      {/* Plans for today, plans kept this week, and % back within 14 days. */}
-      <VendorPlansCard d={d} />
-      {/* Today's payments: Paystack (test mode) and cash you confirm. */}
-      <VendorPaymentsCard slug={slug} onChange={() => q.refetch()} />
-      <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
-      <div className="stats">
+      {/* The two-second answers first: today's numbers, who is here, jara to give out. */}
+      <div className="stats" role="list" aria-label="Today at a glance">
         {stats.map((s) => (
-          <div key={s.label} className="stat">
+          <div key={s.label} className="stat" role="listitem">
             <div className="stat-value">{s.value}</div>
             <div className="stat-label">{s.label}</div>
           </div>
         ))}
       </div>
+      {/* "Ime don land!": who is here now, so staff greet regulars by name. */}
+      <HereNowCard slug={slug} entries={d.here_now ?? []} onChange={() => q.refetch()} />
+      <div className="grid-2">
+        <OpenJara slug={slug} items={d.open_jara} onChange={() => q.refetch()} />
+        <JaraCheckPanel slug={slug} onGiven={() => q.refetch()} />
+      </div>
+      <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
       <div className="table-wrap">
         <table>
           <caption style={{ textAlign: 'left', padding: '14px 16px 0', fontWeight: 800 }}>Recent plates</caption>
@@ -334,26 +339,28 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           </thead>
           <tbody>
             {d.recent_visits.length === 0 && (
-              <tr><td colSpan={4} className="note">No plates yet. Show your QR code to your first customer.</td></tr>
+              <tr><td colSpan={4}><span className="empty-line">🍽️ No plates yet today. Show your QR code to your first customer and they appear here.</span></td></tr>
             )}
             {d.recent_visits.map((v) => (
               <tr key={v.id} className={fresh.has(v.id) ? 'fresh' : undefined}>
                 <td>{v.name}</td>
                 <td>{v.plate_number === d.plates_for_jara ? `${v.plate_number}/${d.plates_for_jara} JARA` : `${v.plate_number}/${d.plates_for_jara}`}</td>
                 <td>{v.stars == null ? '–' : v.stars >= 4 ? 'Good' : 'Not good'}</td>
-                <td>{new Date(v.at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{new Date(v.at + 'Z').toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <JaraCheckPanel slug={slug} onGiven={() => q.refetch()} />
-      <div className="grid-2">
-        <OpenJara slug={slug} items={d.open_jara} onChange={() => q.refetch()} />
+      {/* Plans for today, plans kept this week, and % back within 14 days. */}
+      <VendorPlansCard d={d} />
+      {/* Today's payments: Paystack (test mode) and cash you confirm. */}
+      <VendorPaymentsCard slug={slug} onChange={() => q.refetch()} />
+      <div>
         <div className="card-outline">
           <span className="eyebrow">FOOD QUESTIONS FOR {ch?.name.split(' ')[0].toUpperCase() ?? ''}</span>
           <span className="note" style={{ fontSize: '0.8125rem' }}>Customers' chats are private. You only see their questions about the food.</span>
-          {d.recent_questions.length === 0 && <span className="note">No food questions yet.</span>}
+          {d.recent_questions.length === 0 && <span className="empty-line">💬 No food questions yet. When customers ask {ch?.name.split(' ')[0] ?? 'your character'} about the food, you see them here.</span>}
           {d.recent_questions.map((m) => (
             <div key={m.id} className="row" style={{ fontSize: '0.9375rem' }}>
               <span style={{ fontWeight: 600 }}>"{m.question}"</span>
@@ -363,6 +370,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         </div>
       </div>
       {/* Return-visit features sit below the daily essentials (plates, jara to give out). */}
+      <h2 className="more-from"><span>Set up your stand</span></h2>
       <VendorWheelPanel slug={slug} character={ch} />
       <CustomizeStand slug={slug} stand={d.stand} onSaved={() => q.refetch()} />
       <VendorDelightsPanel slug={slug} />
@@ -378,13 +386,24 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
   );
 }
 
+// A panel that could not load: say so, and offer a retry (no dead end).
+function LoadFailed({ what, onRetry }: { what: string; onRetry: () => void }) {
+  return (
+    <div className="card-outline" role="alert" style={{ maxWidth: 520, margin: '24px auto', alignItems: 'flex-start' }}>
+      <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>Could not load {what} 📶</span>
+      <span className="note" style={{ fontSize: 'var(--fs-md)' }}>Check your data or Wi-Fi. Nothing is lost; your stand keeps counting plates.</span>
+      <button type="button" className="btn btn-sm" onClick={onRetry}>Try again</button>
+    </div>
+  );
+}
+
 // Jara codes waiting to be given out. Redeeming marks the code used (works once).
 function OpenJara({ slug, items, onChange }: { slug: string; items: { code: string; name: string; prize?: string | null; spin_pending?: boolean }[]; onChange: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   return (
     <div className="card-outline">
-      <span className="eyebrow">JARA TO GIVE OUT</span>
-      {items.length === 0 && <span className="note">No jara waiting.</span>}
+      <span className="eyebrow">JARA TO GIVE OUT{items.length > 0 ? ` · ${items.length}` : ''}</span>
+      {items.length === 0 && <span className="empty-line">🎁 No jara waiting. When a customer earns one, their code shows here.</span>}
       {items.map((j) => (
         <div key={j.code} className="row" style={{ alignItems: 'center' }}>
           <span>
@@ -392,9 +411,9 @@ function OpenJara({ slug, items, onChange }: { slug: string; items: { code: stri
             {j.prize && <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700 }}>🎁 {j.prize}</span>}
             {j.spin_pending && <span className="note" style={{ display: 'block' }}>🎡 Waiting for the customer's spin</span>}
           </span>
-          <button className="btn" style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: '0.875rem' }} disabled={busy === j.code}
+          <button className="btn btn-sm" disabled={busy === j.code}
             onClick={async () => { setBusy(j.code); try { await api.redeemJara(slug, j.code); onChange(); } finally { setBusy(null); } }}>
-            Mark as given
+            {busy === j.code ? 'Saving…' : 'Mark as given'}
           </button>
         </div>
       ))}

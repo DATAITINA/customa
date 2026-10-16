@@ -181,7 +181,7 @@ button:not(:disabled):active, .btn:not(:disabled):active, .wheel-card:active, .w
 .btn-outline:hover { color: var(--ink); }
 .btn-outline:disabled { background: var(--paper); }
 /* A compact pill for secondary actions inside cards (still a full thumb target). */
-.btn.btn-sm { width: auto; min-height: var(--tap); padding: 6px 16px; font-size: var(--fs-md); }
+.btn.btn-sm { width: auto; min-height: var(--tap); padding: 6px 16px; font-size: var(--fs-md); white-space: nowrap; flex-shrink: 0; }
 /* The pepper "do this now" button: a chunky sticker with a press-down. */
 .btn-pop { background: var(--pepper); color: var(--on-pepper); border-color: var(--ink); box-shadow: var(--shadow-pop); }
 .btn-pop:hover { color: var(--on-pepper); }
@@ -277,9 +277,18 @@ textarea.input { height: auto; min-height: 96px; padding: 12px 16px; resize: ver
   .dash-actions { width: auto; grid-template-columns: auto auto; }
   .btn.dash-action { min-height: 52px; padding: 0 24px; font-size: 1rem; }
 }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-.stat { background: var(--stone); border-radius: var(--radius-card); padding: 18px; }
-.stat-value { font-family: var(--display); font-size: 2.75rem; line-height: 1; }
+/* Today at a glance: plates today leads (blush, full width on phones), the rest in pairs. */
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--stone); border-radius: var(--radius-card); padding: 14px 16px; min-width: 0; }
+.stat:first-child { grid-column: 1 / -1; background: var(--blush); display: flex; align-items: baseline; gap: 12px; }
+.stat:first-child .stat-value { font-size: 3.5rem; }
+.stat-value { font-family: var(--display); font-size: 2.25rem; line-height: 1; }
+@media (min-width: 760px) {
+  .stats { grid-template-columns: 1.4fr repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .stat:first-child { grid-column: auto; display: block; }
+  .stat { padding: 18px; }
+  .stat-value { font-size: 2.75rem; }
+}
 .stat-label { font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.06em; color: var(--muted); margin-top: 6px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
@@ -598,3 +607,6 @@ tr.fresh td { background: var(--blush); }
 @keyframes jara-pop { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 70% { transform: scale(1.08) rotate(2deg); opacity: 1; } 100% { transform: none; } }
 .thumb[aria-pressed='true'] { animation: thumb-pop 360ms var(--ease-spring); }
 @keyframes thumb-pop { 0% { transform: scale(0.8); } 60% { transform: scale(1.15); } 100% { transform: none; } }
+
+/* A friendly empty state: what will appear here, and how it gets there. */
+.empty-line { display: block; font-size: var(--fs-md); line-height: 1.45; font-weight: 600; color: var(--muted); }

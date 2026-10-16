@@ -29,6 +29,7 @@ import { PlanCard } from '../features/visitPlans/PlanCard';
 import { PayCard } from '../features/payments/PayCard';
 import { CharacterLoader } from '../components/Loading';
 import { DeleteMyData } from '../components/DeleteMyData';
+import { buzz, HAPTIC } from '../utils/haptics';
 
 type View =
   | { kind: 'loading' }
@@ -105,6 +106,7 @@ export function CustomerPage({ slug }: { slug: string }) {
       markScanCounted(slug);
       setCustomerKey(slug, result.customer.key);
       setMe(result.customer);
+      buzz(result.jara ? HAPTIC.jara : HAPTIC.stamp);
       setView(result.jara ? { kind: 'jara', result } : { kind: 'counted', result });
     } catch (err) {
       const e = err as ApiError;
@@ -166,7 +168,7 @@ export function CustomerPage({ slug }: { slug: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
-  if (view.kind === 'loading') return <Shell stand={stand}><CharacterLoader kind="card" character={stand?.character} /></Shell>;
+  if (view.kind === 'loading') return <Shell stand={stand} view={view.kind}><CharacterLoader kind="card" character={stand?.character} /></Shell>;
   if (view.kind === 'error' || !stand) {
     return <ErrorScreen stand={stand} reason={view.kind === 'error' ? view.reason ?? 'server' : 'server'} />;
   }
@@ -218,7 +220,7 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   if (view.kind === 'deleted') {
     return (
-      <Shell stand={stand}>
+      <Shell stand={stand} view={view.kind}>
         <Hero tapLine={tapLine} bubble={`Done. I don forget you. Come back anytime!`}>
           <Character {...charProps} expression="happy" pose="idle" size={170} />
         </Hero>
@@ -232,7 +234,7 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   if (view.kind === 'welcome') {
     return (
-      <Shell stand={stand}>
+      <Shell stand={stand} view={view.kind}>
         <Hero tapLine={tapLine} bubble={`${ch?.greeting ?? 'Welcome!'} Wetin be your name?`}>
           <Character {...charProps} expression="excited" pose="wave" size={180} />
         </Hero>
@@ -249,7 +251,7 @@ export function CustomerPage({ slug }: { slug: string }) {
         ? `${known}Welcome back! Scan the QR code at the stand to count today's plate.`
         : `${ch?.greeting ?? 'Welcome!'} Scan the QR code at the stand to count your first plate.`;
     return (
-      <Shell stand={stand}>
+      <Shell stand={stand} view={view.kind}>
         <Hero tapLine={tapLine} bubble={bubble}>
           <Character {...charProps} expression="happy" pose="wave" size={170} />
         </Hero>
@@ -275,7 +277,7 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   if (view.kind === 'tooSoon') {
     return (
-      <Shell stand={stand}>
+      <Shell stand={stand} view={view.kind}>
         <TooSoon
           stand={stand}
           initialSeconds={view.secondsLeft}
@@ -314,8 +316,8 @@ export function CustomerPage({ slug }: { slug: string }) {
   } else if (crew) {
     bubble = `${hi}Plate ${crew.plate_number} of ${crew.plates_for_jara} for ${crew.name}.`;
   } else if (left === 1) {
-    // Almost there: people speed up when a reward is close, so make plate 5 feel exciting.
-    bubble = `${hi}Plate ${shown} don land! Just ONE more plate and jara na yours! 🎉`;
+    // Almost there: people speed up when a reward is close, so make this plate feel exciting.
+    bubble = `${hi}${ONE_AWAY[r.plate_number % ONE_AWAY.length](shown)}`;
   } else if (r.returning) {
     bubble = `${hi}Back again! Plate ${shown} of ${total + gift}.`;
   } else {
@@ -329,12 +331,12 @@ export function CustomerPage({ slug }: { slug: string }) {
   const cardCrew = me ? me.crew_name ?? null : crew?.name ?? null;
 
   return (
-    <Shell stand={stand}>
+    <Shell stand={stand} view={view.kind}>
       <Hero tapLine={tapLine} bubble={bubble} counted>
-        <Character {...charProps} expression="excited" pose={r.returning ? 'wave' : 'hop'} size={180} />
+        <span className="hero-pop"><Character {...charProps} expression="excited" pose={r.returning ? 'wave' : 'hop'} size={180} /></span>
       </Hero>
       <div className="stack">
-        <PlateCard plate={cardPlate} total={total} gift={giftStamps(stand, !!cardCrew)} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} />
+        <PlateCard plate={cardPlate} total={total} gift={giftStamps(stand, !!cardCrew)} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} landed />
         {rewardCards}
         {/* "When you go come back?": plan the next visit (a day and a time). */}
         <PlanCard slug={slug} character={ch} ask missed={r.plan_outcome === 'missed'} />
@@ -363,10 +365,10 @@ function useOnline() {
   return online;
 }
 
-function Shell({ stand, children }: { stand: StandPublic | null; children: React.ReactNode }) {
+function Shell({ stand, view, children }: { stand: StandPublic | null; view?: string; children: React.ReactNode }) {
   const online = useOnline();
   return (
-    <main className="phone page-in">
+    <main className="phone">
       {!online && <div className="offline-bar" role="status">📶 You're offline. Your card is safe. Plates count again once you're back online.</div>}
       <header className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -380,10 +382,17 @@ function Shell({ stand, children }: { stand: StandPublic | null; children: React
         </div>
       )}
       {stand?.last_plates && <div style={{ padding: '0 12px 10px' }}><LastPlatesBanner lp={stand.last_plates} /></div>}
-      {children}
+      <div className="view-in" key={view}>{children}</div>
     </main>
   );
 }
+
+// One plate away from jara: a cheeky line, so the next visit feels close.
+const ONE_AWAY: ((plate: number) => string)[] = [
+  (n) => `Plate ${n} don land! Next plate na jara o. No dull yourself 👀`,
+  (n) => `Plate ${n}! Just ONE more and jara na yours. I don dey prepare am 🎉`,
+  (n) => `Plate ${n} don land! Jara dey wait for you for the next one 🔥`,
+];
 
 const TAP_LINES = [
   'Hehe, that tickles! 😆',
@@ -407,7 +416,8 @@ function Hero({ bubble, tapLine, counted, children }: { bubble: string; tapLine?
   );
 }
 
-function PlateCard({ plate, total, gift = 0, windowSeconds, crewName }: { plate: number; total: number; gift?: number; windowSeconds: number; crewName?: string | null }) {
+// landed: this plate was just counted, so its stamp lands on the card with a thump.
+function PlateCard({ plate, total, gift = 0, windowSeconds, crewName, landed = false }: { plate: number; total: number; gift?: number; windowSeconds: number; crewName?: string | null; landed?: boolean }) {
   const windowText = windowSeconds < 120 ? `${windowSeconds} seconds` : `${Math.round(windowSeconds / 3600)} hours`;
   // Head-start card (own card only): `gift` stamps come first, so the card reads
   // (plate + gift) / (total + gift). The jara still comes after `total` real plates.
@@ -425,13 +435,19 @@ function PlateCard({ plate, total, gift = 0, windowSeconds, crewName }: { plate:
       </div>
       <div className="row" style={{ alignItems: 'center' }}>
         <span className="plate-count">PLATE {shown}/{of}</span>
-        {real === total - 1 && <span className="almost-pill">1 more! 🔥</span>}
+        {real === total - 1 && <span className="almost-pill">Jara next! 🔥</span>}
       </div>
       {gift > 0 ? (
         <>
           <div className="stamps" role="progressbar" aria-valuemin={0} aria-valuemax={of} aria-valuenow={shown} aria-label={`${shown} of ${of} stamps, ${gift} of them a welcome gift`}>
             {Array.from({ length: of }, (_, i) => (
-              <span key={i} className={i < gift ? 'stamp stamp-gift' : i < shown ? 'stamp stamp-on' : 'stamp'}>
+              <span key={i} className={[
+                'stamp',
+                i < gift ? 'stamp-gift' : i < shown ? 'stamp-on' : '',
+                landed && i === shown - 1 && i >= gift ? 'stamp-land' : '',
+                i === of - 1 ? 'stamp-jara' : '',
+                i === of - 1 && real === total - 1 ? 'stamp-next' : '',
+              ].filter(Boolean).join(' ')}>
                 {i < gift ? '🎁' : i === of - 1 ? 'J' : ''}
               </span>
             ))}
@@ -439,8 +455,8 @@ function PlateCard({ plate, total, gift = 0, windowSeconds, crewName }: { plate:
           <span className="gift-note">Welcome gift: {gift} stamps on us 🎁</span>
         </>
       ) : (
-        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate}>
-          <div style={{ width: `${(plate / total) * 100}%` }} />
+        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate} aria-label={`${plate} of ${total} plates`}>
+          <div className={landed ? 'progress-land' : undefined} style={{ width: `${(plate / total) * 100}%` }} />
         </div>
       )}
       <span className="note">One plate counts per visit. Next one counts after {windowText}.</span>
@@ -628,11 +644,12 @@ function Rate({ slug, visitId }: { slug: string; visitId: number }) {
   const [choice, setChoice] = useState<number | null>(null);
   const rate = async (stars: number) => {
     setChoice(stars);
+    buzz(HAPTIC.tap);
     try { await api.rate(slug, visitId, stars); } catch { setChoice(null); }
   };
   return (
     <div className="rate">
-      <span style={{ fontSize: '1rem', fontWeight: 800, lineHeight: 1.25 }}>{choice ? 'Thanks for rating!' : "Rate today's food"}</span>
+      <span style={{ fontSize: '1rem', fontWeight: 800, lineHeight: 1.25 }} role="status">{choice === 5 ? 'E sweet! Thank you 😋' : choice === 1 ? 'Sorry o. We go do better 🙏🏾' : "Rate today's food"}</span>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="thumb" aria-label="Good" aria-pressed={choice === 5} onClick={() => rate(5)}><ThumbUp /></button>
         <button type="button" className="thumb" aria-label="Not good" aria-pressed={choice === 1} onClick={() => rate(1)}><ThumbDown /></button>
@@ -695,7 +712,7 @@ function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: Stan
               ? `${result.crew.name.toUpperCase()}: YOUR TURN · ${result.plates_for_jara} OF ${result.plates_for_jara} PLATES`
               : `${result.plates_for_jara + gift} OF ${result.plates_for_jara + gift} PLATES`}
         </span>
-        <h1 className="display" style={{ fontSize: result.surprise ? '4.75rem' : '6.5rem' }}>{result.surprise ? 'SURPRISE JARA!' : 'JARA!'}</h1>
+        <h1 className="display jara-title" style={{ fontSize: result.surprise ? '4.75rem' : '6.5rem' }}>{result.surprise ? 'SURPRISE JARA!' : 'JARA!'}</h1>
       </div>
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <div className="bubble" style={{ alignSelf: 'center', textAlign: 'center' }}>
@@ -748,7 +765,7 @@ function ErrorScreen({ stand, reason }: { stand: StandPublic | null; reason: Err
     },
   }[reason];
   return (
-    <Shell stand={stand}>
+    <Shell stand={stand} view="error">
       <Hero bubble={copy.bubble}>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={150} react />
       </Hero>

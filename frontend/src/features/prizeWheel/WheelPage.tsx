@@ -226,7 +226,7 @@ const quickDelay = () => (reduceMotion() ? 200 : 900);
 
 function Shell({ slug, children, sound, onSound }: { slug: string; children: React.ReactNode; sound?: boolean; onSound?: () => void }) {
   return (
-    <main className="phone wheel-page">
+    <main className="phone wheel-page page-in">
       <header className="topbar">
         <Link to={`/s/${slug}`} className="link-btn">Back</Link>
         {onSound ? (

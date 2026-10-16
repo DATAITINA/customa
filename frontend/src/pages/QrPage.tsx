@@ -36,7 +36,7 @@ export function QrPage({ slug }: { slug: string }) {
 
   if (denied) {
     return (
-      <main className="qr-sign">
+      <main className="qr-sign page-in">
         <Logo size={36} />
         <p style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Only the vendor can show this QR code.</p>
         <p className="note">Sign in to your dashboard, then tap "Show QR code".</p>
@@ -46,7 +46,7 @@ export function QrPage({ slug }: { slug: string }) {
   }
 
   return (
-    <main className="qr-sign">
+    <main className="qr-sign page-in">
       <Logo size={36} />
       <h1 className="display" style={{ fontSize: '2.875rem' }}>{stand?.stand.name ?? ' '}</h1>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>

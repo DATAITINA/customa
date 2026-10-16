@@ -24,7 +24,7 @@ import { Link } from '../App';
 export function VendorPage() {
   const { status } = useAuth();
   return (
-    <main className="vendor">
+    <main className="vendor page-in">
       <VendorTop />
       {status === 'loading' && <CharacterLoader kind="vendor" />}
       {status === 'unauthenticated' && <SignIn />}

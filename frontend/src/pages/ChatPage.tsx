@@ -112,7 +112,7 @@ export function ChatPage({ slug }: { slug: string }) {
   const closed = chat !== null && !chat.open;
 
   return (
-    <main className="phone" style={{ display: 'flex', flexDirection: 'column' }}>
+    <main className="phone page-in" style={{ display: 'flex', flexDirection: 'column' }}>
       <header className="topbar">
         <Link to={`/s/${slug}`} className="link-btn">Back</Link>
         <span style={{ fontWeight: 800 }}>Talk to {first}</span>

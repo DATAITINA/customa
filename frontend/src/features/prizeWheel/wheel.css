@@ -59,7 +59,9 @@
 .prize-how { margin: 0; font-size: 0.875rem; line-height: 1.45; max-width: 330px; }
 .prize-used { margin: 0; font-size: 1.125rem; font-weight: 800; }
 .prize-actions { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 4px; }
-.prize-burst { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 61; }
+/* The food rain falls behind the prize card, so it never covers the code or the QR. */
+.prize-burst { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+.prize-card { z-index: 1; }
 .prize-burst span { position: absolute; top: -40px; animation: food-rain 2.2s cubic-bezier(0.3, 0.6, 0.5, 1) both; }
 @keyframes food-rain { from { transform: translateY(0) rotate(0); opacity: 1; } to { transform: translateY(105vh) rotate(540deg); opacity: 0.2; } }
 

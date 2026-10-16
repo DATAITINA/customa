@@ -89,7 +89,7 @@ function route(parts: string[]) {
 function Home() {
   const last = lastStand();
   return (
-    <main className="qr-sign home">
+    <main className="qr-sign home page-in">
       <Logo size={42} />
       <Character body="pepper" color="pepper" accessory="headwrap" expression="excited" pose="wave" size={200} react follow />
       <h1 className="display" style={{ fontSize: '2.75rem' }}>A FRIENDLY FACE FOR EVERY FOOD STAND</h1>

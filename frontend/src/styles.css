@@ -226,8 +226,8 @@ textarea.input { height: auto; min-height: 96px; padding: 12px 16px; resize: ver
 
 /* Jara celebration */
 .jara { background: var(--blush); min-height: 100vh; position: relative; overflow: hidden; text-align: center; }
-.confetti { position: absolute; animation: fall 2.4s ease-out both; }
-@keyframes fall { from { transform: translateY(-120px) rotate(0deg); opacity: 0; } to { opacity: 1; } }
+.confetti { position: absolute; animation: fall 2.6s var(--ease-out) both; pointer-events: none; }
+@keyframes fall { from { transform: translateY(-160px) rotate(-90deg); opacity: 0; } 20% { opacity: 1; } to { opacity: 1; } }
 .code-card { background: var(--paper); border-radius: var(--radius-hero); padding: 20px; display: flex; flex-direction: column; gap: 8px; align-items: center; margin: 0 12px; position: relative; }
 
 /* Chat */
@@ -242,7 +242,7 @@ textarea.input { height: auto; min-height: 96px; padding: 12px 16px; resize: ver
 .lp-alert-note { font-size: 0.875rem; font-weight: 700; line-height: 1.4; }
 .scan-hint { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--radius-card); border: 2px dashed var(--ink); background: var(--paper); font-size: 1rem; line-height: 1.4; }
 .scan-hint-icon { flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-pill); background: var(--pepper); color: var(--on-pepper); display: flex; align-items: center; justify-content: center; }
-.almost-pill { padding: 6px 12px; border-radius: var(--radius-pill); background: var(--pepper-deep); color: var(--on-pepper); font-size: 0.875rem; font-weight: 800; animation: almost-pulse 1.6s ease-in-out infinite; }
+.almost-pill { white-space: nowrap; flex-shrink: 0; padding: 6px 12px; border-radius: var(--radius-pill); background: var(--pepper-deep); color: var(--on-pepper); font-size: 0.875rem; font-weight: 800; animation: almost-pulse 1.6s ease-in-out infinite; }
 @keyframes almost-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
 @media (prefers-reduced-motion: reduce) { .almost-pill { animation: none; } }
 .goodbye { margin: 4px 0 0; text-align: center; font-size: 1rem; font-weight: 800; }
@@ -569,3 +569,32 @@ tr.fresh td { background: var(--blush); }
 .how-icon { flex-shrink: 0; width: 44px; height: 44px; border-radius: var(--radius-pill); background: var(--paper); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
 .jara-done { position: relative; display: flex; flex-direction: column; gap: var(--sp-2); align-items: center; padding: 14px 12px 24px; }
 .offline-bar { margin: 0 12px 10px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--warn-bg); color: var(--ink); border: 2px solid var(--warn); font-size: var(--fs-sm); font-weight: 700; line-height: 1.4; }
+
+/* ---- Delight: small, quick, transform + opacity only (all off with reduced motion) ---- */
+/* Screens and views arrive with a soft rise, never a hard cut. */
+.page-in, .view-in { animation: view-in var(--dur) var(--ease-out) both; }
+@keyframes view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* The plate just counted: its stamp drops onto the card with a thump and a ripple. */
+.stamp { position: relative; }
+.stamp-land { animation: stamp-land 520ms var(--ease-spring) 380ms both; }
+.stamp-land::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; border: 3px solid var(--pepper); opacity: 0; animation: stamp-ripple 600ms var(--ease-out) 640ms; pointer-events: none; }
+@keyframes stamp-land {
+  0% { transform: translateY(-26px) scale(1.9) rotate(-18deg); opacity: 0; }
+  55% { transform: translateY(0) scale(0.86) rotate(4deg); opacity: 1; }
+  78% { transform: scale(1.08) rotate(-2deg); }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes stamp-ripple { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.9); opacity: 0; } }
+.progress-land { transform-origin: left center; animation: progress-land 700ms var(--ease-out) 300ms both; }
+@keyframes progress-land { from { transform: scaleX(0.6); } to { transform: none; } }
+/* The jara slot: one plate away, it glows and wiggles to say "come back". */
+.stamp-jara { font-family: var(--display); font-size: var(--fs-sm); color: var(--muted); }
+.stamp-next { border: 2px dashed var(--pepper); color: var(--pepper-text); background: var(--blush); animation: jara-wiggle 2.6s ease-in-out 1s infinite; }
+@keyframes jara-wiggle { 0%, 82%, 100% { transform: none; } 86% { transform: rotate(-12deg) scale(1.1); } 92% { transform: rotate(10deg) scale(1.1); } }
+/* The character pops up to celebrate the counted plate. */
+.hero-pop { display: inline-flex; transform-origin: 50% 90%; animation: hero-pop 700ms var(--ease-spring) both; }
+@keyframes hero-pop { 0% { transform: scale(0.7) translateY(20px); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: none; } }
+.jara-title { display: inline-block; animation: jara-pop 700ms var(--ease-spring) 120ms both; }
+@keyframes jara-pop { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 70% { transform: scale(1.08) rotate(2deg); opacity: 1; } 100% { transform: none; } }
+.thumb[aria-pressed='true'] { animation: thumb-pop 360ms var(--ease-spring); }
+@keyframes thumb-pop { 0% { transform: scale(0.8); } 60% { transform: scale(1.15); } 100% { transform: none; } }

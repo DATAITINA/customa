@@ -31,7 +31,7 @@ export function PlayPage({ slug }: { slug: string }) {
   const first = ch?.name.split(' ')[0] ?? stand?.stand.name ?? '';
 
   return (
-    <main className="phone">
+    <main className="phone page-in">
       <header className="topbar">
         <Link to={`/s/${slug}`} className="link-btn">Back</Link>
         <span className="games-title">{first ? `Play with ${first}` : 'Play'}</span>

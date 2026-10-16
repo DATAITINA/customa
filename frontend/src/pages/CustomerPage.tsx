@@ -27,6 +27,8 @@ import { WheelCard } from '../features/prizeWheel/WheelCard';
 import { UsualCard } from '../features/regulars/UsualCard';
 import { PlanCard } from '../features/visitPlans/PlanCard';
 import { PayCard } from '../features/payments/PayCard';
+import { RecoverCard } from '../features/cardRecovery/RecoverCard';
+import { SaveCard } from '../features/cardRecovery/SaveCard';
 import { CharacterLoader } from '../components/Loading';
 import { DeleteMyData } from '../components/DeleteMyData';
 
@@ -121,6 +123,17 @@ export function CustomerPage({ slug }: { slug: string }) {
         setView({ kind: 'error', message: e.message ?? 'Something went wrong' });
       }
     }
+  };
+
+  // "Already have a card?" worked: this browser now has its own key for the customer's card.
+  // A fresh scan still waiting counts now (the 6-hour rule decides); otherwise show the card.
+  const afterRecover = (c: CustomerState) => {
+    setMe(c);
+    const scan = getScan(slug);
+    if (scan && !scan.counted) handleCount({ consent: true });
+    else if ((c.seconds_left ?? 0) > 0) {
+      setView({ kind: 'tooSoon', secondsLeft: c.seconds_left ?? 0, windowSeconds: c.window_seconds, plate: c.plate_number, name: c.first_name });
+    } else setView({ kind: 'scan' });
   };
 
   // After a plate is counted somewhere else (a prepaid Plate Ajo plate), re-read the stand
@@ -233,6 +246,8 @@ export function CustomerPage({ slug }: { slug: string }) {
         <Hero tapLine={tapLine} bubble={`${ch?.greeting ?? 'Welcome!'} Wetin be your name?`}>
           <Character {...charProps} expression="excited" pose="wave" size={180} />
         </Hero>
+        {/* A returning customer in a new browser gets their card back before starting a new one. */}
+        <RecoverCard slug={slug} onRecovered={afterRecover} />
         <WelcomeForm onSubmit={handleCount} gift={giftStamps(stand)} total={stand.plates_for_jara} />
       </Shell>
     );
@@ -252,6 +267,8 @@ export function CustomerPage({ slug }: { slug: string }) {
         </Hero>
         <div className="stack">
           <ScanHint charName={charName} />
+          {!me && <RecoverCard slug={slug} onRecovered={afterRecover} />}
+          {me && <SaveCard slug={slug} />}
           {me && (
             <>
               <PlateCard plate={me.plate_number} total={total} gift={giftStamps(stand, !!me.crew_name)} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} />
@@ -329,6 +346,8 @@ export function CustomerPage({ slug }: { slug: string }) {
       </Hero>
       <div className="stack">
         <PlateCard plate={cardPlate} total={total} gift={giftStamps(stand, !!cardCrew)} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} />
+        {/* "Save your card so you never lose it": offered open right after the first plate. */}
+        <SaveCard slug={slug} offer={!r.returning} />
         {/* "When you go come back?": plan the next visit (a day and a time). */}
         <PlanCard slug={slug} character={ch} ask missed={r.plan_outcome === 'missed'} />
         {featureCards}

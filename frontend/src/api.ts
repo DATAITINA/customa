@@ -103,7 +103,7 @@ export type Dashboard = {
     jara_issued: number;
     average_rating: number | null;
   };
-  recent_visits: { id: number; name: string; plate_number: number; stars: number | null; at: string }[];
+  recent_visits: { id: number; name: string; plate_number: number; stars: number | null; at: string; saved?: boolean }[];
   // "Who's here now": customers counted in the last ARRIVAL_WINDOW_MINUTES (regular-arrived alert).
   here_now?: import('./features/regulars/regularsApi').HereNow[];
   // Plan the next visit: who is coming today and plans kept this week.

@@ -331,7 +331,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
             )}
             {d.recent_visits.map((v) => (
               <tr key={v.id} className={fresh.has(v.id) ? 'fresh' : undefined}>
-                <td>{v.name}</td>
+                <td>{v.name}{v.saved && <span className="saved-mark" title="Saved their card to a number" aria-label="saved card"> 💾</span>}</td>
                 <td>{v.plate_number === d.plates_for_jara ? `${v.plate_number}/${d.plates_for_jara} JARA` : `${v.plate_number}/${d.plates_for_jara}`}</td>
                 <td>{v.stars == null ? '–' : v.stars >= 4 ? 'Good' : 'Not good'}</td>
                 <td>{new Date(v.at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>

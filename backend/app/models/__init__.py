@@ -60,3 +60,17 @@ from .regulars import Arrival, CustomerUsual, VendorPushSubscription  # noqa: E4
 from .visit_plans import VisitPlan  # noqa: E402
 from .stand_photo import StandPhoto  # noqa: E402
 from .payments import Payment, PaymentCreate, PaymentUpdate  # noqa: E402
+from .card_recovery import (  # noqa: E402
+    CustomerDeviceKey,
+    CustomerDeviceKeyCreate,
+    CustomerDeviceKeyUpdate,
+    CustomerPhone,
+    CustomerPhoneCreate,
+    CustomerPhoneUpdate,
+    RecoveryAttempt,
+    RecoveryAttemptCreate,
+    RecoveryAttemptUpdate,
+    RecoveryCode,
+    RecoveryCodeCreate,
+    RecoveryCodeUpdate,
+)

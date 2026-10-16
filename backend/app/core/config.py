@@ -61,6 +61,9 @@ class CustomaSettings(ModuleSettingsBase):
     # Pay for a plate (Paystack test mode, or cash the vendor confirms): a paid plate counts as a
     # stamp. Off until the vendor turns it on; prices come from the stand's menu.
     PAYMENTS_ENABLED: bool = False
+    # Save your card: customers may link their card to their phone number + a 4-digit PIN, and
+    # get it back in any browser (another browser, in-app browser, Home Screen app). On by default.
+    CARD_RECOVERY_ENABLED: bool = True
     # The QR code's scan code changes when the vendor makes a new QR code (old prints stop counting).
     QR_VERSION: int = 1
     # Today's special, set by the vendor. It shows only on the day it was set (Nigeria time).

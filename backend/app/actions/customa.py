@@ -14,6 +14,7 @@ from ..models import (
     Character,
     CharacterCreate,
     CharacterUpdate,
+    CustomerDeviceKey,
     CrewPlate,
     Customer,
     CustomerCreate,
@@ -45,7 +46,20 @@ class CharacterAction(ModelAction[Character, CharacterCreate, CharacterUpdate]):
 
 class CustomerAction(ModelAction[Customer, CustomerCreate, CustomerUpdate]):
     def get_by_key(self, session: Session, *, workspace_id: int, key: str) -> Customer | None:
-        return self.get_by_all(session, workspace_id=workspace_id, key=key)
+        """The customer with this key: their first key, or a key another browser got by proving
+        the card is theirs (card recovery). The key the browser presented is kept on the object
+        (`_presented_key`, never saved) so each browser keeps using its own key."""
+        customer = self.get_by_all(session, workspace_id=workspace_id, key=key)
+        if customer is None:
+            device = session.exec(
+                select(CustomerDeviceKey).where(
+                    CustomerDeviceKey.workspace_id == workspace_id, CustomerDeviceKey.key == key
+                )
+            ).first()
+            customer = session.get(Customer, device.customer_id) if device else None
+        if customer is not None:
+            object.__setattr__(customer, "_presented_key", key)
+        return customer
 
     def create_for_stand(
         self, session: Session, *, workspace_id: int, data: CustomerCreate

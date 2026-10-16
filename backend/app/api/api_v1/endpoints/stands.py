@@ -24,7 +24,7 @@ from app.models import (
     Visit,
     Workspace,
 )
-from app.services import alerts, insights, prize_wheel, regulars, sms_alerts, stand_photo, visit_plans
+from app.services import alerts, card_recovery, insights, prize_wheel, regulars, sms_alerts, stand_photo, visit_plans
 from app.services.bisi import suggest_character
 from app.services.chat_log import recent_questions
 from app.services.qr import scan_code
@@ -137,6 +137,7 @@ def dashboard(
     ).all()
 
     wheel_live = prize_wheel.live_for(session, workspace.id, stand_settings)
+    saved = card_recovery.saved_ids(session, {c.id for _, c, _ in recent})
     return {
         "stand": stand_view(session, workspace),
         # Plan the next visit: who is coming today (by time slot) and plans kept this week.
@@ -178,6 +179,8 @@ def dashboard(
                 "plate_number": visit.plate_number,
                 "stars": rating.stars if rating else None,
                 "at": visit.created_at,
+                # Saved their card to a number (a small mark only: the number is never shown).
+                "saved": customer.id in saved,
             }
             for visit, customer, rating in recent
         ],

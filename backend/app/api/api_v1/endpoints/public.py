@@ -29,6 +29,7 @@ from app.core.config import CustomaSettings
 from app.models import Customer, CustomerCreate, JaraReward, Rating, RatingCreate, Visit, Workspace
 from app.services import (
     alerts,
+    card_recovery,
     character_chat,
     lunch_crew,
     payments,
@@ -147,7 +148,8 @@ def customer_view(
             )
         ]
     return {
-        "key": customer.key,
+        # The key this browser uses (its own key after card recovery), never another browser's.
+        "key": getattr(customer, "_presented_key", None) or customer.key,
         "first_name": customer.first_name,
         "plate_number": plate_number,
         "window_seconds": window_seconds_for(customer, stand_settings),
@@ -350,7 +352,7 @@ def delete_my_data(
 ) -> dict[str, Any]:
     """Forget this customer at this stand: chats, ratings, jara, plates, then the customer."""
     # Plate Ajo refuses (409) while prepaid plates remain, before anything is deleted.
-    for feature in (plate_ajo, lunch_crew, prize_wheel, regulars, visit_plans, payments):
+    for feature in (plate_ajo, lunch_crew, prize_wheel, regulars, visit_plans, payments, card_recovery):
         feature.forget_customer(session, workspace=workspace, customer=customer)
     forget_customer(session, workspace=workspace, customer=customer)
     character_chat.delete_memory(session, customer=customer)

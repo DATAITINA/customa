@@ -88,7 +88,7 @@ function SignIn() {
           </button>
         ))}
       </div>
-      <h1 className="display" style={{ fontSize: 40 }}>{mode === 'login' ? 'VENDOR SIGN IN' : 'START YOUR STAND'}</h1>
+      <h1 className="display" style={{ fontSize: '2.5rem' }}>{mode === 'login' ? 'VENDOR SIGN IN' : 'START YOUR STAND'}</h1>
       <form
         className="stack"
         style={{ padding: 0, gap: 14 }}
@@ -221,7 +221,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
           }
         }}
       >
-        <h1 className="display" style={{ fontSize: 40 }}>SET UP YOUR STAND</h1>
+        <h1 className="display" style={{ fontSize: '2.5rem' }}>SET UP YOUR STAND</h1>
         <label className="field">Stand name
           <input className="input" required minLength={2} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mama Ekaette's Kitchen" />
         </label>
@@ -236,7 +236,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
           </button>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexGrow: 1, minWidth: 0 }}>
             <span className="soon-badge" style={{ alignSelf: 'flex-start' }}>COMING SOON</span>
-            <span style={{ fontWeight: 800, fontSize: 15 }}>Rather talk? Send a voice note</span>
+            <span style={{ fontWeight: 800, fontSize: '0.9375rem' }}>Rather talk? Send a voice note</span>
             <span className="note">English or Nigerian Pidgin. We turn it into your stand's words.</span>
           </div>
         </div>
@@ -302,7 +302,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         <div className="dash-title">
           {ch && <Character body={ch.body} color={ch.color} accessory={ch.accessory} pose="idle" size={64} react />}
           <div style={{ minWidth: 0 }}>
-            <h1 className="display" style={{ fontSize: 34 }}>{d.stand.name}</h1>
+            <h1 className="display" style={{ fontSize: '2.125rem' }}>{d.stand.name}</h1>
             <span className="live">Live, updates every 10 seconds</span>
           </div>
         </div>
@@ -352,10 +352,10 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         <OpenJara slug={slug} items={d.open_jara} onChange={() => q.refetch()} />
         <div className="card-outline">
           <span className="eyebrow">FOOD QUESTIONS FOR {ch?.name.split(' ')[0].toUpperCase() ?? ''}</span>
-          <span className="note" style={{ fontSize: 13 }}>Customers' chats are private. You only see their questions about the food.</span>
+          <span className="note" style={{ fontSize: '0.8125rem' }}>Customers' chats are private. You only see their questions about the food.</span>
           {d.recent_questions.length === 0 && <span className="note">No food questions yet.</span>}
           {d.recent_questions.map((m) => (
-            <div key={m.id} className="row" style={{ fontSize: 15 }}>
+            <div key={m.id} className="row" style={{ fontSize: '0.9375rem' }}>
               <span style={{ fontWeight: 600 }}>"{m.question}"</span>
               <span className="note" style={{ whiteSpace: 'nowrap' }}>{m.who}</span>
             </div>
@@ -388,11 +388,11 @@ function OpenJara({ slug, items, onChange }: { slug: string; items: { code: stri
       {items.map((j) => (
         <div key={j.code} className="row" style={{ alignItems: 'center' }}>
           <span>
-            <strong style={{ fontFamily: 'var(--display)', fontSize: 20, letterSpacing: '0.04em' }}>{j.code}</strong> <span className="note">{j.name}</span>
-            {j.prize && <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>🎁 {j.prize}</span>}
+            <strong style={{ fontFamily: 'var(--display)', fontSize: '1.25rem', letterSpacing: '0.04em' }}>{j.code}</strong> <span className="note">{j.name}</span>
+            {j.prize && <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700 }}>🎁 {j.prize}</span>}
             {j.spin_pending && <span className="note" style={{ display: 'block' }}>🎡 Waiting for the customer's spin</span>}
           </span>
-          <button className="btn" style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: 14 }} disabled={busy === j.code}
+          <button className="btn" style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: '0.875rem' }} disabled={busy === j.code}
             onClick={async () => { setBusy(j.code); try { await api.redeemJara(slug, j.code); onChange(); } finally { setBusy(null); } }}>
             Mark as given
           </button>
@@ -516,7 +516,7 @@ function CustomizeStand({ slug, stand, onSaved }: { slug: string; stand: StandSu
     <div className="card-outline customize" style={{ gap: 12 }}>
       <button type="button" className="customize-head" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span className="eyebrow">CUSTOMIZE YOUR STAND</span>
-        <span className="note" style={{ fontSize: 14 }}>Character, colours and a photo of your stand</span>
+        <span className="note" style={{ fontSize: '0.875rem' }}>Character, colours and a photo of your stand</span>
         <span className="customize-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
       {open && (
@@ -533,7 +533,7 @@ function CustomizeStand({ slug, stand, onSaved }: { slug: string; stand: StandSu
           <CharacterPicker value={current} onChange={(next) => setLook({ ...look, ...next })} />
           <button type="button" className="btn" disabled={!changed || busy} onClick={save}>{busy ? 'Saving…' : 'Save character'}</button>
           <StandPhoto key={stand.photo ?? 'none'} initialUrl={stand.photo ? photoUrl(stand.photo) : null} busy={photoBusy} onChange={changePhoto} />
-          {note && <span style={{ fontSize: 14, fontWeight: 700 }} role="status">{note}</span>}
+          {note && <span style={{ fontSize: '0.875rem', fontWeight: 700 }} role="status">{note}</span>}
           {error && <span className="error" role="alert">{error}</span>}
         </div>
       )}

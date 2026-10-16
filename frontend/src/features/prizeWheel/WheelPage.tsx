@@ -122,8 +122,8 @@ export function WheelPage({ slug }: { slug: string }) {
     return (
       <Shell slug={slug}>
         <div className="stack" style={{ alignItems: 'center', textAlign: 'center' }}>
-          <h1 className="display" style={{ fontSize: 40 }}>THE WHEEL IS RESTING</h1>
-          <p className="note" style={{ fontSize: 15 }}>{stand.stand.name} has no prize wheel today. Your jara still works: show its code to the vendor.</p>
+          <h1 className="display" style={{ fontSize: '2.5rem' }}>THE WHEEL IS RESTING</h1>
+          <p className="note" style={{ fontSize: '0.9375rem' }}>{stand.stand.name} has no prize wheel today. Your jara still works: show its code to the vendor.</p>
           <Link to={`/s/${slug}`} className="btn">Back to my card</Link>
         </div>
       </Shell>

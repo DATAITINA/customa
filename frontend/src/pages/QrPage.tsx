@@ -38,7 +38,7 @@ export function QrPage({ slug }: { slug: string }) {
     return (
       <main className="qr-sign">
         <Logo size={36} />
-        <p style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Only the vendor can show this QR code.</p>
+        <p style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Only the vendor can show this QR code.</p>
         <p className="note">Sign in to your dashboard, then tap "Show QR code".</p>
         <div style={{ width: 280 }}><Link to="/vendor" className="btn">Go to dashboard</Link></div>
       </main>
@@ -48,7 +48,7 @@ export function QrPage({ slug }: { slug: string }) {
   return (
     <main className="qr-sign">
       <Logo size={36} />
-      <h1 className="display" style={{ fontSize: 46 }}>{stand?.stand.name ?? ' '}</h1>
+      <h1 className="display" style={{ fontSize: '2.875rem' }}>{stand?.stand.name ?? ' '}</h1>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="excited" pose="wave" size={180} />
         <div className="qr-box">
@@ -56,8 +56,8 @@ export function QrPage({ slug }: { slug: string }) {
         </div>
       </div>
       <LastPlatesBanner lp={stand?.last_plates ?? null} big />
-      <p style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Scan to say hi to {ch?.name ?? 'us'}</p>
-      <p className="note" style={{ fontSize: 15 }}>Every visit counts a plate. Plate {stand?.plates_for_jara ?? 6} earns a jara.</p>
+      <p style={{ fontSize: '1.375rem', fontWeight: 800, margin: 0 }}>Scan to say hi to {ch?.name ?? 'us'}</p>
+      <p className="note" style={{ fontSize: '0.9375rem' }}>Every visit counts a plate. Plate {stand?.plates_for_jara ?? 6} earns a jara.</p>
       <div className="qr-tools">
         {confirmNew ? (
           <>

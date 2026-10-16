@@ -396,7 +396,7 @@ function PlateCard({ plate, total, gift = 0, windowSeconds, crewName }: { plate:
     <div className="card">
       <div className="row">
         <span className="eyebrow">{crewName ? 'CREW CARD' : 'YOUR JARA'}</span>
-        <span style={{ fontSize: 13, fontWeight: 700 }}>
+        <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
           {crewName ? `${crewName} · jara on plate ${total}, by turns` : `Free extra on plate ${of}`}
         </span>
       </div>
@@ -440,10 +440,10 @@ function WelcomeForm({ onSubmit, gift = 0, total = 6 }: { onSubmit: (b: { first_
         setBusy(false);
       }}
     >
-      <h1 className="display" style={{ fontSize: 38 }}>YOUR FIRST PLATE!</h1>
+      <h1 className="display" style={{ fontSize: '2.375rem' }}>YOUR FIRST PLATE!</h1>
       {gift > 0 && (
         <div className="gift-card" role="note">
-          <span aria-hidden="true" style={{ fontSize: 26 }}>🎁</span>
+          <span aria-hidden="true" style={{ fontSize: '1.625rem' }}>🎁</span>
           <span><strong>Welcome gift: {gift} stamps on us!</strong> Your card starts at {gift} of {total + gift}, and this plate makes {gift + 1}.</span>
         </div>
       )}
@@ -490,11 +490,11 @@ function TooSoon({
     <>
       <Hero bubble={`You don collect this plate already${name ? ', ' + name : ''}! I dey count the next one.`}>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={170} react follow />
-        <div className="timer" style={{ background: `conic-gradient(#141414 0 ${pct}%, #FFFFFF ${pct}% 100%)` }} aria-label={`Next plate in ${label}`}>
+        <div className="timer" style={{ background: `conic-gradient(var(--ink) 0 ${pct}%, var(--paper) ${pct}% 100%)` }} aria-label={`Next plate in ${label}`}>
           <div className="timer-inner">
             {/* One line always: hours ("5h 59m") get a smaller size so they fit the ring. */}
-            <span style={{ fontFamily: 'var(--display)', fontSize: label.length > 5 ? 21 : 28, lineHeight: 1, whiteSpace: 'nowrap' }}>{label}</span>
-            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>NEXT PLATE</span>
+            <span style={{ fontFamily: 'var(--display)', fontSize: label.length > 5 ? '1.3125rem' : '1.75rem', lineHeight: 1, whiteSpace: 'nowrap' }}>{label}</span>
+            <span style={{ fontSize: '0.5625rem', fontWeight: 800, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>NEXT PLATE</span>
           </div>
         </div>
       </Hero>
@@ -503,7 +503,7 @@ function TooSoon({
         {extras}
         <div className="card-outline">
           <span className="eyebrow">WHY THE WAIT?</span>
-          <span style={{ fontSize: 15, lineHeight: 1.45, fontWeight: 600 }}>
+          <span style={{ fontSize: '0.9375rem', lineHeight: 1.45, fontWeight: 600 }}>
             One plate per visit keeps the jara fair for everyone.
           </span>
         </div>
@@ -584,11 +584,11 @@ function OpenJara({ slug, codes }: { slug: string; codes: OpenJaraEntry[] }) {
           <span className="eyebrow">{ready.length > 1 ? 'YOUR JARA CODES' : 'YOUR JARA'}</span>
           {ready.map((j) => (
             <div key={j.code} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {j.prize && <span style={{ fontSize: 15, fontWeight: 800 }}>🎁 {j.prize}</span>}
-              <span style={{ fontFamily: 'var(--display)', fontSize: j.code!.length > 11 ? 26 : 32, lineHeight: 1, letterSpacing: '0.06em' }}>{j.code}</span>
+              {j.prize && <span style={{ fontSize: '0.9375rem', fontWeight: 800 }}>🎁 {j.prize}</span>}
+              <span style={{ fontFamily: 'var(--display)', fontSize: j.code!.length > 11 ? '1.625rem' : '2rem', lineHeight: 1, letterSpacing: '0.06em' }}>{j.code}</span>
             </div>
           ))}
-          <span style={{ fontSize: 15, fontWeight: 700 }}>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 700 }}>
             {ready.some((j) => j.prize) ? 'Show this to the vendor to collect your prize. One use.' : 'Show this to the vendor for a free extra portion. One use.'}
           </span>
           {ready.some((j) => j.prize) && <Link to={`/s/${slug}/wheel`} className="link-btn" >Show the QR code</Link>}
@@ -606,7 +606,7 @@ function Rate({ slug, visitId }: { slug: string; visitId: number }) {
   };
   return (
     <div className="rate">
-      <span style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.25 }}>{choice ? 'Thanks for rating!' : "Rate today's food"}</span>
+      <span style={{ fontSize: '1rem', fontWeight: 800, lineHeight: 1.25 }}>{choice ? 'Thanks for rating!' : "Rate today's food"}</span>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="thumb" aria-label="Good" aria-pressed={choice === 5} onClick={() => rate(5)}><ThumbUp /></button>
         <button type="button" className="thumb" aria-label="Not good" aria-pressed={choice === 1} onClick={() => rate(1)}><ThumbDown /></button>
@@ -624,7 +624,7 @@ function Menu({ items }: { items: { item: string; price: number }[] }) {
       {open && (
         <div className="card-outline">
           {items.map((m) => (
-            <div key={m.item} className="row" style={{ fontSize: 15 }}>
+            <div key={m.item} className="row" style={{ fontSize: '0.9375rem' }}>
               <span style={{ fontWeight: 600 }}>{m.item}</span>
               <span style={{ fontWeight: 800 }}>{naira(m.price)}</span>
             </div>
@@ -662,14 +662,14 @@ function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: Stan
         <Logo size={22} />
       </header>
       <div style={{ position: 'relative', paddingTop: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em' }}>
+        <span style={{ fontSize: '0.8125rem', fontWeight: 800, letterSpacing: '0.1em' }}>
           {result.surprise
             ? `${(ch?.name ?? 'THE VENDOR').toUpperCase()} DON DASH YOU · PLATE ${result.plate_number + gift}`
             : result.crew
               ? `${result.crew.name.toUpperCase()}: YOUR TURN · ${result.plates_for_jara} OF ${result.plates_for_jara} PLATES`
               : `${result.plates_for_jara + gift} OF ${result.plates_for_jara + gift} PLATES`}
         </span>
-        <h1 className="display" style={{ fontSize: result.surprise ? 76 : 104 }}>{result.surprise ? 'SURPRISE JARA!' : 'JARA!'}</h1>
+        <h1 className="display" style={{ fontSize: result.surprise ? '4.75rem' : '6.5rem' }}>{result.surprise ? 'SURPRISE JARA!' : 'JARA!'}</h1>
       </div>
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <div className="bubble" style={{ alignSelf: 'center', textAlign: 'center' }}>
@@ -682,15 +682,15 @@ function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: Stan
       {result.jara?.spin ? (
         // Prize Wheel: the jara is a spin; the wheel picks the food and gives the code.
         <div className="code-card" role="status">
-          <span style={{ fontSize: 15, fontWeight: 800 }}>Your jara is a spin on {ch?.name.split(' ')[0] ?? 'the'}'s prize wheel!</span>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 800 }}>Your jara is a spin on {ch?.name.split(' ')[0] ?? 'the'}'s prize wheel!</span>
           <Link to={`/s/${slug}/wheel`} className="btn wheel-spin">🎡 SPIN NOW</Link>
           <span className="note">See which food you win. You can also spin later from your card.</span>
         </div>
       ) : (
         <div className="code-card" role="status">
-          <span style={{ fontSize: 15, fontWeight: 800 }}>Show this screen to the vendor</span>
-          <span style={{ fontFamily: 'var(--display)', fontSize: 44, lineHeight: 1, letterSpacing: '0.06em' }}>{result.jara?.code}</span>
-          <span style={{ fontSize: 18, fontWeight: 800 }}>A free extra portion</span>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 800 }}>Show this screen to the vendor</span>
+          <span style={{ fontFamily: 'var(--display)', fontSize: '2.75rem', lineHeight: 1, letterSpacing: '0.06em' }}>{result.jara?.code}</span>
+          <span style={{ fontSize: '1.125rem', fontWeight: 800 }}>A free extra portion</span>
           <span className="note">{result.customer.first_name ? `${result.customer.first_name} · ` : ''}one use</span>
         </div>
       )}

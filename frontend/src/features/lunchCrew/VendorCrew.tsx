@@ -48,7 +48,7 @@ export function VendorCrewPanel({ slug }: { slug: string }) {
           {d.enabled ? 'On' : 'Off'}
         </button>
       </div>
-      <span className="note" style={{ fontSize: 14 }}>
+      <span className="note" style={{ fontSize: '0.875rem' }}>
         Friends (up to {d.max_members}) share one card. Every {d.plates_for_jara}th crew plate, one jara goes to the next
         member in turn, like ajo. Same cost to you: one jara per {d.plates_for_jara} plates.
       </span>
@@ -62,16 +62,16 @@ export function VendorCrewPanel({ slug }: { slug: string }) {
           {d.crews.map((c, i) => (
             <div key={`${c.name}-${i}`} className="card" style={{ gap: 8 }}>
               <div className="row">
-                <span style={{ fontSize: 17, fontWeight: 800 }}>{c.name}</span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>
+                <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>{c.name}</span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
                   Plate {c.plate_number}/{c.plates_for_jara}
                 </span>
               </div>
               <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={c.plates_for_jara} aria-valuenow={c.plate_number}>
                 <div style={{ width: `${(c.plate_number / c.plates_for_jara) * 100}%` }} />
               </div>
-              <span style={{ fontSize: 14, fontWeight: 600 }}>{c.members.join(', ')}</span>
-              {c.next_jara_to && <span style={{ fontSize: 14, fontWeight: 800 }}>Next jara: {c.next_jara_to}</span>}
+              <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{c.members.join(', ')}</span>
+              {c.next_jara_to && <span style={{ fontSize: '0.875rem', fontWeight: 800 }}>Next jara: {c.next_jara_to}</span>}
             </div>
           ))}
         </div>

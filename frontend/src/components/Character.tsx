@@ -138,8 +138,8 @@ function animalParts(body: Body, fill: string, x: number, y: number) {
       return {
         back: (
           <>
-            <circle cx={62} cy={70} r={19} fill={INK} />
-            <circle cx={138} cy={70} r={19} fill={INK} />
+            <circle cx={62} cy={70} r={19} fill={INK} stroke={INK} strokeWidth={4} />
+            <circle cx={138} cy={70} r={19} fill={INK} stroke={INK} strokeWidth={4} />
           </>
         ),
         front: (
@@ -154,7 +154,7 @@ function animalParts(body: Body, fill: string, x: number, y: number) {
     case 'chick':
       return {
         back: null,
-        front: <path d={`M${x - 12} ${y + 10} Q${x} ${y + 4} ${x + 12} ${y + 10} L${x} ${y + 24} Z`} fill="#FF8A1F" stroke={INK} strokeWidth={4} strokeLinejoin="round" />,
+        front: <path className="char-face" d={`M${x - 12} ${y + 10} Q${x} ${y + 4} ${x + 12} ${y + 10} L${x} ${y + 24} Z`} fill="#FF8A1F" stroke={INK} strokeWidth={4} strokeLinejoin="round" />,
         eyeColor: INK,
       };
     case 'bunny':
@@ -167,7 +167,7 @@ function animalParts(body: Body, fill: string, x: number, y: number) {
             <path d="M121 54 C128 34 126 18 120 18 C114 20 112 36 115 52 Z" fill={PINK} />
           </>
         ),
-        front: <path d={`M${x - 5} ${y + 9} L${x + 5} ${y + 9} L${x} ${y + 14} Z`} fill={PINK} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />,
+        front: <path className="char-face" d={`M${x - 5} ${y + 9} L${x + 5} ${y + 9} L${x} ${y + 14} Z`} fill={PINK} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />,
         eyeColor: INK,
       };
     case 'cat':
@@ -182,7 +182,7 @@ function animalParts(body: Body, fill: string, x: number, y: number) {
         ),
         front: (
           <>
-            <path d={`M${x - 5} ${y + 9} L${x + 5} ${y + 9} L${x} ${y + 14} Z`} fill={PINK} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
+            <path className="char-face" d={`M${x - 5} ${y + 9} L${x + 5} ${y + 9} L${x} ${y + 14} Z`} fill={PINK} stroke={INK} strokeWidth={2.5} strokeLinejoin="round" />
             <path d={`M${x - 24} ${y + 12} H${x - 40} M${x - 24} ${y + 18} L${x - 38} ${y + 22} M${x + 24} ${y + 12} H${x + 40} M${x + 24} ${y + 18} L${x + 38} ${y + 22}`} stroke={INK} strokeWidth={2.5} strokeLinecap="round" />
           </>
         ),
@@ -355,7 +355,7 @@ export function Character({
       viewBox="0 0 200 240"
       role="img"
       aria-label={`${bodyKey} character`}
-      className={reacting ? 'char-react' : undefined}
+      className={reacting ? 'char-svg char-react' : 'char-svg'}
       style={{ overflow: 'visible' }}
     >
       <ellipse cx="100" cy="226" rx={shadowRx} ry="6" fill={INK} opacity="0.08" />
@@ -387,16 +387,16 @@ export function Character({
                 )}
               </ellipse>
             ))}
-            {!glasses && f.eyesLine && <path d={f.eyesLine} fill="none" strokeWidth={4.5} {...stroke} stroke={eyeLineStroke} />}
+            {!glasses && f.eyesLine && <path className="char-face" d={f.eyesLine} fill="none" strokeWidth={4.5} {...stroke} stroke={eyeLineStroke} />}
           </g>
           {f.mouthFill && bodyKey !== 'chick' && <path d={f.mouthFill} fill={INK} />}
-          {bodyKey !== 'chick' && <path d={f.mouthLine} fill="none" strokeWidth={4.5} {...stroke} />}
+          {bodyKey !== 'chick' && <path className="char-face" d={f.mouthLine} fill="none" strokeWidth={4.5} {...stroke} />}
           {accT && (
             <g transform={accT}>
               {accFill && <path d={accFill} fill={c.acc} />}
               {accWhite && <path d={accWhite} fill="#FFFFFF" stroke={INK} strokeWidth={4} strokeLinejoin="round" />}
               {accBlack && <path d={accBlack} fill={INK} />}
-              {accLine && <path d={accLine} fill="none" strokeWidth={4} {...stroke} />}
+              {accLine && <path className="char-face" d={accLine} fill="none" strokeWidth={4} {...stroke} />}
             </g>
           )}
         </g>

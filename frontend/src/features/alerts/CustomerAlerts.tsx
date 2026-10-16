@@ -109,7 +109,7 @@ export function AlertsCard({ slug, stand }: { slug: string; stand: StandPublic }
 
       {pushOffered && (phase === 'on' ? (
         <>
-          <span style={{ fontSize: 15, fontWeight: 600 }}>🔔 {first} go also ping this phone when food is almost finished.</span>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>🔔 {first} go also ping this phone when food is almost finished.</span>
           <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={turnOff}>Turn phone pings off</button>
         </>
       ) : phase === 'denied' ? (
@@ -120,7 +120,7 @@ export function AlertsCard({ slug, stand }: { slug: string; stand: StandPublic }
         </button>
       ) : (
         <>
-          <span style={{ fontSize: 15, fontWeight: 600 }}>Get a ping when {first} has food left before closing. Only then, no spam.</span>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Get a ping when {first} has food left before closing. Only then, no spam.</span>
           <button type="button" className="btn" disabled={phase === 'busy'} onClick={turnOn}>
             {phase === 'busy' ? 'Turning on…' : `🔔 Get ${first}'s alerts`}
           </button>
@@ -171,7 +171,7 @@ function TextAlerts({ slug, first, terms, texting }: { slug: string; first: stri
   if (number) {
     return (
       <>
-        <span style={{ fontSize: 15, fontWeight: 600 }}>📱 {first} go text {number} when food is almost finished.</span>
+        <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>📱 {first} go text {number} when food is almost finished.</span>
         <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} disabled={busy} onClick={stop}>Stop texts</button>
         {error && <span className="error">{error}</span>}
       </>
@@ -180,7 +180,7 @@ function TextAlerts({ slug, first, terms, texting }: { slug: string; first: stri
 
   return (
     <form className="text-alerts" onSubmit={textMe}>
-      <span style={{ fontSize: 15, fontWeight: 600 }}>Get a text when {first} has food left before closing. Any phone, no app.</span>
+      <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Get a text when {first} has food left before closing. Any phone, no app.</span>
       <label className="field" htmlFor={`sms-phone-${slug}`}>
         <span>Your phone number</span>
         <input

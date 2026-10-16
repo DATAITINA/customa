@@ -1,29 +1,29 @@
 /* ---- Plan the next visit ---- */
 .plan-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 2px solid var(--ink); border-radius: var(--radius-card); background: var(--paper); }
-.plan-card.has-plan { background: #E3F6E8; border-color: #1F8A4C; }
+.plan-card.has-plan { background: var(--ok-bg); border-color: var(--ok); }
 .plan-head { display: flex; align-items: center; gap: 10px; }
 .plan-head > :first-child { flex-shrink: 0; }
-.plan-bubble { position: relative; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 18px; background: var(--paper); font-weight: 800; font-size: 16px; line-height: 1.3; animation: line-in 0.3s ease both; }
-.plan-step { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+.plan-bubble { position: relative; padding: 10px 14px; border: 2px solid var(--ink); border-radius: var(--radius-lg); background: var(--paper); font-weight: 800; font-size: 1rem; line-height: 1.3; animation: line-in 0.3s ease both; }
+.plan-step { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
 .plan-days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .plan-days::-webkit-scrollbar { display: none; }
-.plan-days button { flex: 0 0 auto; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper); font-weight: 800; font-size: 14px; color: var(--ink); white-space: nowrap; }
+.plan-days button { flex: 0 0 auto; min-height: 44px; padding: 0 14px; border-radius: var(--radius-pill); border: 2px solid var(--ink); background: var(--paper); font-weight: 800; font-size: 0.875rem; color: var(--ink); white-space: nowrap; }
 .plan-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.plan-slots button { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 56px; padding: 6px 4px; border-radius: 16px; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); font-size: 12px; }
-.plan-slots strong { font-size: 15px; }
+.plan-slots button { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 56px; padding: 6px 4px; border-radius: var(--radius-md); border: 2px solid var(--ink); background: var(--paper); color: var(--ink); font-size: 0.75rem; }
+.plan-slots strong { font-size: 0.9375rem; }
 .plan-days button.on, .plan-slots button.on { background: var(--ink); color: var(--paper); }
 .plan-slots button:disabled { border-style: dashed; }
-.plan-label { font-size: 16px; font-weight: 800; }
-.btn.plan-calendar { background: #1F8A4C; }
+.plan-label { font-size: 1rem; font-weight: 800; }
+.btn.plan-calendar { background: var(--ok); }
 .plan-actions { display: flex; gap: 14px; }
 
 /* Vendor */
 .vendor-plans { gap: 12px; }
 .vp-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 560px) { .vp-row { grid-template-columns: minmax(0, 1fr); } }
-.vp-block { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 16px; background: var(--stone); }
-.vp-big { font-family: var(--display); font-size: 34px; line-height: 1; }
-.vp-sub { font-size: 13px; font-weight: 600; }
+.vp-block { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--stone); }
+.vp-big { font-family: var(--display); font-size: 2.125rem; line-height: 1; }
+.vp-sub { font-size: 0.8125rem; font-weight: 600; }
 .vp-names { display: flex; flex-wrap: wrap; gap: 6px; }
-.vp-names span { padding: 4px 10px; border-radius: 999px; background: var(--blush); font-size: 13px; font-weight: 700; }
-.vp-names span.came { background: #E3F6E8; }
+.vp-names span { padding: 4px 10px; border-radius: var(--radius-pill); background: var(--blush); font-size: 0.8125rem; font-weight: 700; }
+.vp-names span.came { background: var(--ok-bg); }

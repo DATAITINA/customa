@@ -132,7 +132,7 @@ export function ChatPage({ slug }: { slug: string }) {
       ) : noPlate ? (
         <div className="stack">
           <div className="card-outline">
-            <span style={{ fontSize: 17, fontWeight: 800 }}>Count a plate first, then we can talk! 🍛</span>
+            <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>Count a plate first, then we can talk! 🍛</span>
             <span className="note">Scan the QR code at the stand to count your plate. Your chat opens with each plate.</span>
           </div>
           <Link to={`/s/${slug}`} className="btn">Go to my card</Link>
@@ -165,7 +165,7 @@ export function ChatPage({ slug }: { slug: string }) {
                     <span className="note">Nothing yet. Tell {first} your favourite dish!</span>
                   ) : (
                     <>
-                      {remembered.map((line) => <span key={line} style={{ fontSize: 15, fontWeight: 600 }}>{line}</span>)}
+                      {remembered.map((line) => <span key={line} style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{line}</span>)}
                       <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={forget}>Forget all of this</button>
                     </>
                   )}
@@ -176,8 +176,8 @@ export function ChatPage({ slug }: { slug: string }) {
 
           {closed ? (
             <div className="chat-closed" role="status">
-              <span style={{ fontSize: 17, fontWeight: 800 }}>{first} don go back to the pot 🍲</span>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>Your chat opens again with your next plate, right where you stopped.</span>
+              <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>{first} don go back to the pot 🍲</span>
+              <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Your chat opens again with your next plate, right where you stopped.</span>
               <span className="note">{waitText(chat.seconds_left)}</span>
               <Link to={`/s/${slug}`} className="btn">Back to my card</Link>
             </div>

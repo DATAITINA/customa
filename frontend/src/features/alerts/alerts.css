@@ -1,12 +1,12 @@
 .alerts-card { border: 2px solid var(--ink); border-radius: var(--radius-card); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; background: var(--paper); }
-.alerts-on-pill { padding: 4px 10px; border-radius: 999px; background: #1F8A4C; color: var(--paper); font-size: 12px; font-weight: 800; }
-.alert-preview { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 18px; background: var(--stone); box-shadow: 0 6px 18px rgba(20, 20, 20, 0.08); }
-.alert-preview-avatar { flex-shrink: 0; width: 52px; height: 52px; border-radius: 999px; background: var(--blush); border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.alerts-on-pill { padding: 4px 10px; border-radius: var(--radius-pill); background: var(--ok); color: var(--paper); font-size: 0.75rem; font-weight: 800; }
+.alert-preview { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: var(--radius-lg); background: var(--stone); box-shadow: 0 6px 18px rgba(20, 20, 20, 0.08); }
+.alert-preview-avatar { flex-shrink: 0; width: 52px; height: 52px; border-radius: var(--radius-pill); background: var(--blush); border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .alert-preview-avatar svg { margin-top: 8px; }
-.alert-preview-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; line-height: 1.35; }
-.alert-preview-text strong { font-size: 15px; }
-.alert-preview-app { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: var(--muted); }
+.alert-preview-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 0.875rem; line-height: 1.35; }
+.alert-preview-text strong { font-size: 0.9375rem; }
+.alert-preview-app { font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.06em; color: var(--muted); }
 .text-alerts { display: flex; flex-direction: column; gap: 12px; }
-.text-alerts-agree { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.text-alerts-agree { display: flex; gap: 10px; align-items: flex-start; font-size: 0.8125rem; line-height: 1.45; color: var(--muted); }
 .text-alerts-agree input { flex-shrink: 0; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--ink); }
-.alerts-soon { align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: var(--stone); font-size: 13px; font-weight: 700; }
+.alerts-soon { align-self: flex-start; padding: 6px 12px; border-radius: var(--radius-pill); background: var(--stone); font-size: 0.8125rem; font-weight: 700; }

@@ -92,8 +92,8 @@ function Home() {
     <main className="qr-sign home">
       <Logo size={42} />
       <Character body="pepper" color="pepper" accessory="headwrap" expression="excited" pose="wave" size={200} react follow />
-      <h1 className="display" style={{ fontSize: 44 }}>A FRIENDLY FACE FOR EVERY FOOD STAND</h1>
-      <p className="note" style={{ maxWidth: 360, fontSize: 16 }}>
+      <h1 className="display" style={{ fontSize: '2.75rem' }}>A FRIENDLY FACE FOR EVERY FOOD STAND</h1>
+      <p className="note" style={{ maxWidth: 360, fontSize: '1rem' }}>
         Customers scan a QR code, the stand's character remembers them, and every 6th plate earns a jara.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 340 }}>

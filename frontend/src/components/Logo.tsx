@@ -1,5 +1,5 @@
 // The Customa logo: a C that is a speech bubble and a plate, with the jara dot.
-export function LogoMark({ size = 32, ink = '#141414' }: { size?: number; ink?: string }) {
+export function LogoMark({ size = 32, ink = 'currentColor' }: { size?: number; ink?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
       <path d="M47.3 17.1 A20 20 0 1 0 47.3 42.9" fill="none" stroke={ink} strokeWidth="9" strokeLinecap="round" />
@@ -9,9 +9,9 @@ export function LogoMark({ size = 32, ink = '#141414' }: { size?: number; ink?: 
   );
 }
 
-export function Logo({ size = 28, ink = '#141414' }: { size?: number; ink?: string }) {
+export function Logo({ size = 28, ink = 'currentColor' }: { size?: number; ink?: string }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: size * 0.22, color: ink }} aria-label="Customa">
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: size * 0.22, color: ink === 'currentColor' ? 'var(--ink)' : ink }} role="img" aria-label="Customa">
       <LogoMark size={size} ink={ink} />
       <span style={{ fontFamily: 'var(--display)', fontSize: size * 0.82, lineHeight: 1, letterSpacing: '0.01em' }}>customa</span>
     </span>

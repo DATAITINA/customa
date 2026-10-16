@@ -72,7 +72,7 @@ export function VendorWheelPanel({ slug, character }: { slug: string; character?
             <Wheel slices={available} character={character} size={220} idle={wheel.enabled} />
           ) : (
             <div className="vw-empty-wheel">
-              <span style={{ fontSize: 44 }} aria-hidden="true">🎡</span>
+              <span style={{ fontSize: '2.75rem' }} aria-hidden="true">🎡</span>
               <span className="note">Add {Math.max(0, 2 - available.length)} more {available.length === 1 ? 'prize' : 'prizes'} to see your wheel.</span>
             </div>
           )}
@@ -81,7 +81,7 @@ export function VendorWheelPanel({ slug, character }: { slug: string; character?
 
         <div className="vw-list">
           {wheel.items.length === 0 && !draft && (
-            <span className="note" style={{ fontSize: 15 }}>
+            <span className="note" style={{ fontSize: '0.9375rem' }}>
               On plate 6, customers spin your wheel and win one of your foods. Add up to {wheel.max_items}: snap a photo, give it a name and say what they win.
             </span>
           )}
@@ -125,7 +125,7 @@ export function VendorWheelPanel({ slug, character }: { slug: string; character?
             </>
           ) : (
             <>
-              <span className="note" style={{ fontSize: 14 }}>
+              <span className="note" style={{ fontSize: '0.875rem' }}>
                 {canPublish ? 'Happy with the preview? Publish it and customers spin on their next jara.' : `Add at least ${wheel.min_to_publish} prizes to publish.`}
               </span>
               <button type="button" className="btn vw-publish-btn" disabled={busy || !canPublish} onClick={() => run(() => wheelApi.publish(slug, true))}>Publish wheel</button>

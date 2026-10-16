@@ -68,11 +68,11 @@ export function VendorDelightsPanel({ slug }: { slug: string }) {
         <input id="special-input" className="input" value={special} maxLength={80} placeholder="e.g. Peppered snail" onChange={(e) => { setSpecial(e.target.value); setSaved(false); }} />
         <button className="btn" type="submit" disabled={busy || special.trim() === (d.special ?? '')}>Save</button>
       </form>
-      <span className="note" style={{ fontSize: 14 }}>
+      <span className="note" style={{ fontSize: '0.875rem' }}>
         {d.special ? `Your character tells customers about "${d.special}" today. It ends at midnight.` : 'Your character tells customers about it in the chat, until midnight.'}
         {d.special && <> <button type="button" className="link-btn" onClick={() => { setSpecial(''); saveSpecial(''); }}>Remove</button></>}
       </span>
-      {saved && <span style={{ fontSize: 14, fontWeight: 700 }}>Saved ✓</span>}
+      {saved && <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Saved ✓</span>}
 
       <div className="row" style={{ alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
         <span className="eyebrow">SURPRISE JARA</span>
@@ -81,7 +81,7 @@ export function VendorDelightsPanel({ slug }: { slug: string }) {
           {d.surprise_enabled ? 'On' : 'Off'}
         </button>
       </div>
-      <span className="note" style={{ fontSize: 14 }}>
+      <span className="note" style={{ fontSize: '0.875rem' }}>
         About 1 plate in {d.surprise_one_in} also gets a jara, when the customer least expects it. Surprises make
         customers smile and talk about your food. It costs you about one extra jara per {d.surprise_one_in} plates.
       </span>

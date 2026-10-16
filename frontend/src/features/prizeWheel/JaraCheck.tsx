@@ -77,7 +77,7 @@ export function JaraCheckPanel({ slug, onGiven }: { slug: string; onGiven: () =>
             <div className="jara-result-prize">
               {check.prize.photo ? <img src={photoUrl(check.prize.photo)} alt="" className="wheel-thumb big" /> : <span className="wheel-thumb big wheel-thumb-empty" aria-hidden="true">🍲</span>}
               <span>
-                <strong style={{ fontSize: 18 }}>{check.prize.name}</strong>
+                <strong style={{ fontSize: '1.125rem' }}>{check.prize.name}</strong>
                 {check.prize.prize && <span style={{ display: 'block', fontWeight: 700 }}>{check.prize.prize}</span>}
                 <span className="note">
                   {check.customer} · spun {day(check.prize.spun_at)}

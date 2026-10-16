@@ -74,7 +74,7 @@ export function CrewCard({
     return (
       <div className="card-outline">
         <span className="eyebrow">LUNCH CREW INVITE</span>
-        <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.25 }}>Join {inv.name}</span>
+        <span style={{ fontSize: '1.25rem', fontWeight: 800, lineHeight: 1.25 }}>Join {inv.name}</span>
         <span className="note">
           {inv.members_count} of {inv.max_members} members. You share one card: every {total}th plate, the jara goes to the next person in line.
         </span>
@@ -119,7 +119,7 @@ export function CrewCard({
       }}
     >
       <span className="eyebrow">LUNCH CREW</span>
-      <span style={{ fontSize: 15, lineHeight: 1.45, fontWeight: 600 }}>
+      <span style={{ fontSize: '0.9375rem', lineHeight: 1.45, fontWeight: 600 }}>
         Eat here with friends? Share one card. Every {total}th plate, the jara goes to the next person — like ajo.
       </span>
       <label className="field">
@@ -171,17 +171,17 @@ function CrewInfo({
     <div className="card">
       <div className="row">
         <span className="eyebrow">LUNCH CREW</span>
-        <span style={{ fontSize: 13, fontWeight: 700 }}>
+        <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
           {crew.members.length}/{crew.max_members} members
         </span>
       </div>
-      <span style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>{crew.name}</span>
+      <span style={{ fontSize: '1.375rem', fontWeight: 800, lineHeight: 1.2 }}>{crew.name}</span>
       {crew.next_jara_to && (
-        <span style={{ fontSize: 15, fontWeight: 800 }}>Next jara: {crew.next_jara_to}</span>
+        <span style={{ fontSize: '0.9375rem', fontWeight: 800 }}>Next jara: {crew.next_jara_to}</span>
       )}
       <ol style={{ margin: 0, paddingLeft: 22, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {crew.members.map((m, i) => (
-          <li key={i} style={{ fontSize: 15, fontWeight: m.is_next ? 800 : 600 }}>
+          <li key={i} style={{ fontSize: '0.9375rem', fontWeight: m.is_next ? 800 : 600 }}>
             {m.name}
             {m.is_me ? ' (you)' : ''}
             {m.is_next && (

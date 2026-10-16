@@ -112,7 +112,7 @@ function ActivePlates({
       <span className="ajo-big">
         {left} PLATE{left === 1 ? '' : 'S'} LEFT
       </span>
-      <span style={{ fontWeight: 800, fontSize: 16 }}>
+      <span style={{ fontWeight: 800, fontSize: '1rem' }}>
         {next.item} · {naira(next.unit_price)} locked
       </span>
       {active.length > 1 && (
@@ -216,7 +216,7 @@ function BuyFlow({ slug, data, compact, onStarted }: { slug: string; data: AjoPu
     return (
       <div className="stack" style={{ padding: 0, gap: 10 }}>
         {!compact && (
-          <span style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.4 }}>
+          <span style={{ fontWeight: 700, fontSize: '0.9375rem', lineHeight: 1.4 }}>
             Prepay 5 or 10 plates at today's price. If the price goes up, yours stays the same.
           </span>
         )}
@@ -258,7 +258,7 @@ function BuyFlow({ slug, data, compact, onStarted }: { slug: string; data: AjoPu
         if (payerOk && !busy) send();
       }}
     >
-      <span style={{ fontWeight: 800, fontSize: 15 }}>
+      <span style={{ fontWeight: 800, fontSize: '0.9375rem' }}>
         Send {naira(total)} for {plates} × {chosen.item} to:
       </span>
       <div className="ajo-bank">

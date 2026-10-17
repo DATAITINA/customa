@@ -479,10 +479,10 @@ function WelcomeForm({ onSubmit, gift = 0, total = 6 }: { onSubmit: (b: { first_
         setBusy(false);
       }}
     >
-      <h1 className="display" style={{ fontSize: '2.375rem' }}>YOUR FIRST PLATE!</h1>
+      <h1 className="display" style={{ fontSize: 38 }}>YOUR FIRST PLATE!</h1>
       {gift > 0 && (
         <div className="gift-card" role="note">
-          <span aria-hidden="true" style={{ fontSize: '1.625rem' }}>🎁</span>
+          <span aria-hidden="true" style={{ fontSize: 26 }}>🎁</span>
           <span><strong>Welcome gift: {gift} stamps on us!</strong> Your card starts at {gift} of {total + gift}, and this plate makes {gift + 1}.</span>
         </div>
       )}

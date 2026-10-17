@@ -120,7 +120,7 @@ button:not(:disabled):active, .btn:not(:disabled):active, .wheel-card:active, .w
 /* ---- Phone layout (customer) ---- */
 .phone { max-width: 420px; margin: 0 auto; min-height: 100vh; padding-bottom: 24px; }
 .topbar {
-  height: 56px; padding: 0 20px;
+  min-height: 56px; padding: 0 20px;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .stand-name { font-size: 0.875rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -268,8 +268,8 @@ textarea.input { height: auto; min-height: 96px; padding: 12px 16px; resize: ver
 .dash-head { display: flex; flex-direction: column; gap: 16px; }
 .dash-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .dash-title h1 { overflow-wrap: anywhere; }
-.dash-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
-.btn.dash-action { min-height: 52px; padding: 0 10px; font-size: 0.9375rem; gap: 8px; white-space: nowrap; }
+.dash-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.btn.dash-action { min-height: 52px; padding: 0 10px; font-size: 0.9375rem; gap: 8px; }
 .btn.dash-action svg { flex-shrink: 0; }
 @media (max-width: 339px) { .dash-actions { grid-template-columns: 1fr; } }
 @media (min-width: 760px) {

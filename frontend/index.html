@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#FDE6E2" />
+    <!-- Customa draws its own dark theme, so the browser must not force-darken the page. -->
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#FDE6E2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#15110E" media="(prefers-color-scheme: dark)" />
     <title>Customa</title>
     <link rel="icon" type="image/svg+xml" href="/logo-mark.svg" />
     <!-- Installable app (Home Screen), needed for alerts on iPhone. -->

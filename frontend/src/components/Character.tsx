@@ -38,6 +38,9 @@ export const BODY_CHOICES: { body: Body; label: string; color: string }[] = [
 
 const INK = '#141414';
 const PINK = '#FF9DB8';
+// Arms, legs and the ground shadow sit on the page, so they follow the theme (light lines on dark).
+const LIMB = { stroke: 'var(--char-limb, #141414)' };
+const LIMB_FILL = { fill: 'var(--char-limb, #141414)' };
 
 type BodySpec = {
   d: string;
@@ -358,21 +361,21 @@ export function Character({
       className={reacting ? 'char-react' : undefined}
       style={{ overflow: 'visible' }}
     >
-      <ellipse cx="100" cy="226" rx={shadowRx} ry="6" fill={INK} opacity="0.08" />
+      <ellipse cx="100" cy="226" rx={shadowRx} ry="6" fill={INK} style={LIMB_FILL} opacity="0.08" />
       <g transform={`translate(0 ${lift})`}>
         <g>
           {animate && (
             <animateTransform attributeName="transform" type="translate" values={bob.values} keyTimes={bob.times}
               keySplines={bob.splines} calcMode="spline" dur={bob.dur} repeatCount="indefinite" additive="sum" />
           )}
-          <path d={legs} fill="none" strokeWidth={limbWidth} {...stroke} />
-          <path d={armL} fill="none" strokeWidth={limbWidth} {...stroke} />
+          <path d={legs} fill="none" strokeWidth={limbWidth} {...stroke} style={LIMB} />
+          <path d={armL} fill="none" strokeWidth={limbWidth} {...stroke} style={LIMB} />
           <g>
             {animate && pose === 'wave' && (
               <animateTransform attributeName="transform" type="rotate" values={waveValues}
                 keyTimes="0;0.1;0.2;0.3;0.4;0.5;1" dur="2.4s" repeatCount="indefinite" additive="sum" />
             )}
-            <path d={armR} fill="none" strokeWidth={limbWidth} {...stroke} />
+            <path d={armR} fill="none" strokeWidth={limbWidth} {...stroke} style={LIMB} />
           </g>
           {parts.back}
           <path d={b.d} fill={fill} {...(b.outline ? { stroke: INK, strokeWidth: 5, strokeLinejoin: 'round' as const } : {})} />

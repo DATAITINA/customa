@@ -5,7 +5,8 @@ screen, friendly errors, dark mode, larger touch targets, and a few small moment
 No backend, API or MSFLib wiring changed. The audit that led to it is in [AUDIT.md](AUDIT.md).
 
 Before/after for all 37 screens at 360px phone width: [`screens/`](screens)
-(`c…` = customer, `v…` = vendor). Dark mode: [dark-mode.jpg](dark-mode.jpg).
+(`c…` = customer, `v…` = vendor). Dark mode: [dark-mode.jpg](dark-mode.jpg), and the
+dark theme before/after its redesign: [dark-before-after.jpg](dark-before-after.jpg).
 The stamp landing, frame by frame: [stamp-lands.jpg](stamp-lands.jpg).
 
 ## What changed and why
@@ -14,8 +15,9 @@ The stamp landing, frame by frame: [stamp-lands.jpg](stamp-lands.jpg).
 - **Tokens for everything:** colour (brand and status), type, space, radius, touch size,
   depth and motion. All feature CSS now uses them; ad-hoc hex colours and radii are gone.
   *Why:* consistency is what makes it look professional.
-- **Dark mode** (`prefers-color-scheme`): warm charcoal, not black. Character outlines and
-  the logo follow the theme so they stay visible; faces stay dark.
+- **Colour roles:** components ask for a job (`--surface`, `--card`, `--edge`,
+  `--btn-bg`, `--select-bg`, …), not a paint colour. In light mode every role is the classic
+  ink-and-paper value; dark mode gives each role its own colour (see section 6).
 - **Text in `rem`**, so the phone's own text-size setting works. Checked at 150%: nothing
   overflows.
 - **44px minimum touch targets** for links, chips, swatches, toggles and small vendor buttons
@@ -60,9 +62,34 @@ The stamp landing, frame by frame: [stamp-lands.jpg](stamp-lands.jpg).
 - Vendor sign-in says what the dashboard is for, has Show/Hide password, and gives
   plain-language errors with a next step.
 
+### 6. Dark theme: designed, not inverted
+The first dark pass simply turned the light theme's black "ink" white, so white was
+everywhere: big white buttons, 2px white outlines on every card and input, a glowing white
+panda on a maroon block. The redesign follows [Material's dark theme](https://m2.material.io/design/color/dark-theme)
+and [Apple's Dark Mode guidance](https://developer.apple.com/design/human-interface-guidelines/dark-mode):
+- **Layered warm charcoal, never pure black.** Depth comes from lighter surfaces, not
+  shadows: page `#121110` → cards `#1A1816` → controls and bubbles `#26221F`, with sheets
+  on an elevated surface (Apple's base/elevated idea).
+- **White is rationed.** Text is a soft off-white (13–15:1 instead of a glaring 16–18:1),
+  secondary text steps down (6–7:1). Card outlines are quiet greys. Things you tap or type
+  into get a stronger grey (3:1, WCAG non-text contrast). Only QR codes and switch knobs
+  stay true white, because they need it.
+- **Colour carries emphasis instead of white.** Main buttons are a softened pepper with
+  dark text (6:1). Chosen chips, tabs and answers get a pepper-tinted fill and pepper edge.
+  My chat messages are pepper-tinted.
+- **Desaturated brand colours** (Material): pepper and yolk are softened a touch so they
+  glow without vibrating; status colours are re-tuned for dark backgrounds.
+- **Illustrations adapted** (Apple: soften white in images): the panda and chef hat are a
+  warm cream; the character stage is a gentle warm glow; the wheel rim is lifted so it
+  doesn't vanish; the chat orb glows pepper, not white; the timer ring fills in pepper.
+- **Google button** uses Google's own dark style.
+- **Light mode is untouched:** all 37 light screens were re-shot with frozen time and
+  motion and pixel-compared with the previous version. They are identical (one screen
+  differs by at most 5/255 in a few pixels).
+
 ## Performance
 Only `transform` and `opacity` are animated. No new dependencies. Main bundle:
-JS 83.8 KB gzip (was 82.6), CSS 10.9 KB gzip (was 9.1).
+JS 83.8 KB gzip (was 82.6), CSS 11.5 KB gzip (was 9.1).
 
 ## How it was checked
 - `tsc` typecheck and `vite build` pass. The repo has no automated test suite.

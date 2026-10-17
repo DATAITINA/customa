@@ -205,7 +205,7 @@ function CrewInfo({
         {copied ? 'Link copied' : 'Copy invite link'}
       </button>
       {confirmLeave ? (
-        <div className="card-outline" style={{ background: 'var(--paper)' }}>
+        <div className="card-outline" style={{ background: 'var(--card)' }}>
           <span style={{ fontWeight: 800 }}>
             Leave {crew.name}? Plates already counted stay with the crew. Your next plates go on your own card
             {ownPlate != null ? ` (from plate ${ownPlate} of ${total})` : ''}.

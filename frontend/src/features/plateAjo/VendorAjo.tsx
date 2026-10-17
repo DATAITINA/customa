@@ -138,7 +138,7 @@ function Lists({
   const [closing, setClosing] = useState<number | null>(null);
   return (
     <div className="grid-2">
-      <div className="card-outline ajo-section" style={{ background: 'var(--paper)' }}>
+      <div className="card-outline ajo-section" style={{ background: 'var(--card)' }}>
         <span className="eyebrow">TRANSFERS TO CONFIRM</span>
         {d.pending.length === 0 && <span className="note">No transfers waiting.</span>}
         {d.pending.map((p) => (
@@ -190,7 +190,7 @@ function Lists({
         )}
       </div>
 
-      <div className="card-outline ajo-section" style={{ background: 'var(--paper)' }}>
+      <div className="card-outline ajo-section" style={{ background: 'var(--card)' }}>
         <span className="eyebrow">PREPAID PLATES LEFT</span>
         {d.active.length === 0 && <span className="note">No prepaid plates yet.</span>}
         {d.active.map((a) => (
@@ -230,7 +230,7 @@ function Lists({
         ))}
       </div>
 
-      <div className="card-outline ajo-section" style={{ background: 'var(--paper)' }}>
+      <div className="card-outline ajo-section" style={{ background: 'var(--card)' }}>
         <span className="eyebrow">PREPAID PLATES SERVED TODAY</span>
         {d.served_today.length === 0 && <span className="note">None served today.</span>}
         {d.served_today.map((s) => (

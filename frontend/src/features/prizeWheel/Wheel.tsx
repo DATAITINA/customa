@@ -113,7 +113,7 @@ export const Wheel = forwardRef<WheelHandle, Props>(function Wheel(
 
         {/* The shadow and the rim with its lights. */}
         <ellipse cx="0" cy={R + 22} rx={R * 0.8} ry="8" fill="#141414" opacity="0.12" />
-        <circle r={R + 20} fill="#141414" />
+        <circle className="wheel-rim" r={R + 20} fill="#141414" />
         {bulbs.map(([x, y], i) => (
           <circle key={i} cx={x} cy={y} r="4.2" className={`wheel-bulb wheel-bulb-${lights} ${i % 2 ? 'odd' : 'even'}`} />
         ))}

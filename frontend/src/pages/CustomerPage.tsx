@@ -529,7 +529,7 @@ function TooSoon({
     <>
       <Hero bubble={`You don collect this plate already${name ? ', ' + name : ''}! I dey count the next one.`}>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={170} react follow />
-        <div className="timer" style={{ background: `conic-gradient(var(--ink) 0 ${pct}%, var(--paper) ${pct}% 100%)` }} aria-label={`Next plate in ${label}`}>
+        <div className="timer" style={{ background: `conic-gradient(var(--ring-fill) 0 ${pct}%, var(--ring-track) ${pct}% 100%)` }} aria-label={`Next plate in ${label}`}>
           <div className="timer-inner">
             {/* One line always: hours ("5h 59m") get a smaller size so they fit the ring. */}
             <span style={{ fontFamily: 'var(--display)', fontSize: label.length > 5 ? '1.3125rem' : '1.75rem', lineHeight: 1, whiteSpace: 'nowrap' }}>{label}</span>

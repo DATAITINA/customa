@@ -121,7 +121,7 @@ function ActivePlates({
         </span>
       )}
       {asking ? (
-        <div className="card-outline" style={{ background: 'var(--paper)' }}>
+        <div className="card-outline" style={{ background: 'var(--card)' }}>
           <span style={{ fontWeight: 800 }}>Use 1 plate now?</span>
           <span className="note">Do this at the stand, when the vendor serves you.</span>
           <div className="ajo-actions">

@@ -13,7 +13,7 @@ from sqlmodel import Session
 from ..actions import visit_action
 from ..core.config import CustomaSettings
 from ..models import Customer, Visit, Workspace
-from . import lunch_crew, regulars, visit_plans
+from . import card_recovery, lunch_crew, regulars, visit_plans
 
 
 def count_visit(
@@ -26,6 +26,10 @@ def count_visit(
     a crew jara may go to another member). Otherwise it goes on their own card, exactly as
     before. Either way the visit is committed when this returns.
     """
+    # A browser that recovered this card after counting a plate on its old card waits too.
+    card_recovery.check_previous_cards(
+        session, customer=customer, window_seconds=stand_settings.PLATE_WINDOW_SECONDS
+    )
     visit = lunch_crew.count_crew_plate(
         session, workspace=workspace, customer=customer, stand_settings=stand_settings
     )

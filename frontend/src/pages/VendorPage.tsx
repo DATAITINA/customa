@@ -19,6 +19,9 @@ import { JaraCheckPanel } from '../features/prizeWheel/JaraCheck';
 import { HereNowCard } from '../features/regulars/HereNow';
 import { VendorPlansCard } from '../features/visitPlans/VendorPlans';
 import { VendorPaymentsCard } from '../features/payments/VendorPayments';
+import { MenuEditor } from '../features/payments/MenuEditor';
+import { AskStand } from '../features/assistant/AskStand';
+import { MenuRows, fromRows, menuProblem, type MenuRow } from '../components/MenuRows';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -152,22 +155,10 @@ function VendorHome() {
 // --- Stand setup: the vendor describes their stand, picks the character ----
 
 
-function parseMenu(text: string) {
-  // One item per line: "Jollof rice 1500"
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const m = line.match(/^(.*?)[\s,:-]+₦?\s*([\d,]+)\s*$/);
-      return m ? { item: m[1].trim(), price: Number(m[2].replace(/,/g, '')) } : { item: line, price: 0 };
-    });
-}
-
 function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [menuText, setMenuText] = useState('');
+  const [menuRows, setMenuRows] = useState<MenuRow[]>([{ item: '', price: '' }]);
   const [char, setChar] = useState<Partial<CharacterT>>({ name: '', body: 'pepper', color: 'pepper', accessory: 'headwrap', greeting: '' });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -194,6 +185,8 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
         style={{ padding: 0, gap: 14 }}
         onSubmit={async (e) => {
           e.preventDefault();
+          const problem = menuProblem(menuRows);
+          if (problem) { setError(problem); return; }
           setBusy(true);
           setError(null);
           try {
@@ -205,7 +198,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
                 body: char.body, color: char.color, accessory: char.accessory,
                 greeting: char.greeting || `Welcome to ${name}!`,
                 ...(char.personality ? { personality: char.personality } : {}),
-                menu: parseMenu(menuText),
+                menu: fromRows(menuRows),
               },
             });
             // The photo goes up after the stand exists. If it fails, the stand is still made and
@@ -244,9 +237,9 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
         <button type="button" className="btn btn-outline" onClick={suggest} disabled={suggesting || !description.trim()}>
           {suggesting ? 'Thinking…' : 'Suggest a character from my words'}
         </button>
-        <label className="field">Menu, one item per line with the price
-          <textarea className="input" value={menuText} onChange={(e) => setMenuText(e.target.value)} placeholder={'Afang soup and fufu 2000\nPepper soup 1500'} />
-        </label>
+        <div className="field">Your menu: each food and its price
+          <MenuRows rows={menuRows} onChange={setMenuRows} />
+        </div>
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create my stand'}</button>
       </form>
@@ -315,8 +308,11 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
       <HereNowCard slug={slug} entries={d.here_now ?? []} onChange={() => q.refetch()} />
       {/* Plans for today, plans kept this week, and % back within 14 days. */}
       <VendorPlansCard d={d} />
+      {/* Ask about your stand: the vendor's AI helper (MSFLib ai-api agent). */}
+      <AskStand slug={slug} character={ch} />
       {/* Today's payments: Paystack (test mode) and cash you confirm. */}
       <VendorPaymentsCard slug={slug} onChange={() => q.refetch()} />
+      {ch && <MenuEditor slug={slug} character={ch} onSaved={() => q.refetch()} />}
       <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
       <div className="stats">
         {stats.map((s) => (
@@ -338,7 +334,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
             )}
             {d.recent_visits.map((v) => (
               <tr key={v.id} className={fresh.has(v.id) ? 'fresh' : undefined}>
-                <td>{v.name}</td>
+                <td>{v.name}{v.saved && <span className="saved-mark" title="Saved their card to a number" aria-label="saved card"> 💾</span>}</td>
                 <td>{v.plate_number === d.plates_for_jara ? `${v.plate_number}/${d.plates_for_jara} JARA` : `${v.plate_number}/${d.plates_for_jara}`}</td>
                 <td>{v.stars == null ? '–' : v.stars >= 4 ? 'Good' : 'Not good'}</td>
                 <td>{new Date(v.at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>

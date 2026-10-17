@@ -7,6 +7,8 @@ from app.api import deps
 from app.api.api_v1.endpoints import (
     admin,
     alerts,
+    assistant,
+    card_recovery,
     delights,
     lunch_crew,
     payments,
@@ -90,3 +92,7 @@ api_router.include_router(alerts.public_router)
 api_router.include_router(payments.public_router)
 api_router.include_router(payments.vendor_router)
 api_router.include_router(payments.webhook_router)
+# Save your card / "Already have a card?": a customer's card follows them to any browser.
+api_router.include_router(card_recovery.router)
+# Ask about your stand: MSFLib ai-api's agent router with Customa's read-only stand tools.
+api_router.include_router(assistant.router)

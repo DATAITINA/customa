@@ -4,6 +4,7 @@ from msflib.account.config import AccountSettings
 from msflib.ai_core.config import AICoreSettings
 from msflib.auth.config import AuthSettings
 from msflib.core.config import CoreSettings, ModuleSettingsBase, SettingsBase
+from msflib.drivelink.config import DrivelinkSettings
 from msflib.tenancy import TenancySettings
 from msflib.workspace_config.config import WorkspaceConfigSettings
 from msflib.workspaces.config import WorkspaceSettings
@@ -61,6 +62,9 @@ class CustomaSettings(ModuleSettingsBase):
     # Pay for a plate (Paystack test mode, or cash the vendor confirms): a paid plate counts as a
     # stamp. Off until the vendor turns it on; prices come from the stand's menu.
     PAYMENTS_ENABLED: bool = False
+    # Save your card: customers may link their card to their phone number + a 4-digit PIN, and
+    # get it back in any browser (another browser, in-app browser, Home Screen app). On by default.
+    CARD_RECOVERY_ENABLED: bool = True
     # The QR code's scan code changes when the vendor makes a new QR code (old prints stop counting).
     QR_VERSION: int = 1
     # Today's special, set by the vendor. It shows only on the day it was set (Nigeria time).
@@ -76,6 +80,7 @@ class CustomaSettings(ModuleSettingsBase):
 class AppSettings(
     CustomaSettings,
     AICoreSettings,
+    DrivelinkSettings,
     WorkspaceConfigSettings,
     WorkspaceSettings,
     TenancySettings,
@@ -115,6 +120,11 @@ class AppSettings(
     # Paystack needs an email per payment; customers give none, so each payment gets an address
     # on this domain (nothing is sent to it).
     PAYSTACK_EMAIL_DOMAIN: str = "customers.customa.app"
+    # Stand photos as files in the vendor's MSFLib drivelink drive. Needs cloud file storage,
+    # because Vercel can't keep files: STORAGE_METHOD=cloudinary with CLOUDINARY_CLOUD_NAME,
+    # CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET (or s3/gcs/azure). Off: photos stay in the
+    # database, as before.
+    STAND_PHOTOS_IN_DRIVELINK: bool = False
     PUBLIC_WEB_URL: str = "https://customa-web.vercel.app"
 
     REDIS_HOST: str | None = None

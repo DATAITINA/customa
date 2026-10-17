@@ -1,0 +1,13 @@
+/* ---- Ask about your stand ---- */
+.ask-stand { display: flex; flex-direction: column; gap: 12px; }
+.ask-head { display: flex; align-items: center; gap: 12px; }
+.ask-head > :first-child { flex-shrink: 0; }
+.ask-sub { margin: 2px 0 0; font-size: 14px; color: var(--muted); line-height: 1.35; }
+.ask-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ask-chips .link-btn { min-height: 36px; font-size: 13px; }
+.ask-form { display: flex; gap: 8px; }
+.ask-form .input { flex: 1 1 auto; min-width: 0; }
+.btn.ask-send { width: auto; flex: 0 0 auto; height: 52px; padding: 0 20px; }
+.ask-thread { display: flex; flex-direction: column; gap: 8px; }
+.ask-q { align-self: flex-end; max-width: 85%; padding: 10px 14px; border-radius: 18px 18px 6px 18px; background: var(--fill); color: var(--on-fill); font-weight: 700; font-size: 15px; }
+.ask-a { align-self: flex-start; max-width: 92%; padding: 12px 14px; border-radius: 18px 18px 18px 6px; background: var(--stone); font-size: 15px; line-height: 1.5; white-space: pre-wrap; }

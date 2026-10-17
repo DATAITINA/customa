@@ -1,3 +1,4 @@
+import { ThemeSwitch } from './components/ThemeSwitch';
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { Logo } from './components/Logo';
 import { CustomerPage } from './pages/CustomerPage';
@@ -69,7 +70,12 @@ function usePath() {
 export function App() {
   const path = usePath();
   const parts = path.split('/').filter(Boolean);
-  return <Suspense fallback={<main className="phone"><CharacterLoader /></main>}>{route(parts)}</Suspense>;
+  return (
+    <>
+      <Suspense fallback={<main className="phone"><CharacterLoader /></main>}>{route(parts)}</Suspense>
+      <ThemeSwitch />
+    </>
+  );
 }
 
 function route(parts: string[]) {

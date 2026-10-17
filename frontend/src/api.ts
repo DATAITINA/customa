@@ -1,6 +1,7 @@
 // All calls to the Customa backend go through @msflib/core's configured API
 // client: one place for the base URL, the bearer token and error handling.
 import { configuredApiClient, storage } from '@msflib/core';
+import { rememberLook } from './lookCache';
 import { API_BASE } from './application';
 
 export type Character = {
@@ -102,7 +103,7 @@ export type Dashboard = {
     jara_issued: number;
     average_rating: number | null;
   };
-  recent_visits: { id: number; name: string; plate_number: number; stars: number | null; at: string }[];
+  recent_visits: { id: number; name: string; plate_number: number; stars: number | null; at: string; saved?: boolean }[];
   // "Who's here now": customers counted in the last ARRIVAL_WINDOW_MINUTES (regular-arrived alert).
   here_now?: import('./features/regulars/regularsApi').HereNow[];
   // Plan the next visit: who is coming today and plans kept this week.
@@ -208,7 +209,8 @@ export function setStandManifest(slug: string, key: string | null) {
 export type ApiError = { status?: number; message: string; raw?: { detail?: unknown } };
 
 export const api = {
-  stand: (slug: string) => apiClient<StandPublic>('GET', `/public/${slug}`, null, customerHeaders(slug)),
+  stand: (slug: string) =>
+    apiClient<StandPublic>('GET', `/public/${slug}`, null, customerHeaders(slug)).then((s) => { rememberLook(slug, s.character); return s; }),
   countPlate: (slug: string, body: { first_name?: string; consent: boolean; scan?: string }) =>
     apiClient<CountResult>('POST', `/public/${slug}/visits`, body, customerHeaders(slug)),
   rate: (slug: string, visitId: number, stars: number) =>
@@ -232,7 +234,8 @@ export const api = {
   // The stand's photo: a data URL from shrinkPhoto (null removes it).
   setPhoto: (slug: string, dataUrl: string) => apiClient<StandSummary>('PUT', `/stands/${slug}/photo`, { data_url: dataUrl }),
   removePhoto: (slug: string) => apiClient<StandSummary>('DELETE', `/stands/${slug}/photo`),
-  dashboard: (slug: string) => apiClient<Dashboard>('GET', `/stands/${slug}/dashboard`),
+  dashboard: (slug: string) =>
+    apiClient<Dashboard>('GET', `/stands/${slug}/dashboard`).then((d) => { rememberLook('vendor', d.stand.character); rememberLook(slug, d.stand.character); return d; }),
   redeemJara: (slug: string, code: string) =>
     apiClient<{ code: string; redeemed: boolean; prize: string | null }>('POST', `/stands/${slug}/jara/${encodeURIComponent(code)}/redeem`),
   // alert.sent: phones alerted; alert.skipped: why none were (recently_alerted, no_subscribers, ...).

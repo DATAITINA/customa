@@ -61,7 +61,10 @@ def _call_llm(messages: list, *, workspace_id: int | None) -> str:
 
 
 def _menu_text(character: Character) -> str:
-    return "\n".join(f"- {m['item']}: ₦{m['price']}" for m in character.menu) or "- (menu not set)"
+    return "\n".join(
+        f"- {m['item']}: ₦{m['price']:,}" if m.get('price') else f"- {m['item']}: price not set (the vendor can tell them)"
+        for m in character.menu
+    ) or "- (menu not set)"
 
 
 class ChatContext(BaseModel):

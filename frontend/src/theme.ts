@@ -23,6 +23,8 @@ export function applyTheme(pick: ThemePick) {
 export function setThemePick(pick: ThemePick) {
   try { localStorage.setItem(KEY, pick); } catch { /* storage blocked: still applied now */ }
   applyTheme(pick);
+  // Every theme control on the page (header button, footer switch) shows the same choice.
+  window.dispatchEvent(new CustomEvent('customa:theme', { detail: pick }));
 }
 
 // Keep "System" in step when the phone switches between light and dark.

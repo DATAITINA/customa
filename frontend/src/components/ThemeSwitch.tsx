@@ -25,15 +25,39 @@ const OPTIONS: { pick: ThemePick; label: string; Icon: () => JSX.Element }[] = [
   { pick: 'dark', label: 'Dark', Icon: Moon },
 ];
 
+// The current choice, kept in step across every theme control and with the phone ("System").
+function useThemePick(): ThemePick {
+  const [pick, setPick] = useState<ThemePick>(getThemePick);
+  useEffect(() => {
+    const stop = followSystem();
+    const onPick = (e: Event) => setPick((e as CustomEvent<ThemePick>).detail);
+    window.addEventListener('customa:theme', onPick);
+    return () => { stop(); window.removeEventListener('customa:theme', onPick); };
+  }, []);
+  return pick;
+}
+
+// One round button for headers: tap to go Light → Dark → System. Shows the current choice.
+export function ThemeButton() {
+  const pick = useThemePick();
+  const current = OPTIONS.find((o) => o.pick === pick) ?? OPTIONS[1];
+  const next: ThemePick = pick === 'light' ? 'dark' : pick === 'dark' ? 'system' : 'light';
+  return (
+    <button type="button" className="theme-btn" onClick={() => setThemePick(next)}
+      aria-label={`Theme: ${current.label}. Tap for ${next}`} title={`Theme: ${current.label}`}>
+      <current.Icon />
+    </button>
+  );
+}
+
 // Light / System / Dark, at the bottom of every page.
 export function ThemeSwitch() {
-  const [pick, setPick] = useState<ThemePick>(getThemePick);
-  useEffect(() => followSystem(), []);
+  const pick = useThemePick();
   return (
     <footer className="theme-footer">
       <div className="theme-switch" role="radiogroup" aria-label="Theme">
         {OPTIONS.map(({ pick: p, label, Icon }) => (
-          <button key={p} type="button" role="radio" aria-checked={pick === p} onClick={() => { setThemePick(p); setPick(p); }}>
+          <button key={p} type="button" role="radio" aria-checked={pick === p} onClick={() => setThemePick(p)}>
             <Icon />{label}
           </button>
         ))}

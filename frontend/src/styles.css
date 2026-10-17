@@ -549,3 +549,9 @@ tr.fresh td { background: var(--blush); }
 .theme-switch button[aria-checked='true'] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
 .theme-switch svg { width: 16px; height: 16px; }
 @media print { .theme-footer { display: none; } }
+.theme-btn {
+  display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex-shrink: 0;
+  border: 2px solid var(--edge); border-radius: 999px; background: var(--paper); color: var(--ink); cursor: pointer;
+}
+.theme-btn svg { width: 20px; height: 20px; }
+.vendor-top-actions { display: flex; align-items: center; gap: 8px; }

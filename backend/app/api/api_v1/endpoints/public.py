@@ -5,13 +5,12 @@ lookup), and the customer is recognised by a random key their phone keeps and
 sends back in the X-Customer-Key header.
 """
 
-import base64
 import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import object_session
 from sqlmodel import Session
@@ -203,14 +202,14 @@ def read_photo(
     session: Session = Depends(deps.get_session),
 ) -> Response:
     """The stand's photo. Its URL carries the version (?v=), so phones may keep it for good."""
-    row = stand_photo.get(session, workspace)
-    if row is None:
+    found = stand_photo.read(session, workspace)
+    if found is None:
         raise HTTPException(status_code=404, detail="This stand has no photo yet")
-    return Response(
-        content=base64.b64decode(row.data),
-        media_type=row.content_type,
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
-    )
+    content_type, data, url = found
+    cache = {"Cache-Control": "public, max-age=31536000, immutable"}
+    if url:  # a drivelink file in cloud storage: the phone fetches it from there
+        return RedirectResponse(url, status_code=302, headers=cache)
+    return Response(content=data, media_type=content_type, headers=cache)
 
 
 _KEY_SHAPE = re.compile(r"^[A-Za-z0-9_-]{8,128}$")

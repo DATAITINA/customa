@@ -24,7 +24,16 @@ from app.models import (
     Visit,
     Workspace,
 )
-from app.services import alerts, card_recovery, insights, prize_wheel, regulars, sms_alerts, stand_photo, visit_plans
+from app.services import (
+    alerts,
+    card_recovery,
+    insights,
+    prize_wheel,
+    regulars,
+    sms_alerts,
+    stand_photo,
+    visit_plans,
+)
 from app.services.bisi import suggest_character
 from app.services.chat_log import recent_questions
 from app.services.qr import scan_code
@@ -301,11 +310,12 @@ def upload_photo(
     body: PhotoRequest,
     workspace: Workspace = Depends(deps.get_current_workspace),
     _member=Depends(deps.get_current_active_member),
+    account: Account = Depends(deps.get_current_active_account),
     session: Session = Depends(deps.get_session),
 ) -> dict[str, Any]:
-    """Set (or replace) the photo of the stand."""
+    """Set (or replace) the photo of the stand (in the vendor's drivelink drive when on)."""
     try:
-        stand_photo.save(session, workspace, body.data_url)
+        stand_photo.save(session, workspace, body.data_url, account_id=account.id)
     except PhotoError as exc:
         raise HTTPException(status_code=400, detail=exc.message)
     return stand_view(session, workspace)

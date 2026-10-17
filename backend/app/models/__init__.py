@@ -58,7 +58,8 @@ from .plate_ajo import PlateBundle, PlateUse  # noqa: E402
 from .prize_wheel import JaraPrize, WheelItem  # noqa: E402
 from .regulars import Arrival, CustomerUsual, VendorPushSubscription  # noqa: E402
 from .visit_plans import VisitPlan  # noqa: E402
-from .stand_photo import StandPhoto  # noqa: E402
+from msflib.drivelink.models import DrivelinkNode  # noqa: E402,F401  (drivelink's table)
+from .stand_photo import StandPhoto, StandPhotoFile  # noqa: E402
 from .payments import Payment, PaymentCreate, PaymentUpdate  # noqa: E402
 from .card_recovery import (  # noqa: E402
     CustomerDeviceKey,

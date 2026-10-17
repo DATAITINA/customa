@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { StandPublic } from '../../api';
+import { giftStamps, type StandPublic } from '../../api';
 import { Link } from '../../App';
 import { Wheel } from './Wheel';
 import { wheelApi, type WheelState } from './wheelApi';
@@ -28,7 +28,7 @@ export function WheelCard({ slug, stand, refreshKey }: { slug: string; stand: St
       <div className="wheel-card-text">
         <span className="eyebrow">{spins ? 'YOUR JARA IS A SPIN!' : `${first.toUpperCase()}'S PRIZE WHEEL`}</span>
         <strong>{spins ? (spins > 1 ? `${spins} spins waiting 🎡` : 'A spin is waiting 🎡') : `Win ${state.items.map((i) => i.name).slice(0, 3).join(', ')}${state.items.length > 3 ? '…' : ''}`}</strong>
-        <span className="note">{spins ? 'Tap to spin and see what you win.' : `Every jara (plate ${stand.plates_for_jara}) is a spin. Tap to see the prizes.`}</span>
+        <span className="note">{spins ? 'Tap to spin and see what you win.' : `Every jara (plate ${stand.plates_for_jara + giftStamps(stand)}) is a spin. Tap to see the prizes.`}</span>
       </div>
     </Link>
   );

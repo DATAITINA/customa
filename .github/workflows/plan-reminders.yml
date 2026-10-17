@@ -1,0 +1,27 @@
+# Plan the next visit: the reminder scheduler. Every 15 minutes it calls the backend's
+# secret-protected endpoint, which sends the reminders that are due (each only once).
+# A GitHub schedule works on every Vercel plan (Vercel Hobby only allows daily cron jobs).
+# Needs two repository secrets: CUSTOMA_API_URL (e.g. https://customa-api.vercel.app/api/v1)
+# and CRON_SECRET (the same value as the backend's CRON_SECRET environment variable).
+# GitHub runs schedules from the default branch only, and may delay them by a few minutes.
+name: Plan reminders
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Send due reminders
+        env:
+          API: ${{ secrets.CUSTOMA_API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$API" ] || [ -z "$CRON_SECRET" ]; then echo "Secrets not set: skipping"; exit 0; fi
+          curl --fail-with-body -sS -m 60 -H "Authorization: Bearer $CRON_SECRET" "$API/cron/plan-reminders"

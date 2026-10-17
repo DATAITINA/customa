@@ -33,8 +33,10 @@ from app.services import (
     lunch_crew,
     plate_ajo,
     prize_wheel,
+    regulars,
     sms_alerts,
     stand_photo,
+    visit_plans,
 )
 from app.services.bisi import ChatContext, chat_reply
 from app.services.chat_log import forget_customer, record_turn
@@ -85,6 +87,11 @@ def require_genuine_scan(code: str | None, workspace: Workspace, stand_settings:
     """403 unless `code` is the scan code from this stand's current QR code."""
     if not is_genuine_scan(code, workspace, stand_settings):
         raise HTTPException(status_code=403, detail=SCAN_REQUIRED)
+
+
+def head_start(stand_settings: CustomaSettings) -> int:
+    """The head-start card's gift stamps: 0 (off) up to 10."""
+    return max(0, min(10, stand_settings.HEAD_START_STAMPS))
 
 
 def require_customer(customer: Customer | None = Depends(get_customer_or_none)) -> Customer:
@@ -171,6 +178,8 @@ def read_stand(
         "stand": {"name": workspace.name, "slug": workspace.slug, "description": workspace.description},
         "character": character.model_dump(exclude={"workspace_id"}) if character else None,
         "plates_for_jara": stand_settings.PLATES_FOR_JARA,
+        # Gift stamps shown first on every new own card (display only, see HEAD_START_STAMPS).
+        "head_start": head_start(stand_settings),
         "window_seconds": stand_settings.PLATE_WINDOW_SECONDS,
         "last_plates": last_plates(stand_settings),
         "customer": customer_view(customer, last, stand_settings, session) if customer else None,
@@ -295,6 +304,8 @@ def count_plate(
         "crew": lunch_crew.count_result(
             session, visit=visit, customer_id=customer.id, stand_settings=stand_settings
         ),
+        # Plan the next visit: "kept" (this plate was in the planned slot) or "missed" (said once).
+        "plan_outcome": visit_plans.outcome_for_visit(session, visit),
     }
 
 
@@ -338,7 +349,7 @@ def delete_my_data(
 ) -> dict[str, Any]:
     """Forget this customer at this stand: chats, ratings, jara, plates, then the customer."""
     # Plate Ajo refuses (409) while prepaid plates remain, before anything is deleted.
-    for feature in (plate_ajo, lunch_crew, prize_wheel):
+    for feature in (plate_ajo, lunch_crew, prize_wheel, regulars, visit_plans):
         feature.forget_customer(session, workspace=workspace, customer=customer)
     forget_customer(session, workspace=workspace, customer=customer)
     character_chat.delete_memory(session, customer=customer)

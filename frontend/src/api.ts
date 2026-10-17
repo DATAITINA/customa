@@ -48,6 +48,8 @@ export type StandPublic = {
   stand: { name: string; slug: string; description: string };
   character: Character | null;
   plates_for_jara: number;
+  // Head-start card: gift stamps shown first on every new own card (display only; 0 = off).
+  head_start?: number;
   window_seconds: number;
   last_plates: LastPlates;
   customer: CustomerState | null;
@@ -68,6 +70,8 @@ export type CountResult = {
   // True when the jara came on a plate that is not the jara plate: the vendor's surprise.
   surprise?: boolean;
   crew?: CrewCountInfo | null;
+  // Plan the next visit: this plate kept the customer's plan, or they missed the last one.
+  plan_outcome?: 'kept' | 'missed' | null;
 };
 
 // What the stand character remembers about this customer (only they see it, and can clear it).
@@ -99,6 +103,12 @@ export type Dashboard = {
     average_rating: number | null;
   };
   recent_visits: { id: number; name: string; plate_number: number; stars: number | null; at: string }[];
+  // "Who's here now": customers counted in the last ARRIVAL_WINDOW_MINUTES (regular-arrived alert).
+  here_now?: import('./features/regulars/regularsApi').HereNow[];
+  // Plan the next visit: who is coming today and plans kept this week.
+  plans?: import('./features/visitPlans/plansApi').VendorPlans;
+  // "% of customers who came back within 14 days" (null until anyone's first plate is 14 days old).
+  return_14d?: { percent: number | null; returned: number; customers: number; weeks: { week: string; customers: number; returned: number }[] };
   // prize: what the wheel picked; spin_pending: the customer has not spun yet.
   open_jara: { code: string; name: string; at: string; prize?: string | null; spin_pending?: boolean }[];
   recent_questions: { id: number; who: string; question: string; at: string }[];
@@ -109,6 +119,10 @@ export type Dashboard = {
 export type Delights = { surprise_enabled: boolean; surprise_one_in: number; special: string | null };
 
 export type StandSummary = { name: string; slug: string; description: string; character: Character | null; photo?: string | null };
+
+/** Head-start card (display only): the gift stamps on the customer's own card. A Lunch Crew
+ * card has none. The own card reads (real plates + gift) of (plates_for_jara + gift). */
+export const giftStamps = (stand: StandPublic, crew = false) => (crew ? 0 : Math.max(0, stand.head_start ?? 0));
 
 /** Full URL of an API path such as a stand photo ("/public/x/photo?v=2"). */
 export const photoUrl = (path: string) => `${API_BASE}${path}`;

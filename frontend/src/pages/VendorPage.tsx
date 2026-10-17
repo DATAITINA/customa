@@ -16,6 +16,8 @@ import { LastPlatesBanner } from '../components/LastPlates';
 import { GoogleButton } from '../features/googleSignIn/GoogleSignIn';
 import { VendorWheelPanel } from '../features/prizeWheel/VendorWheel';
 import { JaraCheckPanel } from '../features/prizeWheel/JaraCheck';
+import { HereNowCard } from '../features/regulars/HereNow';
+import { VendorPlansCard } from '../features/visitPlans/VendorPlans';
 import { Link } from '../App';
 
 export function VendorPage() {
@@ -308,6 +310,10 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           <Link to={`/s/${slug}`} className="btn btn-outline dash-action"><PhoneIcon />Customer page</Link>
         </div>
       </div>
+      {/* "Ime don land!": who is here now, so staff greet regulars by name. */}
+      <HereNowCard slug={slug} entries={d.here_now ?? []} onChange={() => q.refetch()} />
+      {/* Plans for today, plans kept this week, and % back within 14 days. */}
+      <VendorPlansCard d={d} />
       <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
       <div className="stats">
         {stats.map((s) => (

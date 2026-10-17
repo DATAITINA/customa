@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { api, photoUrl, type ApiError, type StandPublic } from '../../api';
+import { api, giftStamps, photoUrl, type ApiError, type StandPublic } from '../../api';
 import { Link, rememberStand } from '../../App';
 import { Logo } from '../../components/Logo';
 import { CharacterLoader } from '../../components/Loading';
@@ -135,7 +135,7 @@ export function WheelPage({ slug }: { slug: string }) {
       <section className="wheel-stage">
         <span className="eyebrow">{stand.stand.name.toUpperCase()} · PRIZE WHEEL</span>
         <h1 className="display wheel-title">
-          {phase === 'won' ? 'YOU WIN!' : spins ? 'SPIN FOR YOUR JARA!' : 'WIN FOOD ON PLATE ' + stand.plates_for_jara}
+          {phase === 'won' ? 'YOU WIN!' : spins ? 'SPIN FOR YOUR JARA!' : 'WIN FOOD ON PLATE ' + (stand.plates_for_jara + giftStamps(stand))}
         </h1>
         {wheelShown.length >= 2 && (
           <Wheel
@@ -165,7 +165,7 @@ export function WheelPage({ slug }: { slug: string }) {
             ) : (
               <>
                 <strong>Scan the QR code at {stand.stand.name} to start your card.</strong>
-                <span className="note">On plate {stand.plates_for_jara} you spin for a free food prize.</span>
+                <span className="note">On plate {stand.plates_for_jara + giftStamps(stand)} you spin for a free food prize.</span>
               </>
             )}
           </div>

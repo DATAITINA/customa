@@ -71,6 +71,13 @@ button:disabled { opacity: 0.55; cursor: default; }
 .note { font-size: 13px; line-height: 1.45; font-weight: 500; color: var(--muted); }
 .progress { height: 16px; border-radius: 999px; background: var(--paper); overflow: hidden; }
 .progress > div { height: 100%; border-radius: 999px; background: var(--pepper); transition: width 0.6s ease; }
+/* Head-start card: the welcome-gift stamps come first, in Blush with a small gift mark. */
+.stamps { display: flex; gap: 5px; }
+.stamp { flex: 1 1 0; max-width: 44px; aspect-ratio: 1; min-width: 0; border-radius: 999px; background: var(--paper); border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: var(--muted); transition: background 0.4s ease, border-color 0.4s ease; }
+.stamp-on { background: var(--pepper); border-color: var(--pepper); }
+.stamp-gift { background: var(--blush); border: 2px dashed var(--pepper); font-size: 13px; }
+.gift-note { font-size: 13px; font-weight: 700; color: var(--pepper); }
+.gift-card { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 16px; background: var(--blush); border: 2px dashed var(--pepper); font-size: 14px; line-height: 1.4; }
 
 .btn {
   height: 56px; border-radius: 999px; border: none; background: var(--ink); color: var(--paper);

@@ -46,8 +46,9 @@
    - Warm off-white text (never pure white) and a softer secondary grey.
    - Soft outlines instead of bright ones; pepper is the accent on main buttons.
    - Status colours deepened for the background, lightened for the text. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+/* Applied by the theme switch (Light / System / Dark): index.html sets data-theme before the
+   first paint, "System" follows the phone. */
+:root[data-theme='dark'] {
     color-scheme: dark;
     --ink: #F2EADF;
     --muted: #A99E91;
@@ -82,7 +83,6 @@
     --scrim: rgba(0, 0, 0, 0.6);
     --frost: rgba(32, 26, 22, 0.85);
     --char-limb: #E8DFD3;
-  }
 }
 
 * { box-sizing: border-box; }
@@ -98,9 +98,7 @@ a:hover { color: var(--muted); }
 button { font-family: inherit; cursor: pointer; }
 button:disabled { opacity: 0.55; cursor: default; }
 /* Dark: a faded pepper button looks muddy, so a disabled main button goes quiet grey instead. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .btn:disabled { background: var(--stone); color: var(--muted); opacity: 1; }
-}
+:root[data-theme='dark'] .btn:disabled { background: var(--stone); color: var(--muted); opacity: 1; }
 :focus-visible { outline: 3px solid var(--pepper); outline-offset: 2px; }
 
 /* ---- Phone layout (customer) ---- */
@@ -540,3 +538,14 @@ tr.fresh td { background: var(--blush); }
 .menu-row-head { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .menu-row-x { width: 36px; height: 36px; border-radius: 999px; border: 2px solid var(--edge); background: var(--paper); color: var(--ink); font-size: 20px; font-weight: 800; line-height: 1; }
 .menu-row-x:disabled { opacity: 0.3; }
+
+/* Theme switch: Light / System / Dark, at the bottom of every page. */
+.theme-footer { display: flex; justify-content: center; padding: 20px 16px 28px; }
+.theme-switch { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--stone); }
+.theme-switch button {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px; border: none; border-radius: 999px;
+  background: transparent; color: var(--muted); font-family: var(--body); font-size: 13px; font-weight: 800; cursor: pointer;
+}
+.theme-switch button[aria-checked='true'] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
+.theme-switch svg { width: 16px; height: 16px; }
+@media print { .theme-footer { display: none; } }

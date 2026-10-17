@@ -5,17 +5,16 @@ import base64
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
-from msflib.utils.tests.account import authentication_token_from_email
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
+from msflib.utils.tests.account import authentication_token_from_email
 from sqlmodel import Session, select
 
 from app.actions import account_action, customer_action, user_action, visit_action
 from app.api.api_v1.endpoints import assistant
 from app.core.config import settings
-from app.models import CharacterCreate, CustomerCreate, StandPhotoFile, Visit, VisitCreate
+from app.models import CharacterCreate, CustomerCreate, StandPhotoFile, VisitCreate
 from app.services import stand_assistant
 from app.services.stands import create_stand
 

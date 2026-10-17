@@ -20,6 +20,7 @@ import { HereNowCard } from '../features/regulars/HereNow';
 import { VendorPlansCard } from '../features/visitPlans/VendorPlans';
 import { VendorPaymentsCard } from '../features/payments/VendorPayments';
 import { MenuEditor } from '../features/payments/MenuEditor';
+import { AskStand } from '../features/assistant/AskStand';
 import { MenuRows, fromRows, menuProblem, type MenuRow } from '../components/MenuRows';
 import { Link } from '../App';
 
@@ -307,6 +308,8 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
       <HereNowCard slug={slug} entries={d.here_now ?? []} onChange={() => q.refetch()} />
       {/* Plans for today, plans kept this week, and % back within 14 days. */}
       <VendorPlansCard d={d} />
+      {/* Ask about your stand: the vendor's AI helper (MSFLib ai-api agent). */}
+      <AskStand slug={slug} character={ch} />
       {/* Today's payments: Paystack (test mode) and cash you confirm. */}
       <VendorPaymentsCard slug={slug} onChange={() => q.refetch()} />
       {ch && <MenuEditor slug={slug} character={ch} onSaved={() => q.refetch()} />}

@@ -69,6 +69,10 @@ def stand_summary(session: Session, workspace_id: int, days: int = 7) -> dict[st
         select(func.coalesce(func.sum(Payment.amount_naira), 0), func.count())
         .where(Payment.workspace_id == workspace_id, Payment.status == "paid", Payment.created_at >= since)
     ).one()
+    items = session.exec(
+        select(Payment.item, func.count()).where(Payment.workspace_id == workspace_id, Payment.status == "paid", Payment.created_at >= since)
+        .group_by(Payment.item).order_by(func.count().desc()).limit(5)
+    ).all()
     by_day = Counter((v.created_at + NIGERIA).date() for v in visits)
     best = max(by_day.items(), key=lambda kv: kv[1]) if by_day else None
     return {
@@ -82,6 +86,9 @@ def stand_summary(session: Session, workspace_id: int, days: int = 7) -> dict[st
         "average_stars_out_of_5": round(float(stars[0]), 1) if stars[0] is not None else None,
         "paid_in_customa_naira": int(paid[0]),
         "paid_plates": paid[1],
+        # What sells best, from plates paid in Customa (cash or card); plates not paid in the
+        # app don't say which food it was.
+        "best_selling_paid_items": [{"item": i, "paid_plates": n} for i, n in items],
         "best_day": {"date": best[0].isoformat(), "weekday": DAYS[best[0].weekday()], "plates": best[1]} if best else None,
     }
 
@@ -152,8 +159,8 @@ def _run(fn, **kwargs) -> dict[str, Any]:
 
 @tool
 def get_stand_summary(days: int = 7) -> dict[str, Any]:
-    """Plates, customers (new and returning), jara, ratings, payments and the best day for the
-    last `days` days (1-90) at this vendor's stand."""
+    """Plates, customers (new and returning), jara, ratings, payments, best-selling paid items and
+    the best day for the last `days` days (1-90) at this vendor's stand."""
     return _run(stand_summary, days=days)
 
 

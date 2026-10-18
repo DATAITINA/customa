@@ -20,6 +20,7 @@ import { HereNowCard } from '../features/regulars/HereNow';
 import { VendorPlansCard } from '../features/visitPlans/VendorPlans';
 import { VendorPaymentsCard } from '../features/payments/VendorPayments';
 import { MenuEditor } from '../features/payments/MenuEditor';
+import { ThemeButton } from '../components/ThemeSwitch';
 import { AskStand } from '../features/assistant/AskStand';
 import { MenuRows, fromRows, menuProblem, type MenuRow } from '../components/MenuRows';
 import { Link } from '../App';
@@ -61,11 +62,15 @@ function VendorTop() {
       <Link to="/" className="logo-link"><Logo size={26} /></Link>
       {status !== 'authenticated' && <FoodStamp />}
       {status === 'authenticated' && (
-        // The vendor's email is not shown: the header stays clean and private on a shared screen.
-        <button type="button" className="signout" onClick={async () => { try { await logout(); } finally { qc.clear(); } }}>
-          <SignOutIcon />
-          Sign out
-        </button>
+        <div className="vendor-top-actions">
+          {/* Light / Dark / System, right where the vendor looks (the full switch is at the bottom too). */}
+          <ThemeButton />
+          {/* The vendor's email is not shown: the header stays clean and private on a shared screen. */}
+          <button type="button" className="signout" onClick={async () => { try { await logout(); } finally { qc.clear(); } }}>
+            <SignOutIcon />
+            Sign out
+          </button>
+        </div>
       )}
     </header>
   );

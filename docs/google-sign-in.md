@@ -14,12 +14,30 @@ sign-in that MSFLib auth already has on the backend:
 
 Code: `frontend/src/features/googleSignIn/` (button, return page, requests).
 
-## Setup
-1. Google Cloud Console → APIs & Services → Credentials → Create credentials → OAuth client ID
-   → Web application. Authorized redirect URI: `https://customa-web.vercel.app/vendor/google`
-   (add `http://localhost:5173/vendor/google` for local work). Set up the OAuth consent screen
-   (app name Customa, scopes email, profile, openid) and publish it.
-2. Put the client ID and client secret in the backend environment (Vercel, customa-api) under the
-   names MSFLib auth reads for Google sign-in (see the MSFLib auth docs; this repo's
-   `.env-example` has the related `SSO_SECRET_KEY` and `SSO_REDIRECT_URL`), turn Google sign-in on,
-   and redeploy the backend. The button appears by itself once `/google/login` stops answering 403.
+## Setup (free)
+1. **Google Cloud Console** (console.cloud.google.com), with a new project called "Customa":
+   - **APIs & Services → OAuth consent screen**: choose External, app name Customa, your email,
+     scopes `email`, `profile` and `openid`. Publish the app (In production) so any Google
+     account can sign in.
+   - **APIs & Services → Credentials → Create credentials → OAuth client ID → Web application**.
+     Authorized redirect URI: `https://customa-web.vercel.app/vendor/google` (add
+     `http://localhost:5173/vendor/google` for local work). Copy the **Client ID** and
+     **Client secret**.
+2. **Vercel → customa-api → Settings → Environment Variables** (the names MSFLib auth reads):
+   - `ENABLE_GOOGLE_OAUTH` = `true`
+   - `ALLOW_GOOGLE_OAUTH_SIGNUP` = `true` (new vendors can sign up with Google)
+   - `GOOGLE_OAUTH_CLIENT_ID` = the Client ID
+   - `GOOGLE_OAUTH_CLIENT_SECRET` = the Client secret
+   - `GOOGLE_REDIRECT_URI` = `https://customa-web.vercel.app/vendor/google`
+
+   Then redeploy the backend. The button appears by itself once `/google/login` stops answering
+   403.
+
+## Backend pieces
+- `SessionMiddleware` (`app/main.py`): MSFLib auth's Google login step keeps its sign-in state in
+  a signed session cookie, as in MSFLib's own auth tests.
+- The `google-account-create` listener (`app/eventbus/__init__.py`): MSFLib auth emits it for an
+  email it doesn't know yet. It creates the vendor account (with a random password nobody knows),
+  and the vendor then sets up their stand like after email sign-up. An existing vendor with the
+  same email simply signs in.
+- Test: `backend/app/tests/api/api_v1/test_google_sign_in.py`.

@@ -24,6 +24,20 @@ def surprise_roll(one_in: int) -> bool:
 
 
 def register_customa_hooks(emitter: AppEmitter) -> None:
+    @emitter.on("google-account-create")
+    def create_vendor_from_google(user_info, options: dict, logger=None) -> None:
+        """MSFLib auth's Google sign-in calls this for a new email (ALLOW_GOOGLE_OAUTH_SIGNUP):
+        make the vendor account. Google already checked the email; the password is a long
+        random one nobody knows, so this account signs in with Google (or a password reset).
+        The vendor then sets up their stand, exactly like after email sign-up."""
+        from ..actions import account_action
+        from ..models import AccountCreate
+
+        account_action.create(
+            options["session"],
+            data=AccountCreate(email=user_info.email.lower(), password=secrets.token_urlsafe(32)),
+        )
+
     @emitter.on("visit-create-pre-commit")
     def issue_jara_on_last_plate(visit: Visit, options: dict, logger=None) -> None:
         session = options["session"]

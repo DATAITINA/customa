@@ -2,7 +2,7 @@
 
 # 🌶️ Customa
 
-### A friendly AI character for every small food stand
+### A friendly AI character for every food stand/restaurant
 
 **Customers scan. The stand's character greets them by name, counts their plate, and every 6th plate earns a *jara*: a free extra portion.**
 

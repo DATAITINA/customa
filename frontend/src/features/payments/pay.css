@@ -1,14 +1,14 @@
 /* ---- Pay for a plate ---- */
-.pay-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 2px solid var(--edge); border-radius: var(--radius-card); background: var(--paper); }
+.pay-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 2px solid var(--edge); border-radius: var(--radius-card); background: var(--card); }
 .pay-items { display: flex; flex-wrap: wrap; gap: 8px; }
-.pay-items button { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--edge); background: var(--paper); color: var(--ink); font-weight: 800; font-size: 14px; }
-.pay-items button.on { background: var(--fill); color: var(--on-fill); }
+.pay-items button { min-height: 44px; padding: 0 14px; border-radius: var(--radius-pill); border: 2px solid var(--edge); background: var(--surface); color: var(--ink); font-weight: 800; font-size: 0.875rem; }
+.pay-items button.on { background: var(--select-bg); color: var(--select-fg); border-color: var(--select-edge); }
 .pay-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.pay-code { font-family: var(--display); font-size: 56px; letter-spacing: 0.15em; text-align: center; line-height: 1; }
-.pay-test { align-self: flex-start; padding: 2px 8px; border-radius: 999px; background: var(--notice-bg); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }
-.pay-done { background: var(--success-bg); border-color: var(--success); }
+.pay-code { font-family: var(--display); font-size: 3.5rem; letter-spacing: 0.15em; text-align: center; line-height: 1; }
+.pay-test { align-self: flex-start; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--warn-bg); font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.06em; }
+.pay-done { background: var(--ok-bg); border-color: var(--ok); }
 .vpay-list { display: flex; flex-direction: column; gap: 8px; }
-.vpay-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 16px; background: var(--stone); }
-.vpay-row strong.code { font-family: var(--display); font-size: 24px; letter-spacing: 0.1em; }
+.vpay-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: var(--radius-md); background: var(--stone); }
+.vpay-row strong.code { font-family: var(--display); font-size: 1.5rem; letter-spacing: 0.1em; }
 .vpay-row .grow { flex: 1 1 140px; min-width: 0; }
-.vpay-row .btn { min-height: 40px; padding: 0 14px; }
+.vpay-row .btn { min-height: var(--tap); padding: 0 14px; }

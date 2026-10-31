@@ -104,7 +104,13 @@ export function WheelPage({ slug }: { slug: string }) {
   if (failed) {
     return (
       <Shell slug={slug}>
-        <div className="stack"><p className="error">Could not load the prize wheel. Check your network and try again.</p></div>
+        <div className="stack">
+          <div className="card-outline" role="alert">
+            <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>The wheel no gree load 📶</span>
+            <span className="note" style={{ fontSize: 'var(--fs-md)' }}>Check your data or Wi-Fi, then try again. Your spins and prizes are safe.</span>
+          </div>
+          <button type="button" className="btn" onClick={() => window.location.reload()}>Try again</button>
+        </div>
       </Shell>
     );
   }
@@ -122,8 +128,8 @@ export function WheelPage({ slug }: { slug: string }) {
     return (
       <Shell slug={slug}>
         <div className="stack" style={{ alignItems: 'center', textAlign: 'center' }}>
-          <h1 className="display" style={{ fontSize: 40 }}>THE WHEEL IS RESTING</h1>
-          <p className="note" style={{ fontSize: 15 }}>{stand.stand.name} has no prize wheel today. Your jara still works: show its code to the vendor.</p>
+          <h1 className="display" style={{ fontSize: '2.5rem' }}>THE WHEEL IS RESTING</h1>
+          <p className="note" style={{ fontSize: '0.9375rem' }}>{stand.stand.name} has no prize wheel today. Your jara still works: show its code to the vendor.</p>
           <Link to={`/s/${slug}`} className="btn">Back to my card</Link>
         </div>
       </Shell>
@@ -226,9 +232,9 @@ const quickDelay = () => (reduceMotion() ? 200 : 900);
 
 function Shell({ slug, children, sound, onSound }: { slug: string; children: React.ReactNode; sound?: boolean; onSound?: () => void }) {
   return (
-    <main className="phone wheel-page">
+    <main className="phone wheel-page page-in">
       <header className="topbar">
-        <Link to={`/s/${slug}`} className="link-btn">Back</Link>
+        <Link to={`/s/${slug}`} className="back-btn" aria-label="Back to my card"><span aria-hidden="true">←</span> My card</Link>
         {onSound ? (
           <button type="button" className="wheel-sound" aria-pressed={sound} aria-label={sound ? 'Sound on' : 'Sound off'} onClick={onSound}>
             {sound ? '🔊' : '🔇'}

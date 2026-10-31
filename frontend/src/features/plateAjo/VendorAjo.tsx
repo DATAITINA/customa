@@ -94,7 +94,7 @@ export function VendorAjoPanel({ slug }: { slug: string }) {
     return (
       <div className="card ajo-panel">
         {head}
-        <span style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.4 }}>
+        <span style={{ fontWeight: 600, fontSize: '0.9375rem', lineHeight: 1.4 }}>
           Customers prepay you 5 or 10 plates by transfer to your own account, and use one plate per visit.
           You get cash up front; they beat price rises.
         </span>
@@ -118,7 +118,7 @@ export function VendorAjoPanel({ slug }: { slug: string }) {
         form
       ) : (
         <div className="row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, fontSize: 15 }}>
+          <span style={{ fontWeight: 700, fontSize: '0.9375rem' }}>
             Pay to: {d.bank_name} · {d.account_number} · {d.account_name}
           </span>
           <button className="link-btn" onClick={() => setEditing(true)}>Edit bank details</button>
@@ -138,7 +138,7 @@ function Lists({
   const [closing, setClosing] = useState<number | null>(null);
   return (
     <div className="grid-2">
-      <div className="card-outline ajo-section" style={{ background: 'var(--paper)' }}>
+      <div className="card-outline ajo-section" style={{ background: 'var(--card)' }}>
         <span className="eyebrow">TRANSFERS TO CONFIRM</span>
         {d.pending.length === 0 && <span className="note">No transfers waiting.</span>}
         {d.pending.map((p) => (
@@ -190,7 +190,7 @@ function Lists({
         )}
       </div>
 
-      <div className="card-outline ajo-section" style={{ background: 'var(--paper)' }}>
+      <div className="card-outline ajo-section" style={{ background: 'var(--card)' }}>
         <span className="eyebrow">PREPAID PLATES LEFT</span>
         {d.active.length === 0 && <span className="note">No prepaid plates yet.</span>}
         {d.active.map((a) => (
@@ -230,7 +230,7 @@ function Lists({
         ))}
       </div>
 
-      <div className="card-outline ajo-section" style={{ background: 'var(--paper)' }}>
+      <div className="card-outline ajo-section" style={{ background: 'var(--card)' }}>
         <span className="eyebrow">PREPAID PLATES SERVED TODAY</span>
         {d.served_today.length === 0 && <span className="note">None served today.</span>}
         {d.served_today.map((s) => (

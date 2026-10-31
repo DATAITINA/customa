@@ -112,9 +112,9 @@ export function ChatPage({ slug }: { slug: string }) {
   const closed = chat !== null && !chat.open;
 
   return (
-    <main className="phone" style={{ display: 'flex', flexDirection: 'column' }}>
+    <main className="phone page-in" style={{ display: 'flex', flexDirection: 'column' }}>
       <header className="topbar">
-        <Link to={`/s/${slug}`} className="link-btn">Back</Link>
+        <Link to={`/s/${slug}`} className="back-btn" aria-label="Back to my card"><span aria-hidden="true">←</span> My card</Link>
         <span style={{ fontWeight: 800 }}>Talk to {first}</span>
         <Logo size={22} />
       </header>
@@ -132,13 +132,19 @@ export function ChatPage({ slug }: { slug: string }) {
       ) : noPlate ? (
         <div className="stack">
           <div className="card-outline">
-            <span style={{ fontSize: 17, fontWeight: 800 }}>Count a plate first, then we can talk! 🍛</span>
+            <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>Count a plate first, then we can talk! 🍛</span>
             <span className="note">Scan the QR code at the stand to count your plate. Your chat opens with each plate.</span>
           </div>
           <Link to={`/s/${slug}`} className="btn">Go to my card</Link>
         </div>
       ) : loadError ? (
-        <div className="stack"><p className="error">Could not load the chat. Check your network and try again.</p></div>
+        <div className="stack">
+          <div className="card-outline" role="alert">
+            <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>{first} no fit hear you right now 📶</span>
+            <span className="note" style={{ fontSize: 'var(--fs-md)' }}>The chat could not load. Check your data or Wi-Fi, then try again.</span>
+          </div>
+          <button type="button" className="btn" onClick={() => window.location.reload()}>Try again</button>
+        </div>
       ) : (
         <>
           <div className="chat-log" aria-live="polite" style={{ flexGrow: 1 }}>
@@ -150,7 +156,7 @@ export function ChatPage({ slug }: { slug: string }) {
                 <i /><i /><i />
               </div>
             )}
-            {slow && <p className="note" style={{ margin: 0 }}>{first} is a bit slow right now. Tap a quick question:</p>}
+            {slow && <p className="note" style={{ margin: 0 }}>{first} is a bit slow right now. Hold on small, the answer is coming 🍲</p>}
             <div ref={end} />
           </div>
 
@@ -165,7 +171,7 @@ export function ChatPage({ slug }: { slug: string }) {
                     <span className="note">Nothing yet. Tell {first} your favourite dish!</span>
                   ) : (
                     <>
-                      {remembered.map((line) => <span key={line} style={{ fontSize: 15, fontWeight: 600 }}>{line}</span>)}
+                      {remembered.map((line) => <span key={line} style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{line}</span>)}
                       <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={forget}>Forget all of this</button>
                     </>
                   )}
@@ -176,8 +182,8 @@ export function ChatPage({ slug }: { slug: string }) {
 
           {closed ? (
             <div className="chat-closed" role="status">
-              <span style={{ fontSize: 17, fontWeight: 800 }}>{first} don go back to the pot 🍲</span>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>Your chat opens again with your next plate, right where you stopped.</span>
+              <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>{first} don go back to the pot 🍲</span>
+              <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Your chat opens again with your next plate, right where you stopped.</span>
               <span className="note">{waitText(chat.seconds_left)}</span>
               <Link to={`/s/${slug}`} className="btn">Back to my card</Link>
             </div>
@@ -187,9 +193,9 @@ export function ChatPage({ slug }: { slug: string }) {
                 {quick.map((q) => <button key={q} onClick={() => send(q)} disabled={thinking || !chat}>{q}</button>)}
               </div>
               <form className="chat-form" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-                <label htmlFor="chat-input" style={{ position: 'absolute', left: -9999 }}>Message</label>
+                <label htmlFor="chat-input" className="sr-only">Message {first}</label>
                 <input id="chat-input" className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder={`Message ${first}`} maxLength={500} />
-                <button className="btn" style={{ width: 100 }} type="submit" disabled={thinking || !text.trim() || !chat}>Send</button>
+                <button className="btn chat-send" type="submit" disabled={thinking || !text.trim() || !chat}>Send</button>
               </form>
             </>
           )}

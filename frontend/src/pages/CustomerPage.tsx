@@ -31,10 +31,11 @@ import { RecoverCard } from '../features/cardRecovery/RecoverCard';
 import { SaveCard } from '../features/cardRecovery/SaveCard';
 import { CharacterLoader } from '../components/Loading';
 import { DeleteMyData } from '../components/DeleteMyData';
+import { buzz, HAPTIC } from '../utils/haptics';
 
 type View =
   | { kind: 'loading' }
-  | { kind: 'error'; message: string }
+  | { kind: 'error'; message: string; reason?: ErrorReason }
   | { kind: 'welcome' }
   // Not counted: no fresh scan of the stand's QR code (stale = the code was old or wrong).
   | { kind: 'scan'; stale?: boolean }
@@ -67,6 +68,9 @@ const Check = () => (
 );
 
 const naira = (n: number) => `₦${n.toLocaleString('en-NG')}`;
+
+type ErrorReason = 'notFound' | 'offline' | 'server';
+const errorReason = (e: ApiError): ErrorReason => (e.status === 404 ? 'notFound' : !e.status ? 'offline' : 'server');
 
 export function CustomerPage({ slug }: { slug: string }) {
   const [stand, setStand] = useState<StandPublic | null>(null);
@@ -104,6 +108,7 @@ export function CustomerPage({ slug }: { slug: string }) {
       markScanCounted(slug);
       setCustomerKey(slug, result.customer.key);
       setMe(result.customer);
+      buzz(result.jara ? HAPTIC.jara : HAPTIC.stamp);
       setView(result.jara ? { kind: 'jara', result } : { kind: 'counted', result });
     } catch (err) {
       const e = err as ApiError;
@@ -120,7 +125,7 @@ export function CustomerPage({ slug }: { slug: string }) {
         clearCustomerKey(slug);
         setView({ kind: 'welcome' });
       } else {
-        setView({ kind: 'error', message: e.message ?? 'Something went wrong' });
+        setView({ kind: 'error', message: e.message ?? 'Something went wrong', reason: errorReason(e) });
       }
     }
   };
@@ -172,22 +177,13 @@ export function CustomerPage({ slug }: { slug: string }) {
           } else setView({ kind: 'scan' });
         } else setView(freshScan ? { kind: 'welcome' } : { kind: 'scan' });
       })
-      .catch((err: ApiError) =>
-        setView({ kind: 'error', message: err.status === 404 ? 'This stand does not exist.' : err.message }),
-      );
+      .catch((err: ApiError) => setView({ kind: 'error', message: err.message, reason: errorReason(err) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
-  if (view.kind === 'loading') return <Shell stand={stand}><CharacterLoader kind="card" character={stand?.character} /></Shell>;
+  if (view.kind === 'loading') return <Shell stand={stand} view={view.kind}><CharacterLoader kind="card" character={stand?.character} /></Shell>;
   if (view.kind === 'error' || !stand) {
-    return (
-      <Shell stand={stand}>
-        <div className="stack">
-          <p className="error">{view.kind === 'error' ? view.message : 'Could not load this stand.'}</p>
-          <button className="btn" onClick={() => window.location.reload()}>Try again</button>
-        </div>
-      </Shell>
-    );
+    return <ErrorScreen stand={stand} reason={view.kind === 'error' ? view.reason ?? 'server' : 'server'} />;
   }
 
   const ch = stand.character;
@@ -204,11 +200,16 @@ export function CustomerPage({ slug }: { slug: string }) {
     }
   };
   // The return-visit features. Each card hides itself when the vendor has not turned it on.
-  const featureCards = (
+  // Rewards and paying come first, right under the card; the rest sits under "More from …".
+  const rewardCards = (
     <>
       {me && <PayCard slug={slug} onPaid={refreshMe} />}
       <OpenJara slug={slug} codes={me?.open_jara ?? []} />
       <WheelCard slug={slug} stand={stand} refreshKey={meVersion} />
+    </>
+  );
+  const featureCards = (
+    <>
       {me && <AlertsCard slug={slug} stand={stand} />}
       {me && <UsualCard slug={slug} standName={stand.stand.name} />}
       {/* An existing plan (the question itself comes right after a counted plate, below). */}
@@ -223,12 +224,16 @@ export function CustomerPage({ slug }: { slug: string }) {
     onTap: () => setTapLine(TAP_LINES[Math.floor(Math.random() * TAP_LINES.length)]),
   };
   const charName = ch?.name ?? 'your host';
+  const firstName = charName.split(' ')[0];
+  const deleteMyData = (
+    <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+  );
 
   if (view.kind === 'jara') return <JaraScreen slug={slug} stand={stand} result={view.result} onDone={() => setView({ kind: 'counted', result: { ...view.result, jara: null } })} />;
 
   if (view.kind === 'deleted') {
     return (
-      <Shell stand={stand}>
+      <Shell stand={stand} view={view.kind}>
         <Hero tapLine={tapLine} bubble={`Done. I don forget you. Come back anytime!`}>
           <Character {...charProps} expression="happy" pose="idle" size={170} />
         </Hero>
@@ -242,7 +247,7 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   if (view.kind === 'welcome') {
     return (
-      <Shell stand={stand}>
+      <Shell stand={stand} view={view.kind}>
         <Hero tapLine={tapLine} bubble={`${ch?.greeting ?? 'Welcome!'} Wetin be your name?`}>
           <Character {...charProps} expression="excited" pose="wave" size={180} />
         </Hero>
@@ -261,23 +266,31 @@ export function CustomerPage({ slug }: { slug: string }) {
         ? `${known}Welcome back! Scan the QR code at the stand to count today's plate.`
         : `${ch?.greeting ?? 'Welcome!'} Scan the QR code at the stand to count your first plate.`;
     return (
-      <Shell stand={stand}>
+      <Shell stand={stand} view={view.kind}>
         <Hero tapLine={tapLine} bubble={bubble}>
           <Character {...charProps} expression="happy" pose="wave" size={170} />
         </Hero>
         <div className="stack">
           <ScanHint charName={charName} />
-          {!me && <RecoverCard slug={slug} onRecovered={afterRecover} />}
-          {me && <SaveCard slug={slug} />}
-          {me && (
+          {me ? (
             <>
               <PlateCard plate={me.plate_number} total={total} gift={giftStamps(stand, !!me.crew_name)} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} />
+              {rewardCards}
+              {/* "Save your card": keeps the card if the phone, browser or app changes. */}
+              <SaveCard slug={slug} />
+              <TalkAndPlay slug={slug} first={firstName} outline />
+              <MoreFrom name={firstName} />
               {featureCards}
-              <TalkAndPlay slug={slug} first={charName.split(' ')[0]} outline />
+            </>
+          ) : (
+            <>
+              {/* No card in this browser: maybe it lives in another one ("Already have a card?"). */}
+              <RecoverCard slug={slug} onRecovered={afterRecover} />
+              <HowItWorks total={total} gift={gift} />
             </>
           )}
           <Menu items={ch?.menu ?? []} />
-          {me && <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />}
+          {me && deleteMyData}
         </div>
       </Shell>
     );
@@ -285,7 +298,7 @@ export function CustomerPage({ slug }: { slug: string }) {
 
   if (view.kind === 'tooSoon') {
     return (
-      <Shell stand={stand}>
+      <Shell stand={stand} view={view.kind}>
         <TooSoon
           stand={stand}
           initialSeconds={view.secondsLeft}
@@ -295,11 +308,10 @@ export function CustomerPage({ slug }: { slug: string }) {
           name={view.name}
           canCount={(() => { const sc = getScan(slug); return sc !== null && !sc.counted; })()}
           onReady={() => handleCount({ consent: true })}
+          rewards={rewardCards}
           extras={featureCards}
         />
-        <div className="stack">
-          <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
-        </div>
+        <div className="stack">{deleteMyData}</div>
       </Shell>
     );
   }
@@ -325,8 +337,8 @@ export function CustomerPage({ slug }: { slug: string }) {
   } else if (crew) {
     bubble = `${hi}Plate ${crew.plate_number} of ${crew.plates_for_jara} for ${crew.name}.`;
   } else if (left === 1) {
-    // Almost there: people speed up when a reward is close, so make plate 5 feel exciting.
-    bubble = `${hi}Plate ${shown} don land! Just ONE more plate and jara na yours! 🎉`;
+    // Almost there: people speed up when a reward is close, so make this plate feel exciting.
+    bubble = `${hi}${ONE_AWAY[r.plate_number % ONE_AWAY.length](shown)}`;
   } else if (r.returning) {
     bubble = `${hi}Back again! Plate ${shown} of ${total + gift}.`;
   } else {
@@ -340,30 +352,47 @@ export function CustomerPage({ slug }: { slug: string }) {
   const cardCrew = me ? me.crew_name ?? null : crew?.name ?? null;
 
   return (
-    <Shell stand={stand}>
+    <Shell stand={stand} view={view.kind}>
       <Hero tapLine={tapLine} bubble={bubble} counted>
-        <Character {...charProps} expression="excited" pose={r.returning ? 'wave' : 'hop'} size={180} />
+        <span className="hero-pop"><Character {...charProps} expression="excited" pose={r.returning ? 'wave' : 'hop'} size={180} /></span>
       </Hero>
       <div className="stack">
-        <PlateCard plate={cardPlate} total={total} gift={giftStamps(stand, !!cardCrew)} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} />
+        <PlateCard plate={cardPlate} total={total} gift={giftStamps(stand, !!cardCrew)} crewName={cardCrew} windowSeconds={r.customer.window_seconds ?? stand.window_seconds} landed />
+        {rewardCards}
         {/* "Save your card so you never lose it": offered open right after the first plate. */}
         <SaveCard slug={slug} offer={!r.returning} />
         {/* "When you go come back?": plan the next visit (a day and a time). */}
         <PlanCard slug={slug} character={ch} ask missed={r.plan_outcome === 'missed'} />
-        {featureCards}
-        <TalkAndPlay slug={slug} first={charName.split(' ')[0]} />
         <Rate slug={slug} visitId={r.visit_id} />
+        <TalkAndPlay slug={slug} first={firstName} />
+        <MoreFrom name={firstName} />
+        {featureCards}
         <Menu items={ch?.menu ?? []} />
         <Goodbye name={name} plate={r.plate_number} />
-        <DeleteMyData slug={slug} standName={stand.stand.name} plates={(me?.own_plate_number ?? (me?.plate_number ?? 0) % total) + gift} total={total + gift} me={me} onDeleted={() => { clearCustomerKey(slug); setMe(null); setView({ kind: 'deleted' }); }} />
+        {deleteMyData}
       </div>
     </Shell>
   );
 }
 
-function Shell({ stand, children }: { stand: StandPublic | null; children: React.ReactNode }) {
+// Offline right now? (A plate can only count online, so say so before the customer tries.)
+function useOnline() {
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false));
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+  return online;
+}
+
+function Shell({ stand, view, children }: { stand: StandPublic | null; view?: string; children: React.ReactNode }) {
+  const online = useOnline();
   return (
     <main className="phone">
+      {!online && <div className="offline-bar" role="status">📶 You're offline. Your card is safe. Plates count again once you're back online.</div>}
       <header className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span className="stand-name">{stand?.stand.name ?? ''}</span>
@@ -376,10 +405,17 @@ function Shell({ stand, children }: { stand: StandPublic | null; children: React
         </div>
       )}
       {stand?.last_plates && <div style={{ padding: '0 12px 10px' }}><LastPlatesBanner lp={stand.last_plates} /></div>}
-      {children}
+      <div className="view-in" key={view}>{children}</div>
     </main>
   );
 }
+
+// One plate away from jara: a cheeky line, so the next visit feels close.
+const ONE_AWAY: ((plate: number) => string)[] = [
+  (n) => `Plate ${n} don land! Next plate na jara o. No dull yourself 👀`,
+  (n) => `Plate ${n}! Just ONE more and jara na yours. I don dey prepare am 🎉`,
+  (n) => `Plate ${n} don land! Jara dey wait for you for the next one 🔥`,
+];
 
 const TAP_LINES = [
   'Hehe, that tickles! 😆',
@@ -403,7 +439,8 @@ function Hero({ bubble, tapLine, counted, children }: { bubble: string; tapLine?
   );
 }
 
-function PlateCard({ plate, total, gift = 0, windowSeconds, crewName }: { plate: number; total: number; gift?: number; windowSeconds: number; crewName?: string | null }) {
+// landed: this plate was just counted, so its stamp lands on the card with a thump.
+function PlateCard({ plate, total, gift = 0, windowSeconds, crewName, landed = false }: { plate: number; total: number; gift?: number; windowSeconds: number; crewName?: string | null; landed?: boolean }) {
   const windowText = windowSeconds < 120 ? `${windowSeconds} seconds` : `${Math.round(windowSeconds / 3600)} hours`;
   // Head-start card (own card only): `gift` stamps come first, so the card reads
   // (plate + gift) / (total + gift). The jara still comes after `total` real plates.
@@ -415,19 +452,25 @@ function PlateCard({ plate, total, gift = 0, windowSeconds, crewName }: { plate:
     <div className="card">
       <div className="row">
         <span className="eyebrow">{crewName ? 'CREW CARD' : 'YOUR JARA'}</span>
-        <span style={{ fontSize: 13, fontWeight: 700 }}>
+        <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
           {crewName ? `${crewName} · jara on plate ${total}, by turns` : `Free extra on plate ${of}`}
         </span>
       </div>
       <div className="row" style={{ alignItems: 'center' }}>
         <span className="plate-count">PLATE {shown}/{of}</span>
-        {real === total - 1 && <span className="almost-pill">1 more! 🔥</span>}
+        {real === total - 1 && <span className="almost-pill">Jara next! 🔥</span>}
       </div>
       {gift > 0 ? (
         <>
           <div className="stamps" role="progressbar" aria-valuemin={0} aria-valuemax={of} aria-valuenow={shown} aria-label={`${shown} of ${of} stamps, ${gift} of them a welcome gift`}>
             {Array.from({ length: of }, (_, i) => (
-              <span key={i} className={i < gift ? 'stamp stamp-gift' : i < shown ? 'stamp stamp-on' : 'stamp'}>
+              <span key={i} className={[
+                'stamp',
+                i < gift ? 'stamp-gift' : i < shown ? 'stamp-on' : '',
+                landed && i === shown - 1 && i >= gift ? 'stamp-land' : '',
+                i === of - 1 ? 'stamp-jara' : '',
+                i === of - 1 && real === total - 1 ? 'stamp-next' : '',
+              ].filter(Boolean).join(' ')}>
                 {i < gift ? '🎁' : i === of - 1 ? 'J' : ''}
               </span>
             ))}
@@ -435,8 +478,8 @@ function PlateCard({ plate, total, gift = 0, windowSeconds, crewName }: { plate:
           <span className="gift-note">Welcome gift: {gift} stamps on us 🎁</span>
         </>
       ) : (
-        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate}>
-          <div style={{ width: `${(plate / total) * 100}%` }} />
+        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={plate} aria-label={`${plate} of ${total} plates`}>
+          <div className={landed ? 'progress-land' : undefined} style={{ width: `${(plate / total) * 100}%` }} />
         </div>
       )}
       <span className="note">One plate counts per visit. Next one counts after {windowText}.</span>
@@ -480,8 +523,8 @@ function WelcomeForm({ onSubmit, gift = 0, total = 6 }: { onSubmit: (b: { first_
 }
 
 function TooSoon({
-  stand, initialSeconds, windowSeconds, plate, crewName, name, canCount, onReady, extras,
-}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; crewName?: string | null; name: string | null; canCount: boolean; onReady: () => void; extras?: React.ReactNode }) {
+  stand, initialSeconds, windowSeconds, plate, crewName, name, canCount, onReady, rewards, extras,
+}: { stand: StandPublic; initialSeconds: number; windowSeconds: number; plate: number; crewName?: string | null; name: string | null; canCount: boolean; onReady: () => void; rewards?: React.ReactNode; extras?: React.ReactNode }) {
   // Count down to a fixed end time, not by ticking: phones pause timers while the
   // screen is off or the tab is in the background, which would leave a 6-hour
   // countdown far behind. Re-read the clock on every tick and when the page is shown again.
@@ -509,32 +552,35 @@ function TooSoon({
     <>
       <Hero bubble={`You don collect this plate already${name ? ', ' + name : ''}! I dey count the next one.`}>
         <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={170} react follow />
-        <div className="timer" style={{ background: `conic-gradient(#141414 0 ${pct}%, #FFFFFF ${pct}% 100%)` }} aria-label={`Next plate in ${label}`}>
+        <div className="timer" style={{ background: `conic-gradient(var(--ring-fill) 0 ${pct}%, var(--ring-track) ${pct}% 100%)` }} aria-label={`Next plate in ${label}`}>
           <div className="timer-inner">
             {/* One line always: hours ("5h 59m") get a smaller size so they fit the ring. */}
-            <span style={{ fontFamily: 'var(--display)', fontSize: label.length > 5 ? 21 : 28, lineHeight: 1, whiteSpace: 'nowrap' }}>{label}</span>
-            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>NEXT PLATE</span>
+            <span style={{ fontFamily: 'var(--display)', fontSize: label.length > 5 ? '1.3125rem' : '1.75rem', lineHeight: 1, whiteSpace: 'nowrap' }}>{label}</span>
+            <span style={{ fontSize: '0.5625rem', fontWeight: 800, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>NEXT PLATE</span>
           </div>
         </div>
       </Hero>
       <div className="stack">
-        <PlateCard plate={plate} total={total} gift={giftStamps(stand, !!crewName)} crewName={crewName} windowSeconds={windowSeconds} />
-        {extras}
-        <div className="card-outline">
-          <span className="eyebrow">WHY THE WAIT?</span>
-          <span style={{ fontSize: 15, lineHeight: 1.45, fontWeight: 600 }}>
-            One plate per visit keeps the jara fair for everyone.
-          </span>
-        </div>
         {seconds > 0 ? (
-          <button className="btn" disabled>Wait for the timer</button>
+          // Nothing to do yet, so no dead button: just when, and why.
+          <div className="next-visit" role="status">
+            <span className="next-visit-icon" aria-hidden="true">👋🏾</span>
+            <span>
+              <strong>See you after {label}!</strong>
+              <span className="note" style={{ display: 'block' }}>One plate per visit keeps the jara fair for everyone. Your card is saved on this phone.</span>
+            </span>
+          </div>
         ) : canCount ? (
           // Scanned at the stand while the timer was still running: count now.
-          <button className="btn" onClick={onReady}>Count my next plate</button>
+          <button className="btn btn-pop" onClick={onReady}>Count my next plate</button>
         ) : (
           <ScanHint charName={ch?.name ?? 'your host'} done />
         )}
+        <PlateCard plate={plate} total={total} gift={giftStamps(stand, !!crewName)} crewName={crewName} windowSeconds={windowSeconds} />
+        {rewards}
         <TalkAndPlay slug={stand.stand.slug} first={ch?.name.split(' ')[0] ?? 'us'} outline />
+        <MoreFrom name={ch?.name.split(' ')[0] ?? 'us'} />
+        {extras}
       </div>
     </>
   );
@@ -603,11 +649,11 @@ function OpenJara({ slug, codes }: { slug: string; codes: OpenJaraEntry[] }) {
           <span className="eyebrow">{ready.length > 1 ? 'YOUR JARA CODES' : 'YOUR JARA'}</span>
           {ready.map((j) => (
             <div key={j.code} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {j.prize && <span style={{ fontSize: 15, fontWeight: 800 }}>🎁 {j.prize}</span>}
-              <span style={{ fontFamily: 'var(--display)', fontSize: j.code!.length > 11 ? 26 : 32, lineHeight: 1, letterSpacing: '0.06em' }}>{j.code}</span>
+              {j.prize && <span style={{ fontSize: '0.9375rem', fontWeight: 800 }}>🎁 {j.prize}</span>}
+              <span style={{ fontFamily: 'var(--display)', fontSize: j.code!.length > 11 ? '1.625rem' : '2rem', lineHeight: 1, letterSpacing: '0.06em' }}>{j.code}</span>
             </div>
           ))}
-          <span style={{ fontSize: 15, fontWeight: 700 }}>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 700 }}>
             {ready.some((j) => j.prize) ? 'Show this to the vendor to collect your prize. One use.' : 'Show this to the vendor for a free extra portion. One use.'}
           </span>
           {ready.some((j) => j.prize) && <Link to={`/s/${slug}/wheel`} className="link-btn" >Show the QR code</Link>}
@@ -621,11 +667,12 @@ function Rate({ slug, visitId }: { slug: string; visitId: number }) {
   const [choice, setChoice] = useState<number | null>(null);
   const rate = async (stars: number) => {
     setChoice(stars);
+    buzz(HAPTIC.tap);
     try { await api.rate(slug, visitId, stars); } catch { setChoice(null); }
   };
   return (
     <div className="rate">
-      <span style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.25 }}>{choice ? 'Thanks for rating!' : "Rate today's food"}</span>
+      <span style={{ fontSize: '1rem', fontWeight: 800, lineHeight: 1.25 }} role="status">{choice === 5 ? 'E sweet! Thank you 😋' : choice === 1 ? 'Sorry o. We go do better 🙏🏾' : "Rate today's food"}</span>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="thumb" aria-label="Good" aria-pressed={choice === 5} onClick={() => rate(5)}><ThumbUp /></button>
         <button type="button" className="thumb" aria-label="Not good" aria-pressed={choice === 1} onClick={() => rate(1)}><ThumbDown /></button>
@@ -643,7 +690,7 @@ function Menu({ items }: { items: { item: string; price: number }[] }) {
       {open && (
         <div className="card-outline">
           {items.map((m) => (
-            <div key={m.item} className="row" style={{ fontSize: 15 }}>
+            <div key={m.item} className="row" style={{ fontSize: '0.9375rem' }}>
               <span style={{ fontWeight: 600 }}>{m.item}</span>
               <span style={{ fontWeight: 800 }}>{naira(m.price)}</span>
             </div>
@@ -681,14 +728,14 @@ function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: Stan
         <Logo size={22} />
       </header>
       <div style={{ position: 'relative', paddingTop: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em' }}>
+        <span style={{ fontSize: '0.8125rem', fontWeight: 800, letterSpacing: '0.1em' }}>
           {result.surprise
             ? `${(ch?.name ?? 'THE VENDOR').toUpperCase()} DON DASH YOU · PLATE ${result.plate_number + gift}`
             : result.crew
               ? `${result.crew.name.toUpperCase()}: YOUR TURN · ${result.plates_for_jara} OF ${result.plates_for_jara} PLATES`
               : `${result.plates_for_jara + gift} OF ${result.plates_for_jara + gift} PLATES`}
         </span>
-        <h1 className="display" style={{ fontSize: result.surprise ? 76 : 104 }}>{result.surprise ? 'SURPRISE JARA!' : 'JARA!'}</h1>
+        <h1 className="display jara-title" style={{ fontSize: result.surprise ? '4.75rem' : '6.5rem' }}>{result.surprise ? 'SURPRISE JARA!' : 'JARA!'}</h1>
       </div>
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <div className="bubble" style={{ alignSelf: 'center', textAlign: 'center' }}>
@@ -701,23 +748,92 @@ function JaraScreen({ slug, stand, result, onDone }: { slug: string; stand: Stan
       {result.jara?.spin ? (
         // Prize Wheel: the jara is a spin; the wheel picks the food and gives the code.
         <div className="code-card" role="status">
-          <span style={{ fontSize: 15, fontWeight: 800 }}>Your jara is a spin on {ch?.name.split(' ')[0] ?? 'the'}'s prize wheel!</span>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 800 }}>Your jara is a spin on {ch?.name.split(' ')[0] ?? 'the'}'s prize wheel!</span>
           <Link to={`/s/${slug}/wheel`} className="btn wheel-spin">🎡 SPIN NOW</Link>
           <span className="note">See which food you win. You can also spin later from your card.</span>
         </div>
       ) : (
         <div className="code-card" role="status">
-          <span style={{ fontSize: 15, fontWeight: 800 }}>Show this screen to the vendor</span>
-          <span style={{ fontFamily: 'var(--display)', fontSize: 44, lineHeight: 1, letterSpacing: '0.06em' }}>{result.jara?.code}</span>
-          <span style={{ fontSize: 18, fontWeight: 800 }}>A free extra portion</span>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 800 }}>Show this screen to the vendor</span>
+          <span style={{ fontFamily: 'var(--display)', fontSize: '2.75rem', lineHeight: 1, letterSpacing: '0.06em' }}>{result.jara?.code}</span>
+          <span style={{ fontSize: '1.125rem', fontWeight: 800 }}>A free extra portion</span>
           <span className="note">{result.customer.first_name ? `${result.customer.first_name} · ` : ''}one use</span>
         </div>
       )}
-      <div style={{ position: 'relative', padding: '14px 12px 24px' }}>
+      <div className="jara-done">
+        {!result.surprise && gift > 0 && <span className="note">Your new card starts with {gift} gift stamps 🎁</span>}
         <button className="btn" onClick={onDone}>
-          {result.surprise ? 'Done, back to my card' : gift ? `Done, start my new card (${gift} stamps on us 🎁)` : `Done, start my next ${result.plates_for_jara}`}
+          {result.surprise ? 'Back to my card' : gift ? 'Start my new card' : `Start my next ${result.plates_for_jara}`}
         </button>
       </div>
     </main>
+  );
+}
+
+// When the page can't load: the character explains, and there is always a next step.
+function ErrorScreen({ stand, reason }: { stand: StandPublic | null; reason: ErrorReason }) {
+  const ch = stand?.character;
+  const copy = {
+    notFound: {
+      bubble: 'Hmm, I no know this stand 🤔',
+      lead: 'This link does not match any food stand. Scan the QR code at the stand again, it opens the right page.',
+    },
+    offline: {
+      bubble: 'Network no gree 📶',
+      lead: 'We could not reach Customa. Check your data or Wi-Fi, then try again. Your card is safe.',
+    },
+    server: {
+      bubble: 'Wahala small, abeg 🙏🏾',
+      lead: 'Something went wrong on our side. Try again in a moment. Your plates are safe.',
+    },
+  }[reason];
+  return (
+    <Shell stand={stand} view="error">
+      <Hero bubble={copy.bubble}>
+        <Character body={ch?.body} color={ch?.color} accessory={ch?.accessory} expression="wink" pose="idle" size={150} react />
+      </Hero>
+      <div className="stack">
+        <p className="lead" role="alert">{copy.lead}</p>
+        {reason === 'notFound' ? (
+          <Link to="/" className="btn">Go to Customa home</Link>
+        ) : (
+          <button className="btn" onClick={() => window.location.reload()}>Try again</button>
+        )}
+      </div>
+    </Shell>
+  );
+}
+
+// A quiet divider between "this visit" and everything else the stand offers.
+function MoreFrom({ name }: { name: string }) {
+  return (
+    <h2 className="more-from">
+      <span>More from {name}</span>
+    </h2>
+  );
+}
+
+// First look at a stand without a card yet: the whole idea in three steps.
+function HowItWorks({ total, gift }: { total: number; gift: number }) {
+  const steps = [
+    { icon: '📷', title: 'Scan at the stand', text: 'Each visit, scan the QR code. That counts your plate.' },
+    { icon: '🍛', title: 'Eat and collect', text: gift > 0 ? `Your card starts with ${gift} gift stamps.` : 'One stamp per visit.' },
+    { icon: '🎁', title: `Plate ${total + gift} is jara`, text: 'A free extra, on the house.' },
+  ];
+  return (
+    <section className="how" aria-labelledby="how-title">
+      <h2 id="how-title" className="eyebrow">HOW IT WORKS</h2>
+      <ol className="how-steps">
+        {steps.map((st, i) => (
+          <li key={st.title}>
+            <span className="how-icon" aria-hidden="true">{st.icon}</span>
+            <span>
+              <strong>{i + 1}. {st.title}</strong>
+              <span className="note" style={{ display: 'block' }}>{st.text}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

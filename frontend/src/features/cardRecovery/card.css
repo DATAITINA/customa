@@ -1,7 +1,7 @@
-/* ---- Save your card / Already have a card? ---- */
-.save-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 2px solid var(--edge); border-radius: var(--radius-card); background: var(--paper); }
-.save-card.saved { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 16px; background: var(--success-bg); border-color: var(--success); }
-.save-card.saved .grow { flex: 1 1 160px; min-width: 0; font-weight: 700; }
-.save-card h3 { margin: 0; font-size: 18px; }
-.pin-input { letter-spacing: 0.5em; font-size: 22px; text-align: center; max-width: 180px; }
+/* ---- Save your card / Already have a card? (design tokens: src/styles.css) ---- */
+.save-card { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); border: var(--border); border-radius: var(--radius-card); background: var(--card); }
+.save-card.saved { flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); background: var(--ok-bg); border-color: var(--ok); color: var(--ok-ink); }
+.save-card.saved .grow { flex: 1 1 10rem; min-width: 0; font-weight: 700; font-size: var(--fs-md); }
+.save-card h3 { margin: 0; font-size: var(--fs-lg); line-height: 1.25; }
+.pin-input { letter-spacing: 0.5em; font-size: var(--fs-xl); text-align: center; max-width: 11rem; }
 .recover-open { align-self: center; }

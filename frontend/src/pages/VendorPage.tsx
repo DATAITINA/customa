@@ -28,7 +28,7 @@ import { Link } from '../App';
 export function VendorPage() {
   const { status } = useAuth();
   return (
-    <main className="vendor">
+    <main className="vendor page-in">
       <VendorTop />
       {status === 'loading' && <CharacterLoader kind="vendor" />}
       {status === 'unauthenticated' && <SignIn />}
@@ -84,6 +84,7 @@ function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div style={{ maxWidth: 420, margin: '24px auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -96,7 +97,12 @@ function SignIn() {
           </button>
         ))}
       </div>
-      <h1 className="display" style={{ fontSize: 40 }}>{mode === 'login' ? 'VENDOR SIGN IN' : 'START YOUR STAND'}</h1>
+      <h1 className="display" style={{ fontSize: '2.5rem' }}>{mode === 'login' ? 'VENDOR SIGN IN' : 'START YOUR STAND'}</h1>
+      <p className="lead" style={{ marginTop: -8 }}>
+        {mode === 'login'
+          ? 'See today’s plates, greet your regulars by name and give out jara.'
+          : 'A friendly character and a loyalty card for your food stand. Free to start.'}
+      </p>
       <form
         className="stack"
         style={{ padding: 0, gap: 14 }}
@@ -107,7 +113,7 @@ function SignIn() {
             if (mode === 'register') await register({ email, password });
             await login({ email, password });
           } catch (err) {
-            setError((err as ApiError).message ?? 'Could not sign in');
+            setError(authError(err as ApiError, mode));
           }
         }}
       >
@@ -115,18 +121,34 @@ function SignIn() {
           <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
         </label>
         <label className="field">Password
-          <input className="input" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+          <span className="input-wrap">
+            <input className="input" type={showPassword ? 'text' : 'password'} required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'} aria-describedby={mode === 'register' ? 'pw-hint' : undefined} />
+            <button type="button" className="input-action" aria-pressed={showPassword} aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </span>
+          {mode === 'register' && <span id="pw-hint" className="note" style={{ fontWeight: 500 }}>At least 6 characters.</span>}
         </label>
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn" type="submit" disabled={loading.login || loading.register}>
-          {mode === 'login' ? 'Sign in' : 'Create account'}
+          {loading.login || loading.register ? (mode === 'login' ? 'Signing in…' : 'Creating your account…') : mode === 'login' ? 'Sign in' : 'Create account'}
         </button>
         {mode === 'register' && <span className="note" style={{ textAlign: 'center' }}>Free to start. You set up your stand in about 5 minutes.</span>}
       </form>
       <GoogleButton />
     </div>
   );
+}
+
+// Sign-in errors in plain words, with what to do next.
+function authError(e: ApiError, mode: 'login' | 'register'): string {
+  if (!e?.status) return 'We could not reach Customa. Check your data or Wi-Fi and try again.';
+  if (mode === 'login' && (e.status === 400 || e.status === 401)) {
+    return 'That email and password don’t match. Check them, or tap “Create account” if you are new.';
+  }
+  if (e.status === 422) return 'Check your email address, and use a password of at least 6 characters.';
+  return e.message || (mode === 'login' ? 'Could not sign in. Try again.' : 'Could not create your account. Try again.');
 }
 
 // --- Home: create a stand, or show its dashboard ---------------------------
@@ -137,10 +159,10 @@ function VendorHome() {
   const [creating, setCreating] = useState(false);
 
   if (stands.isLoading) return <CharacterLoader kind="vendor" />;
-  if (stands.isError) return <p className="error">Could not load your stands.</p>;
+  if (stands.isError) return <LoadFailed what="your stands" onRetry={() => stands.refetch()} />;
   const list = stands.data ?? [];
   if (creating || list.length === 0) {
-    return <StandSetup onCreated={(s) => { setCreating(false); setSelected(s.slug); stands.refetch(); }} />;
+    return <StandSetup first={list.length === 0} onCancel={list.length ? () => setCreating(false) : undefined} onCreated={(s) => { setCreating(false); setSelected(s.slug); stands.refetch(); }} />;
   }
   const slug = selected ?? list[0].slug;
   return (
@@ -160,7 +182,7 @@ function VendorHome() {
 // --- Stand setup: the vendor describes their stand, picks the character ----
 
 
-function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
+function StandSetup({ onCreated, first = true, onCancel }: { onCreated: (s: StandSummary) => void; first?: boolean; onCancel?: () => void }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [menuRows, setMenuRows] = useState<MenuRow[]>([{ item: '', price: '' }]);
@@ -219,7 +241,11 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
           }
         }}
       >
-        <h1 className="display" style={{ fontSize: 40 }}>SET UP YOUR STAND</h1>
+        <h1 className="display" style={{ fontSize: '2.5rem' }}>{first ? 'SET UP YOUR STAND' : 'ADD A STAND'}</h1>
+        <p className="lead" style={{ marginTop: -4 }}>
+          {first ? 'Welcome! ' : ''}Tell us about your food, pick a character, and you get a QR code for customers to scan. About 5 minutes.
+        </p>
+        {onCancel && <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={onCancel}>← Back to my dashboard</button>}
         <label className="field">Stand name
           <input className="input" required minLength={2} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mama Ekaette's Kitchen" />
         </label>
@@ -234,7 +260,7 @@ function StandSetup({ onCreated }: { onCreated: (s: StandSummary) => void }) {
           </button>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexGrow: 1, minWidth: 0 }}>
             <span className="soon-badge" style={{ alignSelf: 'flex-start' }}>COMING SOON</span>
-            <span style={{ fontWeight: 800, fontSize: 15 }}>Rather talk? Send a voice note</span>
+            <span style={{ fontWeight: 800, fontSize: '0.9375rem' }}>Rather talk? Send a voice note</span>
             <span className="note">English or Nigerian Pidgin. We turn it into your stand's words.</span>
           </div>
         </div>
@@ -284,7 +310,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
   }, [q.data]);
 
   if (q.isLoading) return <DashboardSkeleton />;
-  if (q.isError || !q.data) return <p className="error">Could not load the dashboard.</p>;
+  if (q.isError || !q.data) return <LoadFailed what="the dashboard" onRetry={() => q.refetch()} />;
   const d = q.data;
   const ch = d.stand.character;
   const stats = [
@@ -300,7 +326,7 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         <div className="dash-title">
           {ch && <Character body={ch.body} color={ch.color} accessory={ch.accessory} pose="idle" size={64} react />}
           <div style={{ minWidth: 0 }}>
-            <h1 className="display" style={{ fontSize: 34 }}>{d.stand.name}</h1>
+            <h1 className="display" style={{ fontSize: '2.125rem' }}>{d.stand.name}</h1>
             <span className="live">Live, updates every 10 seconds</span>
           </div>
         </div>
@@ -309,24 +335,22 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           <Link to={`/s/${slug}`} className="btn btn-outline dash-action"><PhoneIcon />Customer page</Link>
         </div>
       </div>
-      {/* "Ime don land!": who is here now, so staff greet regulars by name. */}
-      <HereNowCard slug={slug} entries={d.here_now ?? []} onChange={() => q.refetch()} />
-      {/* Plans for today, plans kept this week, and % back within 14 days. */}
-      <VendorPlansCard d={d} />
-      {/* Ask about your stand: the vendor's AI helper (MSFLib ai-api agent). */}
-      <AskStand slug={slug} character={ch} />
-      {/* Today's payments: Paystack (test mode) and cash you confirm. */}
-      <VendorPaymentsCard slug={slug} onChange={() => q.refetch()} />
-      {ch && <MenuEditor slug={slug} character={ch} onSaved={() => q.refetch()} />}
-      <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
-      <div className="stats">
+      {/* The two-second answers first: today's numbers, who is here, jara to give out. */}
+      <div className="stats" role="list" aria-label="Today at a glance">
         {stats.map((s) => (
-          <div key={s.label} className="stat">
+          <div key={s.label} className="stat" role="listitem">
             <div className="stat-value">{s.value}</div>
             <div className="stat-label">{s.label}</div>
           </div>
         ))}
       </div>
+      {/* "Ime don land!": who is here now, so staff greet regulars by name. */}
+      <HereNowCard slug={slug} entries={d.here_now ?? []} onChange={() => q.refetch()} />
+      <div className="grid-2">
+        <OpenJara slug={slug} items={d.open_jara} onChange={() => q.refetch()} />
+        <JaraCheckPanel slug={slug} onGiven={() => q.refetch()} />
+      </div>
+      <LastPlatesControl slug={slug} current={d.last_plates} subscribers={d.alert_subscribers ?? 0} onChange={() => q.refetch()} />
       <div className="table-wrap">
         <table>
           <caption style={{ textAlign: 'left', padding: '14px 16px 0', fontWeight: 800 }}>Recent plates</caption>
@@ -335,28 +359,32 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
           </thead>
           <tbody>
             {d.recent_visits.length === 0 && (
-              <tr><td colSpan={4} className="note">No plates yet. Show your QR code to your first customer.</td></tr>
+              <tr><td colSpan={4}><span className="empty-line">🍽️ No plates yet today. Show your QR code to your first customer and they appear here.</span></td></tr>
             )}
             {d.recent_visits.map((v) => (
               <tr key={v.id} className={fresh.has(v.id) ? 'fresh' : undefined}>
                 <td>{v.name}{v.saved && <span className="saved-mark" title="Saved their card to a number" aria-label="saved card"> 💾</span>}</td>
                 <td>{v.plate_number === d.plates_for_jara ? `${v.plate_number}/${d.plates_for_jara} JARA` : `${v.plate_number}/${d.plates_for_jara}`}</td>
                 <td>{v.stars == null ? '–' : v.stars >= 4 ? 'Good' : 'Not good'}</td>
-                <td>{new Date(v.at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{new Date(v.at + 'Z').toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <JaraCheckPanel slug={slug} onGiven={() => q.refetch()} />
-      <div className="grid-2">
-        <OpenJara slug={slug} items={d.open_jara} onChange={() => q.refetch()} />
+      {/* Plans for today, plans kept this week, and % back within 14 days. */}
+      <VendorPlansCard d={d} />
+      {/* Today's payments: Paystack (test mode) and cash you confirm. */}
+      <VendorPaymentsCard slug={slug} onChange={() => q.refetch()} />
+      {/* Ask about your stand: the vendor's AI helper (MSFLib ai-api agent). */}
+      <AskStand slug={slug} character={ch} />
+      <div>
         <div className="card-outline">
           <span className="eyebrow">FOOD QUESTIONS FOR {ch?.name.split(' ')[0].toUpperCase() ?? ''}</span>
-          <span className="note" style={{ fontSize: 13 }}>Customers' chats are private. You only see their questions about the food.</span>
-          {d.recent_questions.length === 0 && <span className="note">No food questions yet.</span>}
+          <span className="note" style={{ fontSize: '0.8125rem' }}>Customers' chats are private. You only see their questions about the food.</span>
+          {d.recent_questions.length === 0 && <span className="empty-line">💬 No food questions yet. When customers ask {ch?.name.split(' ')[0] ?? 'your character'} about the food, you see them here.</span>}
           {d.recent_questions.map((m) => (
-            <div key={m.id} className="row" style={{ fontSize: 15 }}>
+            <div key={m.id} className="row" style={{ fontSize: '0.9375rem' }}>
               <span style={{ fontWeight: 600 }}>"{m.question}"</span>
               <span className="note" style={{ whiteSpace: 'nowrap' }}>{m.who}</span>
             </div>
@@ -364,6 +392,9 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
         </div>
       </div>
       {/* Return-visit features sit below the daily essentials (plates, jara to give out). */}
+      <h2 className="more-from"><span>Set up your stand</span></h2>
+      {/* Menu & prices: a food box and a price box per dish (prices power payments and Ajo). */}
+      {ch && <MenuEditor slug={slug} character={ch} onSaved={() => q.refetch()} />}
       <VendorWheelPanel slug={slug} character={ch} />
       <CustomizeStand slug={slug} stand={d.stand} onSaved={() => q.refetch()} />
       <VendorDelightsPanel slug={slug} />
@@ -379,23 +410,34 @@ function Dashboard({ slug, onNewStand }: { slug: string; onNewStand: () => void 
   );
 }
 
+// A panel that could not load: say so, and offer a retry (no dead end).
+function LoadFailed({ what, onRetry }: { what: string; onRetry: () => void }) {
+  return (
+    <div className="card-outline" role="alert" style={{ maxWidth: 520, margin: '24px auto', alignItems: 'flex-start' }}>
+      <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>Could not load {what} 📶</span>
+      <span className="note" style={{ fontSize: 'var(--fs-md)' }}>Check your data or Wi-Fi. Nothing is lost; your stand keeps counting plates.</span>
+      <button type="button" className="btn btn-sm" onClick={onRetry}>Try again</button>
+    </div>
+  );
+}
+
 // Jara codes waiting to be given out. Redeeming marks the code used (works once).
 function OpenJara({ slug, items, onChange }: { slug: string; items: { code: string; name: string; prize?: string | null; spin_pending?: boolean }[]; onChange: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   return (
     <div className="card-outline">
-      <span className="eyebrow">JARA TO GIVE OUT</span>
-      {items.length === 0 && <span className="note">No jara waiting.</span>}
+      <span className="eyebrow">JARA TO GIVE OUT{items.length > 0 ? ` · ${items.length}` : ''}</span>
+      {items.length === 0 && <span className="empty-line">🎁 No jara waiting. When a customer earns one, their code shows here.</span>}
       {items.map((j) => (
         <div key={j.code} className="row" style={{ alignItems: 'center' }}>
           <span>
-            <strong style={{ fontFamily: 'var(--display)', fontSize: 20, letterSpacing: '0.04em' }}>{j.code}</strong> <span className="note">{j.name}</span>
-            {j.prize && <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>🎁 {j.prize}</span>}
+            <strong style={{ fontFamily: 'var(--display)', fontSize: '1.25rem', letterSpacing: '0.04em' }}>{j.code}</strong> <span className="note">{j.name}</span>
+            {j.prize && <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700 }}>🎁 {j.prize}</span>}
             {j.spin_pending && <span className="note" style={{ display: 'block' }}>🎡 Waiting for the customer's spin</span>}
           </span>
-          <button className="btn" style={{ width: 'auto', height: 40, padding: '0 16px', fontSize: 14 }} disabled={busy === j.code}
+          <button className="btn btn-sm" disabled={busy === j.code}
             onClick={async () => { setBusy(j.code); try { await api.redeemJara(slug, j.code); onChange(); } finally { setBusy(null); } }}>
-            Mark as given
+            {busy === j.code ? 'Saving…' : 'Mark as given'}
           </button>
         </div>
       ))}
@@ -517,7 +559,7 @@ function CustomizeStand({ slug, stand, onSaved }: { slug: string; stand: StandSu
     <div className="card-outline customize" style={{ gap: 12 }}>
       <button type="button" className="customize-head" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span className="eyebrow">CUSTOMIZE YOUR STAND</span>
-        <span className="note" style={{ fontSize: 14 }}>Character, colours and a photo of your stand</span>
+        <span className="note" style={{ fontSize: '0.875rem' }}>Character, colours and a photo of your stand</span>
         <span className="customize-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
       {open && (
@@ -534,7 +576,7 @@ function CustomizeStand({ slug, stand, onSaved }: { slug: string; stand: StandSu
           <CharacterPicker value={current} onChange={(next) => setLook({ ...look, ...next })} />
           <button type="button" className="btn" disabled={!changed || busy} onClick={save}>{busy ? 'Saving…' : 'Save character'}</button>
           <StandPhoto key={stand.photo ?? 'none'} initialUrl={stand.photo ? photoUrl(stand.photo) : null} busy={photoBusy} onChange={changePhoto} />
-          {note && <span style={{ fontSize: 14, fontWeight: 700 }} role="status">{note}</span>}
+          {note && <span style={{ fontSize: '0.875rem', fontWeight: 700 }} role="status">{note}</span>}
           {error && <span className="error" role="alert">{error}</span>}
         </div>
       )}

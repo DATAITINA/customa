@@ -43,7 +43,7 @@ export function StandPhoto({
               <circle cx="12" cy="13" r="3" />
             </svg>
           </span>
-          <span style={{ fontSize: 17, fontWeight: 800 }}>Snap your stand</span>
+          <span style={{ fontSize: '1.0625rem', fontWeight: 800 }}>Snap your stand</span>
           <span className="note" style={{ maxWidth: 240 }}>Get the food and your sign in the frame. Customers see it on your page.</span>
         </button>
       ) : (

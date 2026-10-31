@@ -228,3 +228,15 @@ def test_delete_my_data_removes_spins(client: TestClient, session: Session, stan
     assert client.delete(f"{BASE}/me", headers=headers).status_code == 200
     session.expire_all()
     assert session.exec(select(JaraPrize)).all() == []
+
+
+def test_scan_again_inside_the_window_with_a_won_prize_is_a_clean_409(client: TestClient, session: Session, stand) -> None:
+    """A customer who won a prize (it carries expires_at) and scans again too soon gets the
+    "already counted" answer, not a server error."""
+    live_wheel(client)
+    headers, plate6 = to_plate_6(client, session, stand)
+    assert client.post(f"{BASE}/wheel/spin", json={"jara_id": plate6["jara"]["spin"]}, headers=headers).status_code == 200
+    scan = scan_code(stand, resolve_stand_settings(session, stand))
+    r = client.post(f"{BASE}/visits", json={"consent": True, "scan": scan}, headers=headers)
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"]["customer"]["open_jara"][0]["expires_at"]

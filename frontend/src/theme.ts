@@ -17,7 +17,7 @@ export function applyTheme(pick: ThemePick) {
   const dark = pick === 'dark' || (pick === 'system' && !!media()?.matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  if (meta) meta.content = dark ? '#15110E' : '#FDE6E2';
+  if (meta) meta.content = dark ? '#121110' : '#FDE6E2';
 }
 
 export function setThemePick(pick: ThemePick) {

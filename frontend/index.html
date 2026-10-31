@@ -13,7 +13,7 @@
         try { pick = localStorage.getItem('customa:theme') || 'system'; } catch (e) {}
         var dark = pick === 'dark' || (pick === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-        document.querySelector('meta[name="theme-color"]').content = dark ? '#15110E' : '#FDE6E2';
+        document.querySelector('meta[name="theme-color"]').content = dark ? '#121110' : '#FDE6E2';
       })();
     </script>
     <title>Customa</title>

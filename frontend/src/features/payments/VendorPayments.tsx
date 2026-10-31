@@ -79,7 +79,8 @@ export function VendorPaymentsCard({ slug, onChange }: { slug: string; onChange?
           ))}
         </div>
       )}
-      {!t.card_ready && t.card_problem && <span className="note">Card payments: {t.card_problem} Cash works now.</span>}
+      {/* Plain words for the vendor; the technical reason (t.card_problem) is for the setup docs. */}
+      {!t.card_ready && <span className="note">Card and transfer payments aren't switched on yet. Cash works now.</span>}
       {error && <span className="error" role="alert">{error}</span>}
       <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => act(() => payApi.setEnabled(slug, false))}>Turn off payments</button>
     </section>

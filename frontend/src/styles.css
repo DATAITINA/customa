@@ -648,7 +648,9 @@ tr.fresh td { background: var(--blush); }
 
 /* ---- Delight: small, quick, transform + opacity only (all off with reduced motion) ---- */
 /* Screens and views arrive with a soft rise, never a hard cut. */
-.page-in, .view-in { animation: view-in var(--dur) var(--ease-out) both; }
+/* backwards, not both: a finished animation must leave no transform behind, or fixed sheets and
+   overlays inside the view would be placed against the view instead of the screen. */
+.page-in, .view-in { animation: view-in var(--dur) var(--ease-out) backwards; }
 @keyframes view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 /* The plate just counted: its stamp drops onto the card with a thump and a ripple. */
 .stamp { position: relative; }

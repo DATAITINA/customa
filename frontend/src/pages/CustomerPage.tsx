@@ -201,9 +201,10 @@ export function CustomerPage({ slug }: { slug: string }) {
   };
   // The return-visit features. Each card hides itself when the vendor has not turned it on.
   // Rewards and paying come first, right under the card; the rest sits under "More from …".
+  // Pay for this plate (when the vendor takes payments in Customa): its own spot, not a reward.
+  const payCard = me ? <PayCard slug={slug} onPaid={refreshMe} /> : null;
   const rewardCards = (
     <>
-      {me && <PayCard slug={slug} onPaid={refreshMe} />}
       <OpenJara slug={slug} codes={me?.open_jara ?? []} />
       <WheelCard slug={slug} stand={stand} refreshKey={meVersion} />
     </>
@@ -276,6 +277,7 @@ export function CustomerPage({ slug }: { slug: string }) {
             <>
               <PlateCard plate={me.plate_number} total={total} gift={giftStamps(stand, !!me.crew_name)} crewName={me.crew_name ?? null} windowSeconds={me.window_seconds} />
               {rewardCards}
+              {payCard}
               {/* "Save your card": keeps the card if the phone, browser or app changes. */}
               <SaveCard slug={slug} />
               <TalkAndPlay slug={slug} first={firstName} outline />
@@ -308,7 +310,7 @@ export function CustomerPage({ slug }: { slug: string }) {
           name={view.name}
           canCount={(() => { const sc = getScan(slug); return sc !== null && !sc.counted; })()}
           onReady={() => handleCount({ consent: true })}
-          rewards={rewardCards}
+          rewards={<>{rewardCards}{payCard}</>}
           extras={featureCards}
         />
         <div className="stack">{deleteMyData}</div>
@@ -361,6 +363,7 @@ export function CustomerPage({ slug }: { slug: string }) {
         {rewardCards}
         {/* "Save your card so you never lose it": offered open right after the first plate. */}
         <SaveCard slug={slug} offer={!r.returning} />
+        {payCard}
         {/* "When you go come back?": plan the next visit (a day and a time). */}
         <PlanCard slug={slug} character={ch} ask missed={r.plan_outcome === 'missed'} />
         <Rate slug={slug} visitId={r.visit_id} />

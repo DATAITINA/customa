@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import object_session
@@ -286,7 +287,9 @@ def count_plate(
             detail={
                 "message": "This plate is already counted",
                 "seconds_left": exc.seconds_left,
-                "customer": customer_view(customer, last, stand_settings, session),
+                # Encoded here: an error body is not run through FastAPI's encoder, and a won
+                # prize carries a datetime (expires_at).
+                "customer": jsonable_encoder(customer_view(customer, last, stand_settings, session)),
             },
         )
 

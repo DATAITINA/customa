@@ -34,6 +34,12 @@ The **Prize Wheel**: vendors put up to 6 of their foods on a wheel, and every ja
 spin. The server picks the prize, the customer gets a one-time code, and the vendor checks it.
 Details: [docs/prize-wheel.md](docs/prize-wheel.md).
 
+**Return-visit boosters**: every new card starts with 2 gift stamps ("Welcome gift: 2 stamps on
+us 🎁", display only); "Who's here now" shows staff which regulars just arrived, so they greet them
+by name ("Ime! Welcome back o!"); and after each plate the character asks "When you go come back?"
+for a day and a time, with a calendar file and a reminder. The dashboard shows the % of customers
+who came back within 14 days. Details: [docs/return-visit-boosters.md](docs/return-visit-boosters.md).
+
 Vendors pick a character (now with a **panda**, chick, bunny and cat), add a photo of their
 stand, and customers can install the stand on their Home Screen, play quick games with the
 character and delete their data from a clear sheet. Details:

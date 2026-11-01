@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getScan, type StandPublic } from '../../api';
+import { getScan, giftStamps, type StandPublic } from '../../api';
 import { ajoApi, errorText, naira, parseUtc, timeOf, type AjoPublic, type Bundle, type UseResult } from './ajoApi';
 import './plateAjo.css';
 
@@ -41,6 +41,7 @@ export function AjoCard({ slug, stand, onPlateCounted }: { slug: string; stand: 
       <PaidPlate
         result={overlay.result}
         shownAt={overlay.shownAt}
+        gift={giftStamps(stand, !!overlay.result.stamp.crew)}
         onDone={() => {
           setOverlay(null);
           onPlateCounted();
@@ -308,7 +309,7 @@ function BuyFlow({ slug, data, compact, onStarted }: { slug: string; data: AjoPu
 }
 
 // The big screen the customer turns round to show the vendor.
-function PaidPlate({ result, shownAt, onDone }: { result: UseResult; shownAt: number; onDone: () => void }) {
+function PaidPlate({ result, shownAt, onDone, gift = 0 }: { result: UseResult; shownAt: number; onDone: () => void; gift?: number }) {
   const at = parseUtc(result.use.at);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -335,7 +336,7 @@ function PaidPlate({ result, shownAt, onDone }: { result: UseResult; shownAt: nu
         <span className="ajo-overlay-time">
           {timeOf(result.use.at)} · {at.toLocaleDateString([], { day: 'numeric', month: 'short' })} · {agoText}
         </span>
-        <span className="ajo-overlay-stamp">{stampText(result.stamp)}</span>
+        <span className="ajo-overlay-stamp">{stampText(result.stamp, gift)}</span>
         {stamp.crew?.jara_to && !stamp.crew.jara_to_me && (
           <span className="ajo-overlay-jara">This jara goes to {stamp.crew.jara_to}</span>
         )}
@@ -353,11 +354,12 @@ function PaidPlate({ result, shownAt, onDone }: { result: UseResult; shownAt: nu
   );
 }
 
-function stampText(stamp: UseResult['stamp']): string {
+// gift: the head-start card's gift stamps, shown first on the own card (display only).
+function stampText(stamp: UseResult['stamp'], gift: number): string {
   if (!stamp.counted) return 'Stamp already counted for this visit';
   if (stamp.crew) {
     const crew = stamp.crew.name || 'your crew';
     return `Stamp counted: plate ${stamp.crew.plate_number} of ${stamp.crew.plates_for_jara} on ${crew}'s card`;
   }
-  return `Stamp counted: plate ${stamp.plate_number} on your jara card`;
+  return `Stamp counted: plate ${(stamp.plate_number ?? 0) + gift} on your jara card`;
 }
